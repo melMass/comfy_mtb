@@ -1,6 +1,11 @@
 from PIL import Image
 import numpy as np
 import torch
+from pathlib import Path
+import sys
+
+# Get the absolute path of the parent directory of the current script
+here = Path(__file__).parent.resolve()
 # Tensor to PIL (grabbed from WAS Suite)
 def tensor2pil(image: torch.Tensor) -> Image.Image:
     return Image.fromarray(
