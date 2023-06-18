@@ -6,6 +6,20 @@ import sys
 
 # Get the absolute path of the parent directory of the current script
 here = Path(__file__).parent.resolve()
+
+# Construct the absolute path to the ComfyUI directory
+comfy_dir = here.parent.parent
+
+# Construct the path to the font file
+font_path = here / "font.ttf"
+
+# Add extern folder to path
+extern = (here / "extern", here / "extern" / "SadTalker")
+sys.path.extend([ x.as_posix() for x in extern])
+
+# Add the ComfyUI directory path to the sys.path list
+sys.path.append(comfy_dir.resolve().as_posix())
+
 # Tensor to PIL (grabbed from WAS Suite)
 def tensor2pil(image: torch.Tensor) -> Image.Image:
     return Image.fromarray(
