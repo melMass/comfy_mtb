@@ -1,24 +1,19 @@
-import sys
-from .utils import here
-
-# Add extern folder to path
-extern = (here / "extern", here / "extern" / "SadTalker")
-
-# append all extern folders to path
-sys.path.extend([ x.as_posix() for x in extern])
+from .utils import log
 
 NODE_CLASS_MAPPINGS = {}
 try:
     from .nodes.deep_bump import DeepBump
     NODE_CLASS_MAPPINGS["Deep Bump (mtb)"] = DeepBump
 except Exception:
-    print("DeepBump nodes failed to load.")
+    log.error("DeepBump nodes failed to load.")
 from .nodes.latent_processing import LatentLerp
+from .nodes.roop import Roop
+# from .nodes.geometries import LoadGeometry, GeometryInfo
 try:
     from .nodes.fun import QRNode
     NODE_CLASS_MAPPINGS["QR Code (mtb)"] = QRNode
 except Exception:
-    print("QRNode failed to load.")
+    log.error("QRNode failed to load.")
 
 from .nodes.image_processing import (
     ImageCompare,
@@ -27,11 +22,13 @@ from .nodes.image_processing import (
     HSVtoRGB,
     RGBtoHSV,
     ColorCorrect,
+    MaskToImage,
+    ColoredImage,
 )
 try:
     from .nodes.image_processing import DeglazeImage
 except Exception:
-    print("DeglazeImage failed to load. This is probably an opencv mismatch. This node requires opencv-python-contrib.")
+    log.error("DeglazeImage failed to load. This is probably an opencv mismatch. This node requires opencv-python-contrib.")
 
 from .nodes.crop import Crop, Uncrop, BoundingBox
 from .nodes.graph_utils import IntToNumber, Modulo
@@ -54,6 +51,8 @@ NODE_CLASS_MAPPINGS = {
     "Modulo (mtb)": Modulo,
     "Deglaze Image (mtb)": DeglazeImage,
     "Smart Step (mtb)": SmartStep,
+    "Mask to Image (mtb)": MaskToImage,
+    "Colored Image (mtb)": ColoredImage,
     # "Load Geometry (mtb)": LoadGeometry,
     # "Geometry Info (mtb)": GeometryInfo,
 }

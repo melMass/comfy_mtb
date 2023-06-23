@@ -3,6 +3,11 @@ import numpy as np
 import torch
 from pathlib import Path
 import sys
+from logging import getLogger
+import logging
+
+log = getLogger(__package__)
+log.setLevel(logging.DEBUG)
 
 # Get the absolute path of the parent directory of the current script
 here = Path(__file__).parent.resolve()
