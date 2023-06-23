@@ -5,7 +5,7 @@ from skimage.util import compare_images
 from skimage.color import rgb2hsv, hsv2rgb
 import numpy as np
 import torchvision.transforms.functional as F
-from PIL import Image
+from PIL import Image, ImageChops
 from ..utils import tensor2pil, pil2tensor
 import cv2
 import torch
@@ -358,3 +358,117 @@ class DeglazeImage:
     def deglaze_image(self, image):
         return (img_np_to_tensor(deglaze_np_img(img_tensor_to_np(image))),)
 
+
+class MaskToImage:
+
+    def __init__(self):
+        pass
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+                    "required": {
+                        "mask": ("MASK",),
+                        "color": ("COLOR",),
+                        "background": ("COLOR", {"default": "#000000"})
+                    }
+                }
+
+    CATEGORY = "image/mask"
+
+    RETURN_TYPES = ("IMAGE",)
+
+    FUNCTION = "render_mask"
+
+    def render_mask(self, mask,color, background):
+        mask = mask.numpy()
+        mask = (mask * 255).astype(np.uint8)
+        
+        mask = Image.fromarray(mask).convert("L")
+        
+        image = Image.new("RGBA", mask.size, color=color)
+        # apply the mask
+        image = Image.composite(image, Image.new("RGBA", mask.size, color=background), mask)
+        
+        # image = ImageChops.multiply(image, mask)
+        # apply over background
+        # image = Image.alpha_composite(Image.new("RGBA", image.size, color=background), image)
+        
+        image = pil2tensor(image.convert("RGB"))
+        print(image.shape)
+        
+        return (image,)
+
+class ColoredImage:
+    def __init__(self) -> None:
+        pass
+    
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+                    "required": {
+                        "color": ("COLOR",),
+                        "width": ("INT",{"default": 512, "min": 16, "max": 8160}),
+                        "height": ("INT",{"default": 512, "min": 16, "max": 8160}),
+                        
+                    }
+                }
+
+    CATEGORY = "image"
+
+    RETURN_TYPES = ("IMAGE",)
+
+    FUNCTION = "render_img"
+
+    def render_img(self, color,width,height):
+        
+        image = Image.new("RGB", (width,height), color=color)
+        
+        image = pil2tensor(image)
+        # print(image.shape)
+        
+        return (image,)
+    
+    
+class ImagePremultiply:
+    def __init__(self):
+        pass
+    
+    
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+                    "required": {
+                        "image": ("IMAGE",),
+                        "mask": ("MASK",),
+                        "invert": (["True","False"], {"default": "False"})
+                    }
+                }
+        
+    CATEGORY = "image"
+    RETURN_TYPES = ("IMAGE",)
+    FUNCTION = "premultiply"
+    
+    def premultiply(self, image, mask, invert):
+        
+        invert = invert == "True"
+        
+        image = tensor2pil(image)
+
+        mask = tensor2pil(mask).convert("L")
+
+        # apply the mask as premultiplied alpha over a transparent image
+        
+        if invert:
+            mask = ImageChops.invert(mask)
+        
+        image.putalpha(mask)
+        
+        
+        # if invert:
+        #     image = Image.composite(image,Image.new("RGBA", image.size, color=(0,0,0,0)), mask)
+        # else:
+        #     image = Image.composite(Image.new("RGBA", image.size, color=(0,0,0,0)), image, mask)
+        
+        return (pil2tensor(image),)
+        

@@ -24,6 +24,7 @@ from .nodes.image_processing import (
     ColorCorrect,
     MaskToImage,
     ColoredImage,
+    ImagePremultiply
 )
 try:
     from .nodes.image_processing import DeglazeImage
@@ -34,7 +35,11 @@ from .nodes.crop import Crop, Uncrop, BoundingBox, BBoxFromMask
 from .nodes.conditions import (
     SmartStep, 
     StylesLoader, 
+    TextToImage
 )
+from .nodes.video import LoadImageSequence, SaveImageSequence
+from .nodes.mask import ImageRemoveBackgroundRembg
+# from .nodes.videopose import MMPoseEstimation
 # NODE MAPPING
 NODE_CLASS_MAPPINGS = {
     "Latent Lerp (mtb) [DEPRECATED]": LatentLerp,
@@ -55,8 +60,12 @@ NODE_CLASS_MAPPINGS = {
     "Deglaze Image (mtb)": DeglazeImage,
     "Smart Step (mtb)": SmartStep,
     "Styles Loader (mtb)": StylesLoader,
+    "Load Image Sequence (mtb)": LoadImageSequence,
+    "Save Image Sequence (mtb)": SaveImageSequence,
     "Mask to Image (mtb)": MaskToImage,
+    "Image Remove Background RemBG (mtb)": ImageRemoveBackgroundRembg,
     "Colored Image (mtb)": ColoredImage,
+    "Image Premultiply (mtb)": ImagePremultiply,
     # "Load Geometry (mtb)": LoadGeometry,
     # "Geometry Info (mtb)": GeometryInfo,
 }

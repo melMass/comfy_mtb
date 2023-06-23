@@ -1,3 +1,9 @@
-onnxruntime
+onnxruntime-gpu
 imageio
 qrcode[pil]
+numpy==1.23.5
+ifnude==0.0.3
+insightface==0.7.3
+mmcv==2.0.0
+mmdet==3.0.0
+rembg==2.0.37

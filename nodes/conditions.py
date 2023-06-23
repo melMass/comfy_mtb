@@ -83,3 +83,68 @@ class StylesLoader:
     FUNCTION = "load_style"
     def load_style(self, style_name):
         return (self.options[style_name][0],self.options[style_name][1])
+    
+class TextToImage:
+    fonts= {}
+    def __init__(self):
+        pass
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        
+        fonts = list(Path(folder_paths.base_path).glob("**/*.ttf"))
+        if not fonts:
+            log.error("No fonts found in the fonts folder, place at least one ttf file in the fonts folder")
+            return  {"required":
+                {"font": (["error"],), }
+            }
+        for font in fonts:
+            log.debug(f"Adding font {font}")
+            cls.fonts[font.stem] = font.as_posix()
+
+
+        return {
+            "required": {
+                "text": ("STRING", {"default": "Hello world!"},),
+                "font": ((sorted(cls.fonts.keys())),),
+                "wrap": ("INT", {"default": 120, "min": 0, "max": 8096, "step": 1},),
+                "font_size": ("INT", {"default": 12, "min": 1, "max": 100, "step": 1},),
+                "width": ("INT", {"default": 512, "min": 1, "max": 1000, "step": 1},),
+                "height": ("INT", {"default": 512, "min": 1, "max": 8096, "step": 1},),
+                # "position": (["INT"], {"default": 0, "min": 0, "max": 100, "step": 1}),
+                "color": ("STRING",{"default": "black"},), # TODO: add color picker
+                "background": ("STRING",{"default": "white"},), # TODO: add color picker
+            }
+        }
+
+    RETURN_TYPES = ("IMAGE",)
+    RETURN_NAMES = ("image",)
+    FUNCTION = "text_to_image"
+    CATEGORY = "utils"
+
+    def text_to_image(self, text, font, wrap,font_size,width,height,  color, background):
+        from PIL import Image, ImageDraw, ImageFont
+        import textwrap
+        # import uuid
+        # import os
+        font = self.fonts[font]
+        font = ImageFont.truetype(font, font_size)
+        if wrap == 0:
+            wrap = width / font_size
+        lines = textwrap.wrap(text, width= wrap )
+        log.debug(f"Lines: {lines}")
+        line_height = font.getsize('hg')[1]
+        img_height = height # line_height * len(lines)
+        img_width = width # max(font.getsize(line)[0] for line in lines)
+
+        img = Image.new('RGBA', (img_width, img_height), background)
+        draw = ImageDraw.Draw(img)
+        y_text = 0
+        for line in lines:
+            width, height = font.getsize(line)
+            draw.text((0, y_text), line, color, font=font)
+            y_text += height
+            
+
+        # img.save(os.path.join(folder_paths.base_path, f'{str(uuid.uuid4())}.png'))
+        return (pil2tensor(img),)
