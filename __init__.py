@@ -30,9 +30,10 @@ try:
 except Exception:
     log.error("DeglazeImage failed to load. This is probably an opencv mismatch. This node requires opencv-python-contrib.")
 
-from .nodes.crop import Crop, Uncrop, BoundingBox
-from .nodes.graph_utils import IntToNumber, Modulo
-from .nodes.conditions import SmartStep
+from .nodes.conditions import (
+    SmartStep, 
+    StylesLoader, 
+)
 # NODE MAPPING
 NODE_CLASS_MAPPINGS = {
     "Latent Lerp (mtb) [DEPRECATED]": LatentLerp,
@@ -51,6 +52,7 @@ NODE_CLASS_MAPPINGS = {
     "Modulo (mtb)": Modulo,
     "Deglaze Image (mtb)": DeglazeImage,
     "Smart Step (mtb)": SmartStep,
+    "Styles Loader (mtb)": StylesLoader,
     "Mask to Image (mtb)": MaskToImage,
     "Colored Image (mtb)": ColoredImage,
     # "Load Geometry (mtb)": LoadGeometry,
