@@ -30,6 +30,7 @@ try:
 except Exception:
     log.error("DeglazeImage failed to load. This is probably an opencv mismatch. This node requires opencv-python-contrib.")
 
+from .nodes.crop import Crop, Uncrop, BoundingBox, BBoxFromMask
 from .nodes.conditions import (
     SmartStep, 
     StylesLoader, 
@@ -41,6 +42,7 @@ NODE_CLASS_MAPPINGS = {
     
     "Int to Number (mtb)": IntToNumber,
     "Bounding Box (mtb)": BoundingBox,
+    "Bounding Box From Mask (mtb)": BBoxFromMask,
     "Crop (mtb)": Crop,
     "Uncrop (mtb)": Uncrop,
     "ImageBlur (mtb)": Blur,

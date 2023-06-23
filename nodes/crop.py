@@ -1,6 +1,7 @@
 import torch
 from ..utils import tensor2pil, pil2tensor
 from PIL import Image, ImageFilter, ImageDraw
+import numpy as np
 
 
 class BoundingBox:
@@ -32,6 +33,57 @@ class BoundingBox:
         return (x, y, width, height)
 
 
+class BBoxFromMask:
+    def __init__(self):
+        pass
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "mask": ("MASK",),
+            },
+            "optional": {
+                "image": ("IMAGE",),
+            },
+        }
+
+    RETURN_TYPES = (
+        "BBOX",
+        "IMAGE",
+    )
+    RETURN_NAMES = (
+        "bbox",
+        "image (optional)",
+    )
+    FUNCTION = "extract_bounding_box"
+    CATEGORY = "image/crop"
+
+    def extract_bounding_box(self, mask: torch.Tensor, image=None):
+
+        mask = tensor2pil(mask)
+
+        alpha_channel = np.array(mask)
+        non_zero_indices = np.nonzero(alpha_channel)
+
+        min_x, max_x = np.min(non_zero_indices[1]), np.max(non_zero_indices[1])
+        min_y, max_y = np.min(non_zero_indices[0]), np.max(non_zero_indices[0])
+
+        # Create a bounding box tuple
+        if image != None:
+            # Convert the image to a NumPy array
+            image = image.numpy()
+            # Crop the image from the bounding box
+            image = image[:, min_y:max_y, min_x:max_x]
+            image = torch.from_numpy(image)
+
+        bounding_box = (min_x, min_y, max_x - min_x, max_y - min_y)
+        return (
+            bounding_box,
+            image,
+        )
+
+
 class Crop:
     def __init__(self):
         pass
@@ -42,6 +94,8 @@ class Crop:
             "required": {
                 "image": ("IMAGE",),
                 "mask": ("MASK",),
+            },
+            "optional": {
                 "x": ("INT", {"default": 0, "max": 10000000, "min": 0, "step": 1}),
                 "y": ("INT", {"default": 0, "max": 10000000, "min": 0, "step": 1}),
                 "width": (
@@ -52,7 +106,8 @@ class Crop:
                     "INT",
                     {"default": 256, "max": 10000000, "min": 0, "step": 1},
                 ),
-            }
+                "bbox": ("BBOX",),
+            },
         }
 
     RETURN_TYPES = ("IMAGE", "MASK", "BBOX")
@@ -60,10 +115,16 @@ class Crop:
 
     CATEGORY = "image/crop"
 
-    def do_crop(self, image: torch.Tensor, mask, x, y, width, height):
+    def do_crop(
+        self, image: torch.Tensor, mask, x=0, y=0, width=256, height=256, bbox=None
+    ):
 
         image = image.numpy()
         mask = mask.numpy()
+
+        if bbox != None:
+            x, y, width, height = bbox
+
         cropped_image = image[:, y : y + height, x : x + width, :]
         cropped_mask = mask[y : y + height, x : x + width]
         crop_data = (x, y, width, height)
