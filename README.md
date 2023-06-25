@@ -10,6 +10,17 @@ From within the python environment you already use for ComfyUI install the requi
 pip install -r comfy_mtb/requirements.txt
 ```
 
+## Screenshots
+
+- **FaceSwap [roop]** (using [roop](https://github.com/s0md3v/roop/))  
+  The face index allow you to choose which face to replace as you can see here:
+  ![ComfyUI_909](https://github.com/melMass/comfy_mtb/assets/7041726/2e9d6066-c466-4a01-bd6c-315f7f1e8b42)
+
+- **Style Loader**: A111 like csv styles in Comfy  
+  ![image](https://github.com/melMass/comfy_mtb/assets/7041726/02fe3211-18ee-4e54-a029-931388f5fde8)
+- **Color Correction**: basic color correction node  
+  ![image](https://github.com/melMass/comfy_mtb/assets/7041726/7c20ac83-31ff-40ea-a1a0-06c2acefb2ef)
+
 ### Node List
 
 - `Latent Lerp`: Linear Interpolate between two latents,
