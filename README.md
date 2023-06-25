@@ -18,8 +18,14 @@ pip install -r comfy_mtb/requirements.txt
 
 - **Style Loader**: A111 like csv styles in Comfy  
   ![image](https://github.com/melMass/comfy_mtb/assets/7041726/02fe3211-18ee-4e54-a029-931388f5fde8)
+
 - **Color Correction**: basic color correction node  
   ![image](https://github.com/melMass/comfy_mtb/assets/7041726/7c20ac83-31ff-40ea-a1a0-06c2acefb2ef)
+
+- **Image Remove Background [RemBG]**: (using [rembg](https://github.com/danielgatis/rembg))
+  ![image](https://github.com/melMass/comfy_mtb/assets/7041726/e69253b4-c03c-45e9-92b5-aa46fb887be8)
+
+
 
 ### Node List
 
