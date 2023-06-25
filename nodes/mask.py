@@ -1,5 +1,6 @@
 from rembg import remove
 from ..utils import pil2tensor, tensor2pil
+from PIL import Image
 
 class ImageRemoveBackgroundRembg:
     def __init__(self):
@@ -20,14 +21,14 @@ class ImageRemoveBackgroundRembg:
             },
         }
 
-    RETURN_TYPES = ("IMAGE",)
+    RETURN_TYPES = ("IMAGE","MASK","IMAGE",)
+    RETURN_NAMES = ("Image (rgba)","Mask","Image",)
     FUNCTION = "remove_background"
     CATEGORY = "image"
     # bgcolor: Optional[Tuple[int, int, int, int]]
     def remove_background(self, image, alpha_matting, alpha_matting_foreground_threshold, alpha_matting_background_threshold, alpha_matting_erode_size, post_process_mask, bgcolor):
         print(f"Background Color: {bgcolor}")
-        image = pil2tensor(
-            remove(
+        image = remove(
                 data=tensor2pil(image),
                 alpha_matting=alpha_matting == "True",
                 alpha_matting_foreground_threshold=alpha_matting_foreground_threshold,
@@ -38,5 +39,15 @@ class ImageRemoveBackgroundRembg:
                 post_process_mask=post_process_mask == "True",
                 bgcolor=None
             )
-        )
-        return (image,)
+        
+        
+        # extract the alpha to a new image
+        mask = image.getchannel(3)
+        
+        # add our bgcolor behind the image
+        image_on_bg = Image.new("RGBA", image.size, bgcolor)
+        
+        image_on_bg.paste(image, mask=mask)
+        
+        
+        return (pil2tensor(image), pil2tensor(mask), pil2tensor(image_on_bg))

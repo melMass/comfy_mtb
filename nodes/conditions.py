@@ -1,3 +1,5 @@
+from ..utils import log, pil2tensor
+
 class SmartStep:
     def __init__(self):
         pass

@@ -6,7 +6,7 @@ from skimage.color import rgb2hsv, hsv2rgb
 import numpy as np
 import torchvision.transforms.functional as F
 from PIL import Image, ImageChops
-from ..utils import tensor2pil, pil2tensor
+from ..utils import tensor2pil, pil2tensor, img_np_to_tensor, img_tensor_to_np
 import cv2
 import torch
 
@@ -330,12 +330,7 @@ class Blur:
 
 
 
-def img_np_to_tensor(img_np):
-    return torch.from_numpy(img_np / 255.0)[None,]
-def img_tensor_to_np(img_tensor):
-    img_tensor = img_tensor.clone()
-    img_tensor = img_tensor * 255.0
-    return img_tensor.squeeze(0).numpy().astype(np.float32)
+
 
 #https://github.com/lllyasviel/AdverseCleaner/blob/main/clean.py
 def deglaze_np_img(np_img):
@@ -381,9 +376,7 @@ class MaskToImage:
     FUNCTION = "render_mask"
 
     def render_mask(self, mask,color, background):
-        mask = mask.numpy()
-        mask = (mask * 255).astype(np.uint8)
-        
+        mask = img_tensor_to_np(mask)
         mask = Image.fromarray(mask).convert("L")
         
         image = Image.new("RGBA", mask.size, color=color)
