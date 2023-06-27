@@ -454,6 +454,231 @@ class ImagePremultiply:
         return (pil2tensor(image),)
 
 
+class ImageResizeFactor:
+    """
+    Extracted mostly from WAS Node Suite, with a few edits (most notably multiple image support) and less features.
+    """
+
+    def __init__(self):
+        pass
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "image": ("IMAGE",),
+                "factor": (
+                    "FLOAT",
+                    {"default": 2, "min": 0.01, "max": 16.0, "step": 0.01},
+                ),
+                "supersample": (["true", "false"], {"default": "true"}),
+                "resampling": (
+                    ["lanczos", "nearest", "bilinear", "bicubic"],
+                    {"default": "lanczos"},
+                ),
+            },
+            "optional": {
+                "mask": ("MASK",),
+            },
+        }
+
+    CATEGORY = "image"
+    RETURN_TYPES = ("IMAGE", "MASK")
+    FUNCTION = "resize"
+
+    def resize_image(
+        self,
+        image: torch.Tensor,
+        factor: float = 0.5,
+        supersample=False,
+        resample="lanczos",
+        mask=None,
+    ) -> torch.Tensor:
+        batch_count = 1
+        img = tensor2pil(image)
+
+        if isinstance(img, list):
+            log.debug("Multiple images detected (list)")
+            out = []
+            for im in img:
+                im = self.resize_image(
+                    pil2tensor(im), factor, supersample, resample, mask
+                )
+                out.append(im)
+            return torch.cat(out, dim=0)
+        elif isinstance(img, torch.Tensor):
+            if len(image.shape) > 3:
+                batch_count = image.size(0)
+
+        if batch_count > 1:
+            log.debug("Multiple images detected (batch count)")
+            out = [
+                self.resize_image(image[i], factor, supersample, resample, mask)
+                for i in range(batch_count)
+            ]
+            return torch.cat(out, dim=0)
+
+        log.debug("Resizing image")
+        # Get the current width and height of the image
+        current_width, current_height = img.size
+
+        log.debug(f"Current width: {current_width}, Current height: {current_height}")
+
+        # Calculate the new width and height based on the given mode and parameters
+        new_width, new_height = int(factor * current_width), int(
+            factor * current_height
+        )
+
+        log.debug(f"New width: {new_width}, New height: {new_height}")
+
+        # Define a dictionary of resampling filters
+        resample_filters = {"nearest": 0, "bilinear": 2, "bicubic": 3, "lanczos": 1}
+
+        # Apply supersample
+        if supersample == "true":
+            super_size = (new_width * 8, new_height * 8)
+            log.debug(f"Applying supersample: {super_size}")
+            img = img.resize(
+                super_size, resample=Image.Resampling(resample_filters[resample])
+            )
+
+        # Resize the image using the given resampling filter
+        resized_image = img.resize(
+            (new_width, new_height),
+            resample=Image.Resampling(resample_filters[resample]),
+        )
+
+        return pil2tensor(resized_image)
+
+    def resize(
+        self,
+        image: torch.Tensor,
+        factor: float,
+        supersample: str,
+        resampling: str,
+        mask=None,
+    ):
+        log.debug(f"Resizing image with factor {factor} and resampling {resampling}")
+        supersample = supersample == "true"
+        batch_count = image.size(0)
+        log.debug(f"Batch count: {batch_count}")
+        if batch_count == 1:
+            log.debug("Batch count is 1, returning single image")
+            return (self.resize_image(image, factor, supersample, resampling),)
+        else:
+            log.debug("Batch count is greater than 1, returning multiple images")
+            images = [
+                self.resize_image(image[i], factor, supersample, resampling)
+                for i in range(batch_count)
+            ]
+            images = torch.cat(images, dim=0)
+            return (images,)
+
+
+import math
+
+
+class SaveImageGrid:
+    def __init__(self):
+        self.output_dir = folder_paths.get_output_directory()
+        self.type = "output"
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "images": ("IMAGE",),
+                "filename_prefix": ("STRING", {"default": "ComfyUI"}),
+                "save_intermediate": (["true", "false"], {"default": "false"}),
+            },
+            "hidden": {"prompt": "PROMPT", "extra_pnginfo": "EXTRA_PNGINFO"},
+        }
+
+    RETURN_TYPES = ()
+    FUNCTION = "save_images"
+
+    OUTPUT_NODE = True
+
+    CATEGORY = "image"
+
+    def create_image_grid(self, image_list):
+        total_images = len(image_list)
+
+        # Calculate the grid size based on the square root of the total number of images
+        grid_size = (
+            int(math.sqrt(total_images)),
+            int(math.ceil(math.sqrt(total_images))),
+        )
+
+        # Get the size of the first image to determine the grid size
+        image_width, image_height = image_list[0].size
+
+        # Create a new blank image to hold the grid
+        grid_width = grid_size[0] * image_width
+        grid_height = grid_size[1] * image_height
+        grid_image = Image.new("RGB", (grid_width, grid_height))
+
+        # Iterate over the images and paste them onto the grid
+        for i, image in enumerate(image_list):
+            x = (i % grid_size[0]) * image_width
+            y = (i // grid_size[0]) * image_height
+            grid_image.paste(image, (x, y, x + image_width, y + image_height))
+
+        return grid_image
+
+    def save_images(
+        self,
+        images,
+        filename_prefix="Grid",
+        save_intermediate="false",
+        prompt=None,
+        extra_pnginfo=None,
+    ):
+        save_intermediate = save_intermediate == "true"
+        (
+            full_output_folder,
+            filename,
+            counter,
+            subfolder,
+            filename_prefix,
+        ) = folder_paths.get_save_image_path(
+            filename_prefix, self.output_dir, images[0].shape[1], images[0].shape[0]
+        )
+        image_list = []
+        batch_counter = counter
+
+        metadata = PngInfo()
+        if prompt is not None:
+            metadata.add_text("prompt", json.dumps(prompt))
+        if extra_pnginfo is not None:
+            for x in extra_pnginfo:
+                metadata.add_text(x, json.dumps(extra_pnginfo[x]))
+
+        for idx, image in enumerate(images):
+            i = 255.0 * image.cpu().numpy()
+            img = Image.fromarray(np.clip(i, 0, 255).astype(np.uint8))
+            image_list.append(img)
+
+            if save_intermediate:
+                file = f"{filename}_batch-{idx:03}_{batch_counter:05}_.png"
+                img.save(
+                    os.path.join(full_output_folder, file),
+                    pnginfo=metadata,
+                    compress_level=4,
+                )
+
+            batch_counter += 1
+
+        file = f"{filename}_{counter:05}_.png"
+        grid = self.create_image_grid(image_list)
+        grid.save(
+            os.path.join(full_output_folder, file), pnginfo=metadata, compress_level=4
+        )
+
+        results = [{"filename": file, "subfolder": subfolder, "type": self.type}]
+        return {"ui": {"images": results}}
+
+
 __nodes__ = [
     ColorCorrect,
     HSVtoRGB,
@@ -465,4 +690,6 @@ __nodes__ = [
     MaskToImage,
     ColoredImage,
     ImagePremultiply,
+    ImageResizeFactor,
+    SaveImageGrid,
 ]

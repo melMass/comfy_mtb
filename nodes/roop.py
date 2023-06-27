@@ -1,6 +1,5 @@
 # region imports
 from ifnude import detect
-from logging import getLogger
 from pathlib import Path
 from PIL import Image
 from typing import List, Set, Tuple
@@ -15,12 +14,11 @@ import tempfile
 import torch
 
 from ..utils import pil2tensor, tensor2pil
-
+from ..log import mklog
 # endregion
 
-logger = getLogger(__name__)
+logger = mklog(__name__)
 providers = onnxruntime.get_available_providers()
-
 # region roop node
 class Roop:
     model = None
@@ -46,7 +44,8 @@ class Roop:
                 "roop_model": ([x.name for x in cls.get_models()], {"default": "None"}),
             },
             "optional": {
-                "image": ("IMAGE",),
+               "debug": (["true", "false"], {"default": "false"})
+
             },
         }
 
@@ -60,25 +59,45 @@ class Roop:
         reference: torch.Tensor,
         faces_index: str,
         roop_model: str,
+        debug:str
     ):
-        image = tensor2pil(image)
-        reference = tensor2pil(reference)
-        faces_index = {
-            int(x) for x in faces_index.strip(",").split(",") if x.isnumeric()
-        }
-
-        roop_model = self.getFaceSwapModel(roop_model)
-        swapped = swap_face(reference, image, roop_model, faces_index)
-        return (pil2tensor(swapped),)
+        def do_swap(img):
+            img = tensor2pil(img)
+            ref = tensor2pil(reference)
+            face_ids = {
+                int(x) for x in faces_index.strip(",").split(",") if x.isnumeric()
+            }
+            model = self.getFaceSwapModel(roop_model)
+            swapped = swap_face(ref, img, model, face_ids)
+            return pil2tensor(swapped)
+        
+        batch_count = image.size(0)
+        
+        logger.info(f"Running roop swap (batch size: {batch_count})")
+        
+        if reference.size(0) != 1:
+            raise ValueError("Reference image must have batch size 1")
+        if batch_count == 1:
+            image = do_swap(image)
+        
+        else:
+            image = [do_swap(image[i]) for i in range(batch_count)]       
+            image = torch.cat(image, dim=0)     
+                
+        return (image,)
 
     def getFaceSwapModel(self, model_path: str):
         model_path = os.path.join(folder_paths.models_dir, "roop", model_path)
         if self.model_path is None or self.model_path != model_path:
+            logger.info(f"Loading model {model_path}")
             self.model_path = model_path
             self.model = insightface.model_zoo.get_model(
                 model_path, providers=providers
             )
+        else:
+            logger.info("Using cached model")
 
+        logger.info("Model loaded")
         return self.model
 
 
@@ -114,6 +133,7 @@ def swap_face(
 ) -> Image.Image:
     if faces_index is None:
         faces_index = {0}
+    logger.info(f"Swapping faces: {faces_index}")
     result_image = target_img
     converted = convert_to_sd(target_img)
     scale, fn = converted[0], converted[1]
@@ -141,12 +161,19 @@ def swap_face(
                 if target_face is not None:
                     result = face_swapper_model.get(result, target_face, source_face)
                 else:
-                    logger.info(f"No target face found for {face_num}")
+                    logger.warning(f"No target face found for {face_num}")
 
             result_image = Image.fromarray(cv2.cvtColor(result, cv2.COLOR_BGR2RGB))
         else:
-            logger.info("No source face found")
+            logger.warning("No source face found")
+    else:
+        logger.error("No face swap model provided")
     return result_image
 
 
 # endregion face swap utils
+
+
+__nodes__ = [
+    Roop
+]
