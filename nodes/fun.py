@@ -58,3 +58,6 @@ class QRNode:
         code = code.resize((width, height), Image.NEAREST)
 
         return (pil2tensor(code),)
+    
+    
+__nodes__ = [QRNode]

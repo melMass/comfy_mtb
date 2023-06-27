@@ -9,8 +9,12 @@ import folder_paths
 from pathlib import Path
 import json
 
-from ..utils import log
+from ..log import log
 class LoadImageSequence:
+    """Load an image sequence from a folder. The current frame is used to determine which image to load.
+
+    Usually used in conjunction with the `Primitive` node set to increment to load a sequence of images from a folder.
+    """
     @classmethod
     def INPUT_TYPES(cls):
         return {
@@ -69,6 +73,10 @@ def resolve_path(path, frame):
     return re.sub("#+", padded_number, path)
 
 class SaveImageSequence:
+    """Save an image sequence to a folder. The current frame is used to determine which image to save.
+
+    This is merely a wrapper around the `save_images` function with formatting for the output folder and filename.
+    """
     def __init__(self):
         self.output_dir = folder_paths.get_output_directory()
         self.type = "output"
@@ -135,3 +143,7 @@ class SaveImageSequence:
                 
                 
         
+__nodes__ = [
+    LoadImageSequence,
+    SaveImageSequence,
+]

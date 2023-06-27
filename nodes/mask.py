@@ -7,7 +7,7 @@ class ImageRemoveBackgroundRembg:
         pass
 
     @classmethod
-    def INPUT_TYPES(s):
+    def INPUT_TYPES(cls):
         return {
             "required": {
                 "image": ("IMAGE",),
@@ -27,7 +27,6 @@ class ImageRemoveBackgroundRembg:
     CATEGORY = "image"
     # bgcolor: Optional[Tuple[int, int, int, int]]
     def remove_background(self, image, alpha_matting, alpha_matting_foreground_threshold, alpha_matting_background_threshold, alpha_matting_erode_size, post_process_mask, bgcolor):
-        print(f"Background Color: {bgcolor}")
         image = remove(
                 data=tensor2pil(image),
                 alpha_matting=alpha_matting == "True",
@@ -51,3 +50,8 @@ class ImageRemoveBackgroundRembg:
         
         
         return (pil2tensor(image), pil2tensor(mask), pil2tensor(image_on_bg))
+
+
+__nodes__ = [
+    ImageRemoveBackgroundRembg,
+]

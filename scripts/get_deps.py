@@ -8,8 +8,9 @@ from rich.progress import Progress
 
 console = Console(stderr=True)
 
+
 def get_imported_modules(filename):
-    with open(filename, 'r') as file:
+    with open(filename, "r") as file:
         tree = ast.parse(file.read())
 
     imported_modules = []
@@ -21,7 +22,9 @@ def get_imported_modules(filename):
             )
         elif isinstance(node, ast.ImportFrom):
             if node.module:
-                imported_modules.append((node.module, node.module in sys.builtin_module_names))
+                imported_modules.append(
+                    (node.module, node.module in sys.builtin_module_names)
+                )
 
     return imported_modules
 
@@ -36,7 +39,7 @@ def list_imported_modules(folder):
 
     for root, _, files in os.walk(folder):
         for file in files:
-            if file.endswith('.py'):
+            if file.endswith(".py"):
                 file_path = os.path.join(root, file)
                 imported_modules = get_imported_modules(file_path)
                 modules.extend(imported_modules)
@@ -47,9 +50,11 @@ def list_imported_modules(folder):
     return modules
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     if len(sys.argv) < 2:
-        console.print("[bold red]Please provide the folder path as a command-line argument.[/bold red]")
+        console.print(
+            "[bold red]Please provide the folder path as a command-line argument.[/bold red]"
+        )
         sys.exit(1)
 
     # folder_path = input("Enter the folder path: ")
@@ -78,5 +83,11 @@ if __name__ == '__main__':
 
     console.print(table)
 
-    json_data = json.dumps([{"module": module, "type": "Built-in" if is_builtin else "External"} for module, is_builtin in imported_modules], indent=4)
+    json_data = json.dumps(
+        [
+            {"module": module, "type": "Built-in" if is_builtin else "External"}
+            for module, is_builtin in imported_modules
+        ],
+        indent=4,
+    )
     print(json_data)

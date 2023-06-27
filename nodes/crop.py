@@ -5,6 +5,7 @@ import numpy as np
 
 
 class BoundingBox:
+    """The bounding box (BBOX) custom type used by other nodes"""
     def __init__(self):
         pass
 
@@ -34,6 +35,7 @@ class BoundingBox:
 
 
 class BBoxFromMask:
+    """From a mask extract the bounding box"""
     def __init__(self):
         pass
 
@@ -85,6 +87,11 @@ class BBoxFromMask:
 
 
 class Crop:
+    """Crops an image and an optional mask to a given bounding box
+
+    The bounding box can be given as a tuple of (x, y, width, height) or as a BBOX type
+    The BBOX input takes precedence over the tuple input
+    """
     def __init__(self):
         pass
 
@@ -93,9 +100,9 @@ class Crop:
         return {
             "required": {
                 "image": ("IMAGE",),
-                "mask": ("MASK",),
             },
             "optional": {
+                "mask": ("MASK",),
                 "x": ("INT", {"default": 0, "max": 10000000, "min": 0, "step": 1}),
                 "y": ("INT", {"default": 0, "max": 10000000, "min": 0, "step": 1}),
                 "width": (
@@ -116,27 +123,32 @@ class Crop:
     CATEGORY = "image/crop"
 
     def do_crop(
-        self, image: torch.Tensor, mask, x=0, y=0, width=256, height=256, bbox=None
+        self, image: torch.Tensor, mask=None, x=0, y=0, width=256, height=256, bbox=None
     ):
 
         image = image.numpy()
-        mask = mask.numpy()
+        if mask:
+            mask = mask.numpy()
 
         if bbox != None:
             x, y, width, height = bbox
 
         cropped_image = image[:, y : y + height, x : x + width, :]
-        cropped_mask = mask[y : y + height, x : x + width]
+        cropped_mask = mask[y : y + height, x : x + width] if mask != None else None
         crop_data = (x, y, width, height)
 
         return (
             torch.from_numpy(cropped_image),
-            torch.from_numpy(cropped_mask),
+            torch.from_numpy(cropped_mask) if mask != None else None,
             crop_data,
         )
 
 
 class Uncrop:
+    """Uncrops an image to a given bounding box
+
+    The bounding box can be given as a tuple of (x, y, width, height) or as a BBOX type
+    The BBOX input takes precedence over the tuple input"""
     def __init__(self):
         pass
 
@@ -190,7 +202,6 @@ class Uncrop:
         mask_block = Image.new("L", (bb_width, bb_height), 255)
         mask_block = inset_border(mask_block, int(blend_ratio / 2), (0))
 
-        print(bbox)
         mask.paste(mask_block, (bb_x, bb_y, bb_x + bb_width, bb_y + bb_height))
         blend.paste(crop_img, (bb_x, bb_y, bb_x + bb_width, bb_y + bb_height))
 
@@ -201,3 +212,11 @@ class Uncrop:
         image = Image.alpha_composite(image.convert("RGBA"), blend)
 
         return (pil2tensor(image.convert("RGB")),)
+
+
+__nodes__ = [
+    BBoxFromMask,
+    BoundingBox,
+    Crop,
+    Uncrop
+]

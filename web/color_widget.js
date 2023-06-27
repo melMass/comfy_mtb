@@ -65,6 +65,17 @@ const custom = (key,val) => {
         ctx.fillText(this.name, widgetWidth * 0.5, widgetY + 14);
 
 
+
+        // ctx.strokeStyle = "#fff";
+        // ctx.strokeRect(border, widgetY + border, widgetWidth - border * 2, height - border * 2);
+        
+        
+        // ctx.fillStyle = "#000";
+        // ctx.fillRect(widgetWidth/2 - border / 2 , widgetY + border / 2 , widgetWidth/2 + border / 2, height + border / 2);
+        // ctx.fillStyle = this.value;
+        // ctx.fillRect(widgetWidth/2, widgetY, widgetWidth/2, height);
+
+    }
     widget.mouse = function (e, pos, node) {
         if (e.type === "pointerdown") {
         console.log({e,pos,node})
@@ -80,7 +91,18 @@ const custom = (key,val) => {
                 const picker = document.createElement("input");
                 picker.type = "color";
                 picker.value = this.value;
-             
+                // picker.style.position = "absolute";
+                // picker.style.left = ( pos[0]) + "px";
+                // picker.style.top = (  pos[1]) + "px";
+                
+                // place at screen center
+                // picker.style.position = "absolute";
+                // picker.style.left = (window.innerWidth / 2) + "px";
+                // picker.style.top = (window.innerHeight / 2) + "px";
+                // picker.style.transform = "translate(-50%, -50%)";
+                // picker.style.zIndex = 1000;
+                
+
 
                 document.body.appendChild(picker);
                 

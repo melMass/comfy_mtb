@@ -3,12 +3,24 @@ import numpy as np
 import torch
 from pathlib import Path
 import sys
-from logging import getLogger
-import logging
 
-log = getLogger(__package__)
-log.setLevel(logging.DEBUG)
-
+def add_path(path, prepend=False):
+    
+    if isinstance(path, list):
+        for p in path:
+            add_path(p, prepend)
+        return
+    
+    if isinstance(path, Path):
+        path = path.resolve().as_posix()
+    
+    if path not in sys.path:
+        if prepend:
+            sys.path.insert(0, path)
+        else:
+            sys.path.append(path)
+    
+    
 # Get the absolute path of the parent directory of the current script
 here = Path(__file__).parent.resolve()
 
@@ -19,11 +31,12 @@ comfy_dir = here.parent.parent
 font_path = here / "font.ttf"
 
 # Add extern folder to path
-extern = (here / "extern", here / "extern" / "SadTalker")
-sys.path.extend([ x.as_posix() for x in extern])
+add_path(here / "extern")
+add_path(here / "extern" / "SadTalker")
 
-# Add the ComfyUI directory path to the sys.path list
-sys.path.append(comfy_dir.resolve().as_posix())
+# Add the ComfyUI directory and custom nodes path to the sys.path list
+add_path(comfy_dir)
+add_path((comfy_dir / "custom_nodes"))
 
 # Tensor to PIL (grabbed from WAS Suite)
 def tensor2pil(image: torch.Tensor) -> Image.Image:

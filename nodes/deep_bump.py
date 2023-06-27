@@ -2,8 +2,9 @@ import onnxruntime as ort
 import numpy as np
 import pathlib
 import onnxruntime as ort
-import torch
+import numpy as np
 from .. import utils as utils_inference
+from ..log import log
 
 # Disable MS telemetry
 ort.disable_telemetry_events()
@@ -17,7 +18,7 @@ def color_to_normals(color_img, overlap, progress_callback):
     img = np.mean(color_img[:3], axis=0, keepdimss=True)
 
     # Split image in tiles
-    print("DeepBump Color → Normals : tilling")
+    log.debug("DeepBump Color → Normals : tilling")
     tile_size = 256
     overlaps = {
         "SMALL": tile_size // 6,
@@ -30,18 +31,18 @@ def color_to_normals(color_img, overlap, progress_callback):
     )
 
     # Load model
-    print("DeepBump Color → Normals : loading model")
+    log.debug("DeepBump Color → Normals : loading model")
     addon_path = str(pathlib.Path(__file__).parent.absolute())
     ort_session = ort.InferenceSession(f"{addon_path}/models/deepbump256.onnx")
 
     # Predict normal map for each tile
-    print("DeepBump Color → Normals : generating")
+    log.debug("DeepBump Color → Normals : generating")
     pred_tiles = utils_inference.tiles_infer(
         tiles, ort_session, progress_callback=progress_callback
     )
 
     # Merge tiles
-    print("DeepBump Color → Normals : merging")
+    log.debug("DeepBump Color → Normals : merging")
     pred_img = utils_inference.tiles_merge(
         pred_tiles,
         (stride_size, stride_size),
@@ -235,11 +236,6 @@ def normals_to_height(normals_img, seamless, progress_callback):
 
 
 # - ADDON
-import numpy as np
-
-# import imageio.v3 as iio
-
-
 class DeepBump:
     def __init__(self):
         pass
@@ -287,7 +283,7 @@ class DeepBump:
 
         in_img = np.transpose(image, (2, 0, 1)) / 255
 
-        print(f"Input image shape: {in_img.shape}")
+        log.debug(f"Input image shape: {in_img.shape}")
 
         # Apply processing
         if mode == "Color to Normals":
@@ -304,3 +300,6 @@ class DeepBump:
         out_img = (np.transpose(out_img, (1, 2, 0)) * 255).astype(np.uint8)
 
         return (utils_inference.pil2tensor(out_img),)
+
+
+__nodes__ = [DeepBump]

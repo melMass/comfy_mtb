@@ -1,74 +1,49 @@
-from .utils import log
+import traceback
+from .log import log
+from .utils import here
+from pathlib import Path
+import importlib
 
 NODE_CLASS_MAPPINGS = {}
-try:
-    from .nodes.deep_bump import DeepBump
-    NODE_CLASS_MAPPINGS["Deep Bump (mtb)"] = DeepBump
-except Exception:
-    log.error("DeepBump nodes failed to load.")
-from .nodes.latent_processing import LatentLerp
-from .nodes.roop import Roop
-# from .nodes.geometries import LoadGeometry, GeometryInfo
-try:
-    from .nodes.fun import QRNode
-    NODE_CLASS_MAPPINGS["QR Code (mtb)"] = QRNode
-except Exception:
-    log.error("QRNode failed to load.")
+NODE_CLASS_MAPPINGS_DEBUG = {}
 
-from .nodes.image_processing import (
-    ImageCompare,
-    Denoise,
-    Blur,
-    HSVtoRGB,
-    RGBtoHSV,
-    ColorCorrect,
-    MaskToImage,
-    ColoredImage,
-    ImagePremultiply
-)
-try:
-    from .nodes.image_processing import DeglazeImage
-except Exception:
-    log.error("DeglazeImage failed to load. This is probably an opencv mismatch. This node requires opencv-python-contrib.")
 
-from .nodes.crop import Crop, Uncrop, BoundingBox, BBoxFromMask
-from .nodes.conditions import (
-    SmartStep, 
-    StylesLoader, 
-    TextToImage
-)
-from .nodes.video import LoadImageSequence, SaveImageSequence
-from .nodes.mask import ImageRemoveBackgroundRembg
-# from .nodes.videopose import MMPoseEstimation
-# NODE MAPPING
-NODE_CLASS_MAPPINGS = {
-    "Latent Lerp (mtb) [DEPRECATED]": LatentLerp,
-    "Deep Bump (mtb)": DeepBump,
+def load_nodes():
+    errors = []
+    nodes = []
+    for filename in (here  / "nodes").iterdir():
+        if filename.suffix == '.py':
+            module_name = filename.stem
+            module_path = filename.resolve().as_posix()
+            
+            try:
+                module = importlib.import_module(f".nodes.{module_name}",package=__package__)
+                _nodes = getattr(module, '__nodes__')
+                
+                nodes.extend(_nodes)
+                # Use the `nodes` variable here as needed
+                log.debug(f"Imported __nodes__ from {module_name}")
+            
+            except Exception:
+                error_message = traceback.format_exc().splitlines()[-1]
+                errors.append(f"Failed to import {module_name}. {error_message}")
+                # log.error(f"Failed to import {module_name}. {error_message}")
+
+    if errors:
+        log.error(f"Some nodes failed to load:\n\t" + "\n\t".join(errors) + "\n\n" + "Check that you properly installed the dependencies.\n" + "If you think this is a bug, please report it on the github page (https://github.com/melMass/comfy_mtb/issues)")
+
+    return nodes
+nodes = load_nodes()
+
+for node_class in nodes:
+    class_name = node_class.__name__
+    class_name = node_class.__name__
     
-    "Int to Number (mtb)": IntToNumber,
-    "Bounding Box (mtb)": BoundingBox,
-    "Bounding Box From Mask (mtb)": BBoxFromMask,
-    "Crop (mtb)": Crop,
-    "Uncrop (mtb)": Uncrop,
-    "ImageBlur (mtb)": Blur,
-    "Denoise (mtb)": Denoise,
-    "ImageCompare (mtb)": ImageCompare,
-    "RGB to HSV (mtb)": RGBtoHSV,
-    "HSV to RGB (mtb)": HSVtoRGB,
-    "Color Correct (mtb)": ColorCorrect,
-    "Modulo (mtb)": Modulo,
-    "Deglaze Image (mtb)": DeglazeImage,
-    "Smart Step (mtb)": SmartStep,
-    "Styles Loader (mtb)": StylesLoader,
-    "Text to Image (mtb)": TextToImage,
-    "Load Image Sequence (mtb)": LoadImageSequence,
-    "Save Image Sequence (mtb)": SaveImageSequence,
-    "Mask to Image (mtb)": MaskToImage,
-    "Image Remove Background RemBG (mtb)": ImageRemoveBackgroundRembg,
-    "Colored Image (mtb)": ColoredImage,
-    "Image Premultiply (mtb)": ImagePremultiply,
-    "Face Swap [roop] (mtb)": Roop,
-    # "MMPose Estimation (mtb)": MMPoseEstimation,
-    # "Load Geometry (mtb)": LoadGeometry,
-    # "Geometry Info (mtb)": GeometryInfo,
-}
+    NODE_CLASS_MAPPINGS[class_name] = node_class
+    NODE_CLASS_MAPPINGS_DEBUG[class_name] = node_class.__doc__
+    
+    
+def get_summary(docstring):
+    return docstring.strip().split('\n\n', 1)[0]
+
+log.debug(f"Loaded the following nodes:\n\t" + "\n\t".join(f"{k}: {get_summary(doc) if doc else '-'}" for k,doc in NODE_CLASS_MAPPINGS_DEBUG.items()))
