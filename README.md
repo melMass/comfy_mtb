@@ -14,10 +14,16 @@ From within the python environment you already use for ComfyUI install the requi
 pip install -r comfy_mtb/requirements.txt
 ```
 
+Some nodes require extra models to be downloaded, you can interactively do it using the same python environment as above:
+```bash
+python scripts/download_models.py
+```
 
+then follow the prompt or just press enter to download every models.
 
 ### Node List
-In the JS Side a new widget type is added: COLOR
+In the JS Side a new widget type is added: COLOR, for now both the input and the widget are exposed, the input takes precendence over the widget.
+
 
 **misc utils**  
 - `Text To Image`: Utils to convert text to image using a font
@@ -26,7 +32,7 @@ In the JS Side a new widget type is added: COLOR
 - `Qr Code`: Basic QR Code generator
 - `Save Tensors`: Debug node that will probably be removed in the future
 - `Int to Number`: Supplement for WASSuite number nodes
-- 
+
 **face detection / swapping**
 - `Face Swap`: Face swap using deepinsight/insightface models (this node used to be called `Roop` in early versions, it does the same)
   
@@ -60,7 +66,7 @@ In the JS Side a new widget type is added: COLOR
         
 ## Screenshots
 
-- **FaceSwap [roop]** (using [roop](https://github.com/s0md3v/roop/))  
+- **FaceSwap (formely named roop)** (using [insight-face](https://github.com/deepinsight/insightface))  
   The face index allow you to choose which face to replace as you can see here:
   ![ComfyUI_909](https://github.com/melMass/comfy_mtb/assets/7041726/2e9d6066-c466-4a01-bd6c-315f7f1e8b42)
 
