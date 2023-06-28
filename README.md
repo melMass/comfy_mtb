@@ -5,11 +5,59 @@ Just beware of the licenses of some libraries (deepbump for instance is [GPLv3](
 
 ## Install
 
+> **Warning**
+> If you use the `python-embed` mode of comfyui (the standalone release) then you might not be able to pip install
+> dependencies that don't have wheels, in this case check the last [release](https://github.com/melMass/comfy_mtb/releases) there is a bundle for linux and windows
+
 From within the python environment you already use for ComfyUI install the requirements.
 ```bash
 pip install -r comfy_mtb/requirements.txt
 ```
 
+
+
+### Node List
+In the JS Side a new widget type is added: COLOR
+
+**misc utils**  
+- `Text To Image`: Utils to convert text to image using a font
+- `Styles Loader`: Load csv files and populate a dropdown from the rows (à la A111)
+- `Smart Step`: A very basic node to get step percent to use in KSampler advanced,
+- `Qr Code`: Basic QR Code generator
+- `Save Tensors`: Debug node that will probably be removed in the future
+- `Int to Number`: Supplement for WASSuite number nodes
+- 
+**face detection / swapping**
+- `Face Swap`: Face swap using deepinsight/insightface models (this node used to be called `Roop` in early versions, it does the same)
+  
+**latent**  
+- `Latent Lerp`: Linear interpolation (blend) between two latent 
+
+
+**bbox**
+- `Bounding Box`: BBox constructor (custom type),
+- `BBox From Mask`: From a mask extract the bounding box
+- `Crop`: Crop image from BBox
+- `Uncrop`: Uncrop image from BBox
+
+**image ops**
+- `Image Remove Background Rembg`: [RemBG](https://github.com/danielgatis/rembg) powered background removal.
+- `Blur`: Blur an image using a Gaussian filter.
+- `Denoise`: Denoise the input image,
+- `Image Compare`: Compare two images and return a difference image
+- `Deglaze Image`: taken from [FN16](https://github.com/Fannovel16/FN16-ComfyUI-nodes/blob/main/DeglazeImage.py),
+- `Mask To Image`: Converts a mask (alpha) to an RGB image with a color and background
+- `Image Premultiply`: Premultiply image with mask
+- `Image Resize Factor`: Extracted mostly from [WAS Node Suite](https://github.com/WASasquatch/was-node-suite-comfyui), with a few edits (most notably multiple image support) and less features.
+- `Save Image Grid`: Save all the images in the input batch as a grid of images.
+
+**colors**
+- `Colored Image`: Constant color image of given size
+- `RGB to HSV`: -,
+- `HSV to RGB`: -,
+- `Color Correct`: Basic color correction tools,
+
+        
 ## Screenshots
 
 - **FaceSwap [roop]** (using [roop](https://github.com/s0md3v/roop/))  
@@ -24,25 +72,6 @@ pip install -r comfy_mtb/requirements.txt
 
 - **Image Remove Background [RemBG]**: (using [rembg](https://github.com/danielgatis/rembg))
   ![image](https://github.com/melMass/comfy_mtb/assets/7041726/e69253b4-c03c-45e9-92b5-aa46fb887be8)
-
-
-
-### Node List
-
-- `Latent Lerp`: Linear Interpolate between two latents,
-- `Int to Number`: Supplement for WASSuite number nodes,
-- `Bounding Box`: BBox constructor (custom type),
-- `Crop`: Crop image from BBox,
-- `Uncrop`: Uncrop image from BBox,
-- `ImageBlur`: Blur the input image,
-- `Denoise`: Denoise the input image,
-- `ImageCompare`: Compare image,
-- `RGB to HSV`: -,
-- `HSV to RGB`: -,
-- `Color Correct`: Basic color correction tools,
-- `Modulo`: Modulo (useful for loops),
-- `Deglaze Image`: taken from [FN16](https://github.com/Fannovel16/FN16-ComfyUI-nodes/blob/main/DeglazeImage.py),
-- `Smart Step`: A very basic node to get step percent to use in KSampler advanced,
 
 
 ### Comfy Resources
