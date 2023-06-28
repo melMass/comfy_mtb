@@ -1,0 +1,51 @@
+name: "📦 Building wheels"
+
+on:
+  workflow_dispatch:
+  # push:
+  #   tags:
+  #     - "v*"
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            platform: win32
+            arch: x64
+          # - os: macos-latest
+          #   platform: darwin
+          #   arch: arm64
+          - os: ubuntu-latest
+            platform: linux
+            arch: x64
+    runs-on: ${{ matrix.os }}
+    env:
+      archive_name: wheels_${{ matrix.os }}-${{ matrix.platform }}-${{ matrix.arch }}
+
+    steps:
+      - name: "♻️ Checking out the repository"
+        uses: actions/checkout@v3
+
+      - name: "🐍 Setting up Python"
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10.9"
+
+      - name: "📦 Building and Bundling wheels"
+        shell: bash
+        run: |
+          python -m pip wheel --no-cache-dir -r requirements.txt -w ./wheels
+          if [ "$RUNNER_OS" == "Windows" ]; then
+            "C:/Program Files/7-Zip/7z.exe" a -mfb=258 -tzip ${{ env.archive_name }}.zip wheels
+          else
+            zip -r -9 -y -m ${{ env.archive_name }}.zip wheels
+          fi
+
+      - name: "💾 Store cache"
+        uses: actions/cache/save@v3
+        with:
+          path: ${{ env.archive_name }}.zip
+          key: ${{ env.archive_name }}

@@ -1,0 +1,80 @@
+name: "📦 Release"
+
+on:
+  workflow_dispatch:
+    inputs:
+      name:
+        description: "Release tag / name?"
+        required: true
+        default: "latest"
+        type: string
+      environment:
+        description: "Environment to run tests against"
+        type: environment
+        required: false
+  # push:
+  #   tags:
+  #     - "v*"
+
+jobs:
+  release:
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    env:
+      repo_name: ${{ github.event.repository.name }}
+    steps:
+      - name: "♻️ Checking out the repository"
+        uses: actions/checkout@v3
+        with:
+          submodules: "recursive"
+          path: ${{ env.repo_name }}
+      - name: "📦 Building custom comfy nodes"
+        shell: bash
+        run: |
+          if [ "$RUNNER_OS" == "Windows" ]; then
+            "C:/Program Files/7-Zip/7z.exe" a -mfb=258 -tzip ${{ env.repo_name }}-${{ inputs.name }}.zip ${{ env.repo_name }}
+          else
+            zip -r -9 -y -m ${{ env.repo_name }}-${{ inputs.name }}.zip ${{ env.repo_name }}
+          fi
+
+      - name: "✅ Create release"
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ inputs.name }}
+          files: |
+            ${{ env.repo_name }}-${{ inputs.name }}.zip
+
+  release-wheels:
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - os: windows-latest
+            platform: win32
+            arch: x64
+          # - os: macos-latest
+          #   platform: darwin
+          #   arch: arm64
+          - os: ubuntu-latest
+            platform: linux
+            arch: x64
+    runs-on: ${{ matrix.os }}
+    env:
+      archive_name: wheels_${{ matrix.os }}-${{ matrix.platform }}-${{ matrix.arch }}
+    steps:
+      - name: "💾 Restore cache"
+        uses: actions/cache/restore@v3
+        id: cache
+        with:
+          path: ${{ env.archive_name }}.zip
+          key: ${{ env.archive_name }}
+
+      - name: "✅ Add wheels to release"
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ inputs.name }}
+          files: |
+            ${{ env.archive_name }}.zip
