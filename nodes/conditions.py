@@ -38,21 +38,21 @@ class SmartStep:
     CATEGORY = "conditioning"
 
     def do_step(self, step, start_percent, end_percent):
-
         start = int(step * start_percent / 100)
         end = int(step * end_percent / 100)
 
         return (step, start, end)
 
 
-def install_default_styles():
+def install_default_styles(force=False):
     styles_dir = Path(folder_paths.base_path) / "styles"
     styles_dir.mkdir(parents=True, exist_ok=True)
     default_style = here / "styles.csv"
     dest_style = styles_dir / "default.csv"
-    log.debug("\n\n\n\tINSTALLING DEFAULT STYLE\n\n\n")
-    shutil.copy2(default_style.as_posix(), dest_style.as_posix())
-    log.debug("\n\n\n\tDEFAULT STYLE INSTALLED\n\n\n")
+
+    if force or not dest_style.exists():
+        log.debug(f"Copying default style to {dest_style}")
+        shutil.copy2(default_style.as_posix(), dest_style.as_posix())
 
     return dest_style
 
@@ -101,6 +101,7 @@ class StylesLoader:
     def load_style(self, style_name):
         return (self.options[style_name][0], self.options[style_name][1])
 
+
 class TextToImage:
     """Utils to convert text to image using a font
 
@@ -115,7 +116,6 @@ class TextToImage:
 
     @classmethod
     def INPUT_TYPES(cls):
-
         fonts = list(Path(folder_paths.base_path).glob("**/*.ttf"))
         if not fonts:
             log.error(
@@ -157,11 +157,11 @@ class TextToImage:
                 "color": (
                     "COLOR",
                     {"default": "black"},
-                ),  
+                ),
                 "background": (
                     "COLOR",
                     {"default": "white"},
-                ),  
+                ),
             }
         }
 

@@ -1,7 +1,11 @@
 import qrcode
-from ..utils import pil2tensor, tensor2pil
+from ..utils import pil2tensor
 from PIL import Image
-class QRNode:
+
+
+class QrCode:
+    """Basic QR Code generator"""
+
     def __init__(self):
         pass
 
@@ -29,8 +33,7 @@ class QRNode:
     FUNCTION = "do_qr"
     CATEGORY = "fun"
 
-    def do_qr(self, url, width, height,error_correct, box_size, border,invert):
-        
+    def do_qr(self, url, width, height, error_correct, box_size, border, invert):
         if error_correct == "L" or error_correct not in ["M", "Q", "H"]:
             error_correct = qrcode.constants.ERROR_CORRECT_L
         elif error_correct == "M":
@@ -39,7 +42,7 @@ class QRNode:
             error_correct = qrcode.constants.ERROR_CORRECT_Q
         else:
             error_correct = qrcode.constants.ERROR_CORRECT_H
-            
+
         qr = qrcode.QRCode(
             version=1,
             error_correction=error_correct,
@@ -51,13 +54,13 @@ class QRNode:
 
         back_color = (255, 255, 255) if invert == "True" else (0, 0, 0)
         fill_color = (0, 0, 0) if invert == "True" else (255, 255, 255)
-        
+
         code = img = qr.make_image(back_color=back_color, fill_color=fill_color)
 
         # that we now resize without filtering
         code = code.resize((width, height), Image.NEAREST)
 
         return (pil2tensor(code),)
-    
-    
-__nodes__ = [QRNode]
+
+
+__nodes__ = [QrCode]

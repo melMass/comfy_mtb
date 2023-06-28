@@ -17,14 +17,14 @@ models_to_download = {
         "download_url": "https://github.com/HugoTini/DeepBump/raw/master/deepbump256.onnx",
         "destination": "deepbump",
     },
-    "Roop": {
+    "Face Swap": {
         "size": 660,
         "download_url": [
             "https://github.com/xinntao/facexlib/releases/download/v0.1.0/detection_mobilenet0.25_Final.pth",
             "https://github.com/xinntao/facexlib/releases/download/v0.1.0/detection_Resnet50_Final.pth",
             "https://huggingface.co/deepinsight/inswapper/resolve/main/inswapper_128.onnx",
         ],
-        "destination": "roop",
+        "destination": "insightface",
     },
 }
 
@@ -35,7 +35,6 @@ from pathlib import Path
 
 
 def download_model(download_url, destination):
-
     if isinstance(download_url, list):
         for url in download_url:
             download_model(url, destination)
@@ -99,7 +98,6 @@ def main(models_to_download):
         models_to_download_selected = {}
 
         def check_destination(urls, destination):
-
             if isinstance(urls, list):
                 for url in urls:
                     check_destination(url, destination)

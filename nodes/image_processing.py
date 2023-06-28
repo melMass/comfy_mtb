@@ -22,6 +22,8 @@ except ImportError:
 
 
 class ColorCorrect:
+    """Various color correction methods"""
+
     def __init__(self):
         pass
 
@@ -178,7 +180,9 @@ class ColorCorrect:
         return (image,)
 
 
-class HSVtoRGB:
+class HsvToRgb:
+    """Convert HSV image to RGB"""
+
     def __init__(self):
         pass
 
@@ -206,7 +210,9 @@ class HSVtoRGB:
         return (torch.from_numpy(image),)
 
 
-class RGBtoHSV:
+class RgbToHsv:
+    """Convert RGB image to HSV"""
+
     def __init__(self):
         pass
 
@@ -233,6 +239,8 @@ class RGBtoHSV:
 
 
 class ImageCompare:
+    """Compare two images and return a difference image"""
+
     def __init__(self):
         pass
 
@@ -267,6 +275,8 @@ class ImageCompare:
 
 
 class Denoise:
+    """Denoise an image using total variation minimization."""
+
     def __init__(self):
         pass
 
@@ -296,6 +306,8 @@ class Denoise:
 
 
 class Blur:
+    """Blur an image using a Gaussian filter."""
+
     def __init__(self):
         pass
 
@@ -338,6 +350,8 @@ def deglaze_np_img(np_img):
 
 
 class DeglazeImage:
+    """Remove adversarial noise from images"""
+
     @classmethod
     def INPUT_TYPES(cls):
         return {"required": {"image": ("IMAGE",)}}
@@ -352,6 +366,8 @@ class DeglazeImage:
 
 
 class MaskToImage:
+    """Converts a mask (alpha) to an RGB image with a color and background"""
+
     def __init__(self):
         pass
 
@@ -391,6 +407,8 @@ class MaskToImage:
 
 
 class ColoredImage:
+    """Constant color image of given size"""
+
     def __init__(self) -> None:
         pass
 
@@ -419,6 +437,8 @@ class ColoredImage:
 
 
 class ImagePremultiply:
+    """Premultiply image with mask"""
+
     def __init__(self):
         pass
 
@@ -579,6 +599,8 @@ import math
 
 
 class SaveImageGrid:
+    """Save all the images in the input batch as a grid of images."""
+
     def __init__(self):
         self.output_dir = folder_paths.get_output_directory()
         self.type = "output"
@@ -681,8 +703,8 @@ class SaveImageGrid:
 
 __nodes__ = [
     ColorCorrect,
-    HSVtoRGB,
-    RGBtoHSV,
+    HsvToRgb,
+    RgbToHsv,
     ImageCompare,
     Denoise,
     Blur,

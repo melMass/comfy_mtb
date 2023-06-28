@@ -15,12 +15,17 @@ import torch
 
 from ..utils import pil2tensor, tensor2pil
 from ..log import mklog
+
 # endregion
 
 logger = mklog(__name__)
 providers = onnxruntime.get_available_providers()
+
+
 # region roop node
-class Roop:
+class FaceSwap:
+    """Face swap using deepinsight/insightface models"""
+
     model = None
     model_path = None
 
@@ -29,7 +34,7 @@ class Roop:
 
     @staticmethod
     def get_models() -> List[Path]:
-        models_path = os.path.join(folder_paths.models_dir, "roop/*")
+        models_path = os.path.join(folder_paths.models_dir, "insightface/*")
         models = glob.glob(models_path)
         models = [Path(x) for x in models if x.endswith(".onnx") or x.endswith(".pth")]
         return models
@@ -41,25 +46,25 @@ class Roop:
                 "image": ("IMAGE",),
                 "reference": ("IMAGE",),
                 "faces_index": ("STRING", {"default": "0"}),
-                "roop_model": ([x.name for x in cls.get_models()], {"default": "None"}),
+                "faceswap_model": (
+                    [x.name for x in cls.get_models()],
+                    {"default": "None"},
+                ),
             },
-            "optional": {
-               "debug": (["true", "false"], {"default": "false"})
-
-            },
+            "optional": {"debug": (["true", "false"], {"default": "false"})},
         }
 
     RETURN_TYPES = ("IMAGE",)
     FUNCTION = "swap"
-    CATEGORY = "image"
+    CATEGORY = "face"
 
     def swap(
         self,
         image: torch.Tensor,
         reference: torch.Tensor,
         faces_index: str,
-        roop_model: str,
-        debug:str
+        faceswap_model: str,
+        debug: str,
     ):
         def do_swap(img):
             img = tensor2pil(img)
@@ -67,27 +72,27 @@ class Roop:
             face_ids = {
                 int(x) for x in faces_index.strip(",").split(",") if x.isnumeric()
             }
-            model = self.getFaceSwapModel(roop_model)
+            model = self.getFaceSwapModel(faceswap_model)
             swapped = swap_face(ref, img, model, face_ids)
             return pil2tensor(swapped)
-        
+
         batch_count = image.size(0)
-        
-        logger.info(f"Running roop swap (batch size: {batch_count})")
-        
+
+        logger.info(f"Running insightface swap (batch size: {batch_count})")
+
         if reference.size(0) != 1:
             raise ValueError("Reference image must have batch size 1")
         if batch_count == 1:
             image = do_swap(image)
-        
+
         else:
-            image = [do_swap(image[i]) for i in range(batch_count)]       
-            image = torch.cat(image, dim=0)     
-                
+            image = [do_swap(image[i]) for i in range(batch_count)]
+            image = torch.cat(image, dim=0)
+
         return (image,)
 
     def getFaceSwapModel(self, model_path: str):
-        model_path = os.path.join(folder_paths.models_dir, "roop", model_path)
+        model_path = os.path.join(folder_paths.models_dir, "insightface", model_path)
         if self.model_path is None or self.model_path != model_path:
             logger.info(f"Loading model {model_path}")
             self.model_path = model_path
@@ -102,6 +107,7 @@ class Roop:
 
 
 # endregion
+
 
 # region face swap utils
 def get_face_single(img_data: np.ndarray, face_index=0, det_size=(640, 640)):
@@ -174,6 +180,4 @@ def swap_face(
 # endregion face swap utils
 
 
-__nodes__ = [
-    Roop
-]
+__nodes__ = [FaceSwap]

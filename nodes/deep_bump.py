@@ -9,10 +9,12 @@ from ..log import log
 # Disable MS telemetry
 ort.disable_telemetry_events()
 
+
 # - COLOR to NORMALS
 def color_to_normals(color_img, overlap, progress_callback):
     """Computes a normal map from the given color map. 'color_img' must be a numpy array
-    in C,H,W format (with C as RGB). 'overlap' must be one of 'SMALL', 'MEDIUM', 'LARGE'."""
+    in C,H,W format (with C as RGB). 'overlap' must be one of 'SMALL', 'MEDIUM', 'LARGE'.
+    """
 
     # Remove alpha & convert to grayscale
     img = np.mean(color_img[:3], axis=0, keepdimss=True)
@@ -237,6 +239,8 @@ def normals_to_height(normals_img, seamless, progress_callback):
 
 # - ADDON
 class DeepBump:
+    """Normal & height maps generation from single pictures"""
+
     def __init__(self):
         pass
 
@@ -277,8 +281,6 @@ class DeepBump:
         normals_to_curvature_blur_radius="SMALL",
         normals_to_height_seamless="TRUE",
     ):
-
-      
         image = utils_inference.tensor2pil(image)
 
         in_img = np.transpose(image, (2, 0, 1)) / 255
