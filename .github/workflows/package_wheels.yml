@@ -1,0 +1,74 @@
+name: 📦 Building wheels
+
+on:
+  workflow_dispatch:
+  # push:
+  #   tags:
+  #     - "v*"
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            platform: win32
+            arch: x64
+          # - os: macos-latest
+          #   platform: darwin
+          #   arch: arm64
+          - os: ubuntu-latest
+            platform: linux
+            arch: x64
+    runs-on: ${{ matrix.os }}
+    env:
+      archive_name: deps-wheels_${{ matrix.os }}-${{ matrix.platform }}-${{ matrix.arch }}
+    steps:
+      - name: ♻️ Checking out the repository
+        uses: actions/checkout@v3
+      - name: "🐍 Setting up Python"
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10.9"
+
+      - name: 📦 Building and Bundling wheels
+        shell: bash
+        run: |
+          python -m pip wheel --no-cache-dir -r requirements-wheels.txt -w ./wheels > build.log
+
+          cat build.log
+
+          # find source wheels
+          packages=$(cat build.log | awk -F 'Building wheels for collected packages: ' '{print $2}')
+          packages=$(echo "$packages" | tr -d '[:space:]')
+
+          IFS=', ' read -r -a package_array <<< "$packages"
+
+          printf "Autodetect this source package: \e[32m%s\e[0m\n" "${package_array[@]}"
+
+          # Iterate through the wheel files and remove those that are not source built
+          for wheel_file in ./wheels/*.whl; do
+              # Extract the package name from the wheel filename
+              package_name=$(basename "$wheel_file" .whl | awk -F '-' '{print $1}')
+
+              printf "Checking package: %s\n" "$package_name"
+              
+              # Check if the package is not in the array of source built packages
+              if [[ ! " ${package_array[@]} " =~ " ${package_name} " ]]; then
+                  echo "Removing $wheel_file"
+                  rm "$wheel_file"
+              fi
+          done
+
+
+          if [ "$RUNNER_OS" == "Windows" ]; then
+            "C:/Program Files/7-Zip/7z.exe" a -mfb=258 -tzip ${{ env.archive_name }}.zip wheels
+          else
+            zip -r -9 -y -m ${{ env.archive_name }}.zip wheels
+          fi
+      - name: 💾 Store cache
+        uses: actions/cache/save@v3
+        with:
+          path: ${{ env.archive_name }}.zip
+          key: ${{ env.archive_name }}
