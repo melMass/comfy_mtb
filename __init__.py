@@ -49,7 +49,12 @@ web_mtb = web_extensions_root / "mtb"
 if web_mtb.exists():
     log.debug(f"Web extensions folder found at {web_mtb}")
 elif web_extensions_root.exists():
-    os.symlink((here / "web"), web_mtb.as_posix())
+    try:
+        os.symlink((here / "web"), web_mtb.as_posix())
+    except Exception:  # OSError
+        log.error(
+            f"Failed to create symlink to {web_mtb}. Please copy the folder manually."
+        )
 else:
     log.error(
         f"Comfy root probably not found automatically, please copy the folder {web_mtb} manually in the web/extensions folder of ComfyUI"
