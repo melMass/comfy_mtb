@@ -27,7 +27,8 @@ class Formatter(logging.Formatter):
 
 def mklog(name, level=logging.DEBUG):
     logger = logging.getLogger(name)
-    logger.setLevel(level)
+    # set this to the highest level of all handlers
+    logger.setLevel(logging.FATAL)
     # create console handler with a higher log level
     ch = logging.StreamHandler()
     ch.setLevel(logging.DEBUG)
