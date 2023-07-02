@@ -1,3 +1,6 @@
 [submodule "extern/SadTalker"]
 	path = extern/SadTalker
 	url = https://github.com/OpenTalker/SadTalker.git
+[submodule "extern/GFPGAN"]
+	path = extern/GFPGAN
+	url = https://github.com/TencentARC/GFPGAN.git
