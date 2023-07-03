@@ -68,8 +68,14 @@ def pil2tensor(image: Image.Image) -> torch.Tensor:
     return torch.from_numpy(np.array(image).astype(np.float32) / 255.0).unsqueeze(0)
 
 
-def img_np_to_tensor(img_np):
-    return torch.from_numpy(img_np / 255.0)[None,]
+def np2tensor(img_np):
+    return torch.from_numpy(img_np.astype(np.float32) / 255.0).unsqueeze(0)
+
+
+def tensor2np(tensor: torch.Tensor) -> np.ndarray:
+    np.clip(255.0 * tensor.cpu().numpy().squeeze(), 0, 255).astype(np.uint8)
+
+
 
 
 def img_tensor_to_np(img_tensor):

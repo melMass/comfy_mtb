@@ -13,6 +13,7 @@ from munch import Munch
 from ..log import NullWriter, log
 from comfy import model_management
 import comfy
+from typing import Tuple
 
 
 class LoadFaceEnhanceModel:
@@ -141,19 +142,9 @@ class RestoreFace:
             }
         }
 
-    def restore(
-        self,
-        image: torch.Tensor,
-        model: GFPGANer,
-        aligned="false",
-        only_center_face="false",
-        weight=0.5,
-        save_tmp_steps="true",
-    ):
-        save_tmp_steps = save_tmp_steps == "true"
-        aligned = aligned == "true"
-        only_center_face = only_center_face == "true"
-
+    def do_restore(
+        self, image, model, aligned, only_center_face, weight, save_tmp_steps
+    ) -> torch.Tensor:
         image = tensor2pil(image)
         width, height = image.size
 
@@ -178,7 +169,29 @@ class RestoreFace:
             output = Image.fromarray(cv2.cvtColor(restored_img, cv2.COLOR_BGR2RGB))
             # imwrite(restored_img, save_restore_path)
 
-        return (pil2tensor(output),)
+        return pil2tensor(output)
+
+    def restore(
+        self,
+        image: torch.Tensor,
+        model: GFPGANer,
+        aligned="false",
+        only_center_face="false",
+        weight=0.5,
+        save_tmp_steps="true",
+    ) -> Tuple[torch.Tensor]:
+        save_tmp_steps = save_tmp_steps == "true"
+        aligned = aligned == "true"
+        only_center_face = only_center_face == "true"
+
+        out = [
+            self.do_restore(
+                image[i], model, aligned, only_center_face, weight, save_tmp_steps
+            )
+            for i in range(image.size(0))
+        ]
+
+        return (torch.cat(out, dim=0),)
 
     def get_step_image_path(self, step, idx):
         (
