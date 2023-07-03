@@ -6,7 +6,7 @@ from skimage.color import rgb2hsv, hsv2rgb
 import numpy as np
 import torchvision.transforms.functional as F
 from PIL import Image, ImageChops
-from ..utils import tensor2pil, pil2tensor, img_np_to_tensor, img_tensor_to_np
+from ..utils import tensor2pil, pil2tensor, np2tensor, tensor2np
 import cv2
 import torch
 from ..log import log
@@ -362,7 +362,7 @@ class DeglazeImage:
     FUNCTION = "deglaze_image"
 
     def deglaze_image(self, image):
-        return (img_np_to_tensor(deglaze_np_img(img_tensor_to_np(image))),)
+        return (np2tensor(deglaze_np_img(tensor2np(image))),)
 
 
 class MaskToImage:
@@ -388,7 +388,7 @@ class MaskToImage:
     FUNCTION = "render_mask"
 
     def render_mask(self, mask, color, background):
-        mask = img_tensor_to_np(mask)
+        mask = tensor2np(mask)
         mask = Image.fromarray(mask).convert("L")
 
         image = Image.new("RGBA", mask.size, color=color)

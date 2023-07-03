@@ -1,5 +1,6 @@
 # region imports
 from ifnude import detect
+import onnxruntime
 from pathlib import Path
 from PIL import Image
 from typing import List, Set, Tuple
@@ -11,9 +12,10 @@ import numpy as np
 import os
 import tempfile
 import torch
-
+from insightface.model_zoo.inswapper import INSwapper
 from ..utils import pil2tensor, tensor2pil
-from ..log import mklog
+from ..log import mklog, NullWriter
+import sys
 
 # endregion
 
@@ -50,7 +52,15 @@ class LoadFaceSwapModel:
             folder_paths.models_dir, "insightface", faceswap_model
         )
         log.info(f"Loading model {model_path}")
-        return (insightface.model_zoo.get_model(model_path),)
+        return (
+            INSwapper(
+                model_path,
+                onnxruntime.InferenceSession(
+                    path_or_bytes=model_path,
+                    providers=onnxruntime.get_available_providers(),
+                ),
+            ),
+        )
 
 
 # region roop node
@@ -71,6 +81,7 @@ class FaceSwap:
                 "reference": ("IMAGE",),
                 "faces_index": ("STRING", {"default": "0"}),
                 "faceswap_model": ("FACESWAP_MODEL", {"default": "None"}),
+                "allow_nsfw": (["true", "false"], {"default": "false"}),
             },
             "optional": {"debug": (["true", "false"], {"default": "false"})},
         }
@@ -85,7 +96,8 @@ class FaceSwap:
         reference: torch.Tensor,
         faces_index: str,
         faceswap_model,
-        debug: str,
+        allow_nsfw="fase",
+        debug="false",
     ):
         def do_swap(img):
             img = tensor2pil(img)
@@ -93,8 +105,11 @@ class FaceSwap:
             face_ids = {
                 int(x) for x in faces_index.strip(",").split(",") if x.isnumeric()
             }
-
-            swapped = swap_face(ref, img, faceswap_model, face_ids)
+            sys.stdout = NullWriter()
+            swapped = swap_face(
+                ref, img, faceswap_model, face_ids, allow_nsfw == "true"
+            )
+            sys.stdout = sys.__stdout__
             return pil2tensor(swapped)
 
         batch_count = image.size(0)
@@ -146,14 +161,19 @@ def swap_face(
     target_img: Image.Image,
     face_swapper_model=None,
     faces_index: Set[int] = None,
+    allow_nsfw=False,
 ) -> Image.Image:
     if faces_index is None:
         faces_index = {0}
     log.debug(f"Swapping faces: {faces_index}")
     result_image = target_img
     converted = convert_to_sd(target_img)
-    scale, fn = converted[0], converted[1]
-    if face_swapper_model is not None and not scale:
+    nsfw, fn = converted[0], converted[1]
+
+    if nsfw and allow_nsfw:
+        nsfw = False
+
+    if face_swapper_model is not None and not nsfw:
         if isinstance(source_img, str):  # source_img is a base64 string
             import base64, io
 
@@ -175,7 +195,9 @@ def swap_face(
             for face_num in faces_index:
                 target_face = get_face_single(target_img, face_index=face_num)
                 if target_face is not None:
+                    sys.stdout = NullWriter()
                     result = face_swapper_model.get(result, target_face, source_face)
+                    sys.stdout = sys.__stdout__
                 else:
                     log.warning(f"No target face found for {face_num}")
 

@@ -3,6 +3,13 @@ import re
 import os
 
 base_log_level = logging.DEBUG if os.environ.get("MTB_DEBUG") else logging.INFO
+print(f"Log level: {base_log_level}")
+
+
+# Custom object that discards the output
+class NullWriter:
+    def write(self, text):
+        pass
 
 
 class Formatter(logging.Formatter):
@@ -32,15 +39,16 @@ class Formatter(logging.Formatter):
 
 def mklog(name, level=base_log_level):
     logger = logging.getLogger(name)
-    # set this to the highest level of all handlers
     logger.setLevel(level)
-    # create console handler with a higher log level
+
+    for handler in logger.handlers:
+        logger.removeHandler(handler)
+
     ch = logging.StreamHandler()
     ch.setLevel(level)
-
     ch.setFormatter(Formatter())
-
     logger.addHandler(ch)
+
     return logger
 
 

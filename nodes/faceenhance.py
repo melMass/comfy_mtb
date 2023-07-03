@@ -1,3 +1,4 @@
+import logging
 from gfpgan import GFPGANer
 import cv2
 import numpy as np
@@ -6,8 +7,12 @@ from pathlib import Path
 import folder_paths
 from basicsr.utils import imwrite
 from PIL import Image
-from ..utils import pil2tensor, tensor2pil
+from ..utils import pil2tensor, tensor2pil, np2tensor, tensor2np
 import torch
+from munch import Munch
+from ..log import NullWriter, log
+from comfy import model_management
+import comfy
 
 
 class LoadFaceEnhanceModel:
@@ -39,27 +44,77 @@ class LoadFaceEnhanceModel:
                 ),
                 "upscale": ("INT", {"default": 2}),
             },
-            "optional": {"bg_model_path": ("UPSCALE_MODEL", {"default": "None"})},
+            "optional": {"bg_upsampler": ("UPSCALE_MODEL", {"default": None})},
         }
 
     RETURN_TYPES = ("FACEENHANCE_MODEL",)
+    RETURN_NAMES = ("model",)
     FUNCTION = "load_model"
     CATEGORY = "face"
 
-    def load_model(self, model_name, upscale=2, bg_upsampler="realesrgan"):
+    def load_model(self, model_name, upscale=2, bg_upsampler=None):
         basic = "RestoreFormer" not in model_name
 
         root = self.get_models_root()
 
-        return (
-            GFPGANer(
-                model_path=(root / model_name).as_posix(),
-                upscale=upscale,
-                arch="clean" if basic else "RestoreFormer",  # or original for v1.0 only
-                channel_multiplier=2,  # 1 for v1.0 only
-                bg_upsampler=None,  # TODO:"realesrgan",
-            ),
+        if bg_upsampler is not None:
+            log.warning(
+                f"Upscale value overridden to {bg_upsampler.scale} from bg_upsampler"
+            )
+            upscale = bg_upsampler.scale
+            bg_upsampler = BGUpscaleWrapper(bg_upsampler)
+
+        sys.stdout = NullWriter()
+        model = GFPGANer(
+            model_path=(root / model_name).as_posix(),
+            upscale=upscale,
+            arch="clean" if basic else "RestoreFormer",  # or original for v1.0 only
+            channel_multiplier=2,  # 1 for v1.0 only
+            bg_upsampler=bg_upsampler,
         )
+
+        sys.stdout = sys.__stdout__
+        return (model,)
+
+
+class BGUpscaleWrapper:
+    def __init__(self, upscale_model) -> None:
+        self.upscale_model = upscale_model
+
+    def enhance(self, img: Image, outscale=2):
+        device = model_management.get_torch_device()
+        self.upscale_model.to(device)
+
+        tile = 128 + 64
+        overlap = 8
+
+        imgt = np2tensor(img)
+        imgt = imgt.movedim(-1, -3).to(device)
+
+        steps = imgt.shape[0] * comfy.utils.get_tiled_scale_steps(
+            imgt.shape[3], imgt.shape[2], tile_x=tile, tile_y=tile, overlap=overlap
+        )
+
+        log.debug(f"Steps: {steps}")
+
+        pbar = comfy.utils.ProgressBar(steps)
+
+        s = comfy.utils.tiled_scale(
+            imgt,
+            lambda a: self.upscale_model(a),
+            tile_x=tile,
+            tile_y=tile,
+            overlap=overlap,
+            upscale_amount=self.upscale_model.scale,
+            pbar=pbar,
+        )
+
+        self.upscale_model.cpu()
+        s = torch.clamp(s.movedim(-3, -1), min=0, max=1.0)
+        return (tensor2np(s),)
+
+
+import sys
 
 
 class RestoreFace:
@@ -103,6 +158,8 @@ class RestoreFace:
         width, height = image.size
 
         source_img = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
+
+        sys.stdout = NullWriter()
         cropped_faces, restored_faces, restored_img = model.enhance(
             source_img,
             has_aligned=aligned,
@@ -111,6 +168,8 @@ class RestoreFace:
             # TODO: weight has no effect in 1.3 and 1.4 (only tested these for now...)
             weight=weight,
         )
+        sys.stdout = sys.__stdout__
+        log.warning(f"Weight value has no effect for now. (value: {weight})")
 
         if save_tmp_steps:
             self.save_intermediate_images(cropped_faces, restored_faces, height, width)
