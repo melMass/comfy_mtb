@@ -1,9 +1,14 @@
 import logging
 import re
+import os
+
+base_log_level = logging.DEBUG if os.environ.get("MTB_DEBUG") else logging.INFO
 
 
 class Formatter(logging.Formatter):
     grey = "\x1b[38;20m"
+    cyan = "\x1b[36;20m"
+    purple = "\x1b[35;20m"
     yellow = "\x1b[33;20m"
     red = "\x1b[31;20m"
     bold_red = "\x1b[31;1m"
@@ -12,8 +17,8 @@ class Formatter(logging.Formatter):
     format = "[%(name)s] | %(levelname)s -> %(message)s"
 
     FORMATS = {
-        logging.DEBUG: grey + format + reset,
-        logging.INFO: grey + format + reset,
+        logging.DEBUG: purple + format + reset,
+        logging.INFO: cyan + format + reset,
         logging.WARNING: yellow + format + reset,
         logging.ERROR: red + format + reset,
         logging.CRITICAL: bold_red + format + reset,
@@ -25,13 +30,13 @@ class Formatter(logging.Formatter):
         return formatter.format(record)
 
 
-def mklog(name, level=logging.DEBUG):
+def mklog(name, level=base_log_level):
     logger = logging.getLogger(name)
     # set this to the highest level of all handlers
-    logger.setLevel(logging.FATAL)
+    logger.setLevel(level)
     # create console handler with a higher log level
     ch = logging.StreamHandler()
-    ch.setLevel(logging.DEBUG)
+    ch.setLevel(level)
 
     ch.setFormatter(Formatter())
 
@@ -40,7 +45,7 @@ def mklog(name, level=logging.DEBUG):
 
 
 # - The main app logger
-log = mklog(__package__)
+log = mklog(__package__, base_log_level)
 
 
 def log_user(arg):
@@ -53,6 +58,10 @@ def get_summary(docstring):
 
 def blue_text(text):
     return f"\033[94m{text}\033[0m"
+
+
+def cyan_text(text):
+    return f"\033[96m{text}\033[0m"
 
 
 def get_label(label):

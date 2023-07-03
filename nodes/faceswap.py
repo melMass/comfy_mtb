@@ -8,7 +8,6 @@ import folder_paths
 import glob
 import insightface
 import numpy as np
-import onnxruntime
 import os
 import tempfile
 import torch

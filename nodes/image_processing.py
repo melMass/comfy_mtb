@@ -18,7 +18,7 @@ import os
 try:
     from cv2.ximgproc import guidedFilter
 except ImportError:
-    log.error("guidedFilter not found, use opencv-contrib-python")
+    log.warning("cv2.ximgproc.guidedFilter not found, use opencv-contrib-python")
 
 
 class ColorCorrect:

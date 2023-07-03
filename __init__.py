@@ -1,5 +1,5 @@
 import traceback
-from .log import log, blue_text, get_summary, get_label
+from .log import log, blue_text, cyan_text, get_summary, get_label
 from .utils import here
 import importlib
 import os
@@ -70,10 +70,10 @@ for node_class in nodes:
     NODE_CLASS_MAPPINGS_DEBUG[node_name] = node_class.__doc__
 
 
-log.debug(
+log.info(
     f"Loaded the following nodes:\n\t"
     + "\n\t".join(
-        f"{k}: {blue_text(get_summary(doc)) if doc else '-'}"
+        f"{cyan_text(k)}: {blue_text(get_summary(doc)) if doc else '-'}"
         for k, doc in NODE_CLASS_MAPPINGS_DEBUG.items()
     )
 )
