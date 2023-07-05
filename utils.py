@@ -73,14 +73,7 @@ def np2tensor(img_np):
 
 
 def tensor2np(tensor: torch.Tensor) -> np.ndarray:
-    np.clip(255.0 * tensor.cpu().numpy().squeeze(), 0, 255).astype(np.uint8)
+    return np.clip(255.0 * tensor.cpu().numpy().squeeze(), 0, 255).astype(np.uint8)
 
-
-
-
-def img_tensor_to_np(img_tensor):
-    img_tensor = img_tensor.clone()
-    img_tensor = img_tensor * 255.0
-    return img_tensor.squeeze(0).numpy().astype(np.float32)
 
 
