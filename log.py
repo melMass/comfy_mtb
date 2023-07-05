@@ -49,6 +49,9 @@ def mklog(name, level=base_log_level):
     ch.setFormatter(Formatter())
     logger.addHandler(ch)
 
+    # Disable log propagation
+    logger.propagate = False
+
     return logger
 
 
