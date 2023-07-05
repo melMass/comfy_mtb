@@ -105,7 +105,7 @@ def handle_interrupt():
     console.print("Interrupted by user.", style="bold red")
 
 
-def main(models_to_download):
+def main(models_to_download, skip_input=False):
     try:
         models_to_download_selected = {}
 
@@ -141,8 +141,10 @@ def main(models_to_download):
             console.print("No new models to download.")
             return
 
-        models_to_download_selected = ask_user_for_downloads(
-            models_to_download_selected
+        models_to_download_selected = (
+            ask_user_for_downloads(models_to_download_selected)
+            if not skip_input
+            else models_to_download_selected
         )
 
         for model_name, model_details in models_to_download_selected.items():
@@ -155,4 +157,10 @@ def main(models_to_download):
 
 
 if __name__ == "__main__":
-    main(models_to_download)
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-y", "--yes", action="store_true", help="skip user input")
+
+    args = parser.parse_args()
+    main(models_to_download, args.yes)
