@@ -5,6 +5,7 @@ import importlib
 import os
 
 NODE_CLASS_MAPPINGS = {}
+NODE_DISPLAY_NAME_MAPPINGS = {}
 NODE_CLASS_MAPPINGS_DEBUG = {}
 
 
@@ -64,11 +65,12 @@ else:
 nodes = load_nodes()
 for node_class in nodes:
     class_name = node_class.__name__
-    class_name = node_class.__name__
-    node_name = f"{get_label(class_name)} (mtb)"
-    NODE_CLASS_MAPPINGS[node_name] = node_class
-    NODE_CLASS_MAPPINGS_DEBUG[node_name] = node_class.__doc__
-
+    node_label = f"{get_label(class_name)} (mtb)"
+    NODE_CLASS_MAPPINGS[node_label] = node_class
+    NODE_DISPLAY_NAME_MAPPINGS[class_name] = node_label
+    NODE_CLASS_MAPPINGS_DEBUG[node_label] = node_class.__doc__
+    # TODO: I removed this, I find it more convenient to write without spaces, but it breaks every of my workflows
+    # TODO (cont): and until I find a way to automate the conversion, I'll leave it like this
 
 log.info(
     f"Loaded the following nodes:\n\t"

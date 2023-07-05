@@ -82,7 +82,7 @@ class BGUpscaleWrapper:
     def __init__(self, upscale_model) -> None:
         self.upscale_model = upscale_model
 
-    def enhance(self, img: Image, outscale=2):
+    def enhance(self, img: Image.Image, outscale=2):
         device = model_management.get_torch_device()
         self.upscale_model.to(device)
 
@@ -143,12 +143,18 @@ class RestoreFace:
         }
 
     def do_restore(
-        self, image, model, aligned, only_center_face, weight, save_tmp_steps
+        self,
+        image: torch.Tensor,
+        model: GFPGANer,
+        aligned,
+        only_center_face,
+        weight,
+        save_tmp_steps,
     ) -> torch.Tensor:
-        image = tensor2pil(image)
-        width, height = image.size
+        pimage = tensor2pil(image)
+        width, height = pimage.size
 
-        source_img = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
+        source_img = cv2.cvtColor(np.array(pimage), cv2.COLOR_RGB2BGR)
 
         sys.stdout = NullWriter()
         cropped_faces, restored_faces, restored_img = model.enhance(
