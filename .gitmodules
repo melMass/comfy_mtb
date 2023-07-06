@@ -1,6 +1,9 @@
 [submodule "extern/SadTalker"]
 	path = extern/SadTalker
 	url = https://github.com/OpenTalker/SadTalker.git
+[submodule "extern/google-FILM"]
+	path = extern/frame_interpolation
+	url = https://github.com/google-research/frame-interpolation
 [submodule "extern/GFPGAN"]
 	path = extern/GFPGAN
 	url = https://github.com/TencentARC/GFPGAN.git
