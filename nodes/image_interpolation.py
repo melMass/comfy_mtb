@@ -13,6 +13,7 @@ import subprocess
 import comfy
 
 import tensorflow as tf
+import comfy.model_management as model_management
 
 
 class LoadFilmModel:
@@ -104,6 +105,7 @@ class FilmInterpolation:
             out_tensors.append(
                 torch.from_numpy(frame) if isinstance(frame, np.ndarray) else frame
             )
+            model_management.throw_exception_if_processing_interrupted()
             pbar.update(1)
 
         out_tensors = torch.cat([tens.unsqueeze(0) for tens in out_tensors], dim=0)
@@ -228,6 +230,7 @@ class ExportToProRes:
         process = subprocess.Popen(command, stdin=subprocess.PIPE)
 
         for frame in frames:
+            model_management.throw_exception_if_processing_interrupted()
             process.stdin.write(frame.tobytes())
 
         process.stdin.close()

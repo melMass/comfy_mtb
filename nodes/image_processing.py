@@ -14,6 +14,8 @@ import folder_paths
 from PIL.PngImagePlugin import PngInfo
 import json
 import os
+import comfy.model_management as model_management
+
 
 try:
     from cv2.ximgproc import guidedFilter
@@ -514,6 +516,7 @@ class ImageResizeFactor:
         resample="lanczos",
         mask=None,
     ) -> torch.Tensor:
+        model_management.throw_exception_if_processing_interrupted()
         batch_count = 1
         img = tensor2pil(image)
 
