@@ -9,3 +9,8 @@ mmdet==3.0.0
 rembg==2.0.37
 facexlib==0.3.0
 basicsr==1.4.2
+# on windows non WSL 2.10 is the last version with GPU support
+tensorflow==2.10.0; platform_system == "Windows"
+tensorflow; platform_system != "Windows"
+# the old tf version on windows comes with a breaking protobuf version
+protobuf==3.20.2; platform_system == "Windows"

@@ -12,6 +12,8 @@ import numpy as np
 import subprocess
 import comfy
 
+import tensorflow as tf
+
 
 class LoadFilmModel:
     """Loads a FILM model"""
@@ -79,6 +81,14 @@ class FilmInterpolation:
         film_model: interpolator.Interpolator,
     ):
         n = images.size(0)
+        # check if tensorflow GPU is available
+        available_gpus = tf.config.list_physical_devices("GPU")
+        if not len(available_gpus):
+            log.warning(
+                "Tensorflow GPU not available, falling back to CPU this will be very slow"
+            )
+        else:
+            log.debug(f"Tensorflow GPU available, using {available_gpus}")
 
         num_frames = (n - 1) * (2 ** (interpolate) - 1)
         log.debug(f"Will interpolate into {num_frames} frames")
