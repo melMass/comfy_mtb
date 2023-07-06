@@ -181,7 +181,7 @@ class ExportToProRes:
         log.debug(f"Frames type {type(frames)}")
         log.debug(f"Exporting {len(frames)} frames")
 
-        frames = [frame.astype(np.uint16) for frame in frames]
+        frames = [frame.astype(np.uint16) * 257 for frame in frames]
 
         height, width, _ = frames[0].shape
 
