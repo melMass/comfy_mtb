@@ -38,12 +38,20 @@ models_to_download = {
         ],
         "destination": "upscale_models",
     },
+    "FILM: Frame Interpolation for Large Motion": {
+        "size": 402,
+        "download_url": [
+            "https://drive.google.com/drive/folders/131_--QrieM4aQbbLWrUtbO2cGbX8-war"
+        ],
+        "destination": "FILMOS",
+    },
 }
 
 console = Console()
 
 from urllib.parse import urlparse
 from pathlib import Path
+import gdown
 
 
 def download_model(download_url, destination):
@@ -53,6 +61,16 @@ def download_model(download_url, destination):
         return
 
     filename = os.path.basename(urlparse(download_url).path)
+    response = None
+    if "drive.google.com" in download_url:
+        if "/folders/" in download_url:
+            # download folder
+            gdown.download_folder(download_url, output=destination, resume=True)
+            return
+        # download from google drive
+        gdown.download(download_url, destination, quiet=False, resume=True)
+        return
+
     response = requests.get(download_url, stream=True)
     total_size = int(response.headers.get("content-length", 0))
 
@@ -150,6 +168,7 @@ def main(models_to_download, skip_input=False):
         for model_name, model_details in models_to_download_selected.items():
             download_url = model_details["download_url"]
             destination = model_details["destination"]
+            console.print(f"Downloading {model_name}...")
             download_model(download_url, destination)
 
     except KeyboardInterrupt:

@@ -16,6 +16,8 @@ from insightface.model_zoo.inswapper import INSwapper
 from ..utils import pil2tensor, tensor2pil
 from ..log import mklog, NullWriter
 import sys
+import comfy.model_management as model_management
+
 
 # endregion
 
@@ -100,6 +102,7 @@ class FaceSwap:
         debug="false",
     ):
         def do_swap(img):
+            model_management.throw_exception_if_processing_interrupted()
             img = tensor2pil(img)
             ref = tensor2pil(reference)
             face_ids = {

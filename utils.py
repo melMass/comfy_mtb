@@ -4,6 +4,8 @@ import torch
 from pathlib import Path
 import sys
 
+from typing import Union, List
+
 
 def add_path(path, prepend=False):
     if isinstance(path, list):
@@ -43,37 +45,36 @@ add_path(comfy_dir)
 add_path((comfy_dir / "custom_nodes"))
 
 
-# Tensor to PIL (grabbed from WAS Suite)
-def tensor2pil(image: torch.Tensor) -> Image.Image:
-    return Image.fromarray(
-        np.clip(255.0 * image.cpu().numpy().squeeze(), 0, 255).astype(np.uint8)
-    )
+def tensor2pil(image: torch.Tensor) -> Union[Image.Image, List[Image.Image]]:
+    batch_count = 1
+    if len(image.shape) > 3:
+        batch_count = image.size(0)
+
+    if batch_count == 1:
+        return Image.fromarray(
+            np.clip(255.0 * image.cpu().numpy().squeeze(), 0, 255).astype(np.uint8)
+        )
+    return [tensor2pil(image[i]) for i in range(batch_count)]
 
 
-# TODO: write pil2tensor counterpart (batch support)
-# def tensor2pil(image: torch.Tensor) -> Union[Image.Image, List[Image.Image]]:
-#     batch_count = 1
-#     if len(image.shape) > 3:
-#         batch_count = image.size(0)
+def pil2tensor(image: Image.Image | List[Image.Image]) -> torch.Tensor:
+    if isinstance(image, list):
+        return torch.cat([pil2tensor(img) for img in image], dim=0)
 
-#     if batch_count == 1:
-#         return Image.fromarray(
-#             np.clip(255.0 * image.cpu().numpy().squeeze(), 0, 255).astype(np.uint8)
-#         )
-#     return [tensor2pil(image[i]) for i in range(batch_count)]
-
-
-# Convert PIL to Tensor (grabbed from WAS Suite)
-def pil2tensor(image: Image.Image) -> torch.Tensor:
     return torch.from_numpy(np.array(image).astype(np.float32) / 255.0).unsqueeze(0)
 
 
-def np2tensor(img_np):
+def np2tensor(img_np: np.ndarray | List[np.ndarray]) -> torch.Tensor:
+    if isinstance(img_np, list):
+        return torch.cat([np2tensor(img) for img in img_np], dim=0)
+
     return torch.from_numpy(img_np.astype(np.float32) / 255.0).unsqueeze(0)
 
 
-def tensor2np(tensor: torch.Tensor) -> np.ndarray:
+def tensor2np(tensor: torch.Tensor) -> Union[np.ndarray, List[np.ndarray]]:
+    batch_count = 1
+    if len(tensor.shape) > 3:
+        batch_count = tensor.size(0)
+    if batch_count > 1:
+        return [tensor2np(tensor[i]) for i in range(batch_count)]
     return np.clip(255.0 * tensor.cpu().numpy().squeeze(), 0, 255).astype(np.uint8)
-
-
-
