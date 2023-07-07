@@ -4,3 +4,6 @@
 [submodule "extern/GFPGAN"]
 	path = extern/GFPGAN
 	url = https://github.com/TencentARC/GFPGAN.git
+[submodule "extern/frame_interpolation"]
+	path = extern/frame_interpolation
+	url = https://github.com/google-research/frame-interpolation
