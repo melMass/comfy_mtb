@@ -43,7 +43,7 @@ models_to_download = {
         "download_url": [
             "https://drive.google.com/drive/folders/131_--QrieM4aQbbLWrUtbO2cGbX8-war"
         ],
-        "destination": "FILMOS",
+        "destination": "FILM",
     },
 }
 
@@ -65,7 +65,11 @@ def download_model(download_url, destination):
     if "drive.google.com" in download_url:
         if "/folders/" in download_url:
             # download folder
-            gdown.download_folder(download_url, output=destination, resume=True)
+            try:
+                gdown.download_folder(download_url, output=destination, resume=True)
+            except TypeError:
+                gdown.download_folder(download_url, output=destination)
+
             return
         # download from google drive
         gdown.download(download_url, destination, quiet=False, resume=True)
