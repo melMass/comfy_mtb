@@ -5,6 +5,9 @@ from pathlib import Path
 import sys
 
 from typing import Union, List
+from pytoshop.user import nested_layers
+from pytoshop import enums
+from .log import log
 
 
 def add_path(path, prepend=False):
@@ -32,7 +35,7 @@ comfy_dir = here.parent.parent
 # Construct the path to the font file
 font_path = here / "font.ttf"
 
-# Add extern folder to path
+# Add exteextern folder to path
 extern_root = here / "extern"
 add_path(extern_root)
 for pth in extern_root.iterdir():
@@ -45,16 +48,21 @@ add_path(comfy_dir)
 add_path((comfy_dir / "custom_nodes"))
 
 
-def tensor2pil(image: torch.Tensor) -> Union[Image.Image, List[Image.Image]]:
+def tensor2pil(image: torch.Tensor) -> List[Image.Image]:
     batch_count = 1
     if len(image.shape) > 3:
         batch_count = image.size(0)
 
-    if batch_count == 1:
-        return Image.fromarray(
+    if batch_count > 1:
+        out = []
+        out.extend([tensor2pil(image[i]) for i in range(batch_count)])
+        return out
+
+    return [
+        Image.fromarray(
             np.clip(255.0 * image.cpu().numpy().squeeze(), 0, 255).astype(np.uint8)
         )
-    return [tensor2pil(image[i]) for i in range(batch_count)]
+    ]
 
 
 def pil2tensor(image: Image.Image | List[Image.Image]) -> torch.Tensor:
@@ -76,5 +84,51 @@ def tensor2np(tensor: torch.Tensor) -> Union[np.ndarray, List[np.ndarray]]:
     if len(tensor.shape) > 3:
         batch_count = tensor.size(0)
     if batch_count > 1:
-        return [tensor2np(tensor[i]) for i in range(batch_count)]
-    return np.clip(255.0 * tensor.cpu().numpy().squeeze(), 0, 255).astype(np.uint8)
+        out = []
+        out.extend([tensor2np(tensor[i]) for i in range(batch_count)])
+        return out
+
+    return [np.clip(255.0 * tensor.cpu().numpy().squeeze(), 0, 255).astype(np.uint8)]
+
+
+def tensor2pytolayer(
+    tensor: torch.Tensor,
+    name: str,
+    visible: bool = True,
+    opacity: int = 255,
+    group_id: int = 0,
+    blend_mode=enums.BlendMode.normal,
+    x: int = 0,
+    y: int = 0,
+    # channels: int = 3,
+    metadata: dict = {},
+    layer_color=0,
+    color_mode=None,
+) -> nested_layers.Image:
+    batch_count = 1
+    if len(tensor.shape) > 3:
+        batch_count = tensor.size(0)
+
+    if batch_count > 1:
+        raise Exception(
+            f"Only one image is supported (batch size is currently {batch_count})"
+        )
+    out_channels = tensor2pil(tensor)
+    arr = np.array(out_channels)
+
+    # the array is currently H, W, C but we want C, H, W
+    # out_channels = np.transpose(out_channels, (2, 0, 1))
+    channels = [arr[:, :, 0], arr[:, :, 1], arr[:, :, 2]]
+    return nested_layers.Image(
+        name=name,
+        visible=visible,
+        opacity=opacity,
+        group_id=group_id,
+        blend_mode=blend_mode,
+        top=y,
+        left=x,
+        channels=channels,
+        metadata=metadata,
+        layer_color=layer_color,
+        color_mode=color_mode,
+    )

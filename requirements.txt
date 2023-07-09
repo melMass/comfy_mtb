@@ -15,3 +15,4 @@ tensorflow; platform_system != "Windows"
 # the old tf version on windows comes with a breaking protobuf version
 protobuf==3.19.6
 gdown @ git+https://github.com/melMass/gdown@main
+pytoshop
