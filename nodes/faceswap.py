@@ -1,9 +1,8 @@
 # region imports
-from ifnude import detect
 import onnxruntime
 from pathlib import Path
 from PIL import Image
-from typing import List, Set, Tuple
+from typing import List, Set, Tuple, Union, Optional
 import cv2
 import folder_paths
 import glob
@@ -83,7 +82,6 @@ class FaceSwap:
                 "reference": ("IMAGE",),
                 "faces_index": ("STRING", {"default": "0"}),
                 "faceswap_model": ("FACESWAP_MODEL", {"default": "None"}),
-                "allow_nsfw": (["true", "false"], {"default": "false"}),
             },
             "optional": {"debug": (["true", "false"], {"default": "false"})},
         }
@@ -98,7 +96,6 @@ class FaceSwap:
         reference: torch.Tensor,
         faces_index: str,
         faceswap_model,
-        allow_nsfw="fase",
         debug="false",
     ):
         def do_swap(img):
@@ -109,9 +106,7 @@ class FaceSwap:
                 int(x) for x in faces_index.strip(",").split(",") if x.isnumeric()
             }
             sys.stdout = NullWriter()
-            swapped = swap_face(
-                ref, img, faceswap_model, face_ids, allow_nsfw == "true"
-            )
+            swapped = swap_face(ref, img, faceswap_model, face_ids)
             sys.stdout = sys.__stdout__
             return pil2tensor(swapped)
 
@@ -143,7 +138,7 @@ def get_face_single(img_data: np.ndarray, face_index=0, det_size=(640, 640)):
     face = face_analyser.get(img_data)
 
     if len(face) == 0 and det_size[0] > 320 and det_size[1] > 320:
-        log.debug("No face detected, trying again with smaller image")
+        log.debug("No face ed, trying again with smaller image")
         det_size_half = (det_size[0] // 2, det_size[1] // 2)
         return get_face_single(img_data, face_index=face_index, det_size=det_size_half)
 
@@ -153,42 +148,18 @@ def get_face_single(img_data: np.ndarray, face_index=0, det_size=(640, 640)):
         return None
 
 
-def convert_to_sd(img) -> Tuple[bool, str]:
-    chunks = detect(img)
-    shapes = [chunk["score"] > 0.7 for chunk in chunks]
-    return [any(shapes), tempfile.NamedTemporaryFile(delete=False, suffix=".png")]
-
-
 def swap_face(
-    source_img: Image.Image,
-    target_img: Image.Image,
-    face_swapper_model=None,
-    faces_index: Set[int] = None,
-    allow_nsfw=False,
+    source_img: Union[Image.Image, List[Image.Image]],
+    target_img: Union[Image.Image, List[Image.Image]],
+    face_swapper_model,
+    faces_index: Optional[Set[int]] = None,
 ) -> Image.Image:
     if faces_index is None:
         faces_index = {0}
     log.debug(f"Swapping faces: {faces_index}")
     result_image = target_img
-    converted = convert_to_sd(target_img)
-    nsfw, fn = converted[0], converted[1]
 
-    if nsfw and allow_nsfw:
-        nsfw = False
-
-    if face_swapper_model is not None and not nsfw:
-        if isinstance(source_img, str):  # source_img is a base64 string
-            import base64, io
-
-            if (
-                "base64," in source_img
-            ):  # check if the base64 string has a data URL scheme
-                base64_data = source_img.split("base64,")[-1]
-                img_bytes = base64.b64decode(base64_data)
-            else:
-                # if no data URL scheme, just decode
-                img_bytes = base64.b64decode(source_img)
-            source_img = Image.open(io.BytesIO(img_bytes))
+    if face_swapper_model is not None:
         source_img = cv2.cvtColor(np.array(source_img), cv2.COLOR_RGB2BGR)
         target_img = cv2.cvtColor(np.array(target_img), cv2.COLOR_RGB2BGR)
         source_face = get_face_single(source_img, face_index=0)

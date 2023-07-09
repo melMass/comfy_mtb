@@ -197,7 +197,7 @@ app.registerExtension({
 		 * @param {*} src
 		 */
 		const createImageBtn = (src) => {
-			console.log(`making image ${src.filename}`);
+			console.debug(`making image ${src.filename}`);
 			const img = document.createElement("img");
 			const but = document.createElement("button");
 
@@ -217,7 +217,7 @@ app.registerExtension({
 
 			imageUrls.push(img.src);
 
-			console.log(img.src)
+			console.debug(img.src)
 
 			but.onclick = () => {
 				lightboxContainer.style.display = "flex";
@@ -267,14 +267,14 @@ app.registerExtension({
 			for (const history of all_history.History) {
 				if (history.outputs) {
 					for (const key of Object.keys(history.outputs)) {
-						console.log(key)
+						console.debug(key)
 						for (const im of history.outputs[key].images) {
-							console.log(im)
+							console.debug(im)
 							createImageBtn(im)
 						}
 					}
 					// for (const src of outputs.outputs.images) {
-					// 	console.log(src)
+					// 	console.debug(src)
 					// 	makeImage(`${src.subfolder}/${src.filename}`)
 					// }
 				}
@@ -292,7 +292,7 @@ app.registerExtension({
 		// 			}
 		// 		}
 		// 		// for (const src of outputs.outputs.images) {
-		// 		// 	console.log(src)
+		// 		// 	console.debug(src)
 		// 		// 	makeImage(`${src.subfolder}/${src.filename}`)
 		// 		// }
 		// 	}
@@ -302,7 +302,7 @@ app.registerExtension({
 		api.addEventListener("executed", ({ detail }) => {
 			if (detail?.output?.images) {
 				for (const src of detail.output.images) {
-					console.log(`Adding ${src} to image feed`)
+					console.debug(`Adding ${src} to image feed`)
 					createImageBtn(src)
 				}
 			}

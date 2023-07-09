@@ -1,4 +1,3 @@
-import logging
 from gfpgan import GFPGANer
 import cv2
 import numpy as np
@@ -9,10 +8,10 @@ from basicsr.utils import imwrite
 from PIL import Image
 from ..utils import pil2tensor, tensor2pil, np2tensor, tensor2np
 import torch
-from munch import Munch
 from ..log import NullWriter, log
 from comfy import model_management
 import comfy
+import comfy.utils
 from typing import Tuple
 
 
