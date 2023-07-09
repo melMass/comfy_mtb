@@ -2,7 +2,7 @@
 - [Installation](#installation)
     - [Dependencies](#dependencies)
       - [Custom virtualenv (I use this mainly)](#custom-virtualenv-i-use-this-mainly)
-      - [Comfy-embeded](#comfy-embeded)
+      - [Comfy-portable / standalone (from ComfyUI releases)](#comfy-portable--standalone-from-comfyui-releases)
       - [Google Colab](#google-colab)
     - [Models Download](#models-download)
     - [Web Extensions](#web-extensions)
@@ -17,9 +17,9 @@
   ```bash
   pip install -r comfy_mtb/requirements.txt
   ```
-#### Comfy-embeded
+#### Comfy-portable / standalone (from ComfyUI releases)
 
-If you use the `python-embed` mode of comfyui (the standalone release) then you might not be able to pip install dependencies that don't have wheels, in this case check the last [release](https://github.com/melMass/comfy_mtb/releases) there is a bundle for linux and windows with prebuilt wheels (only the ones that require building from source), check [this issue (#1)](https://github.com/melMass/comfy_mtb/issues/1) for more info.
+If you use the `python-embeded` from ComfyUI standalone then you are not able to pip install dependencies with binaries when they don't have wheels, in this case check the last [release](https://github.com/melMass/comfy_mtb/releases) there is a bundle for linux and windows with prebuilt wheels (only the ones that require building from source), check [this issue (#1)](https://github.com/melMass/comfy_mtb/issues/1) for more info.
 
 #### Google Colab
 
