@@ -29,7 +29,7 @@ Before proceeding, please be aware of the licenses associated with certain libra
 - `Concat Images`: Takes two image stream and merge them as a batch of images supported by other Comfy pipelines.
 - `Image Resize Factor`: **Deprecated**, I since discovered the builtin image resize.
 - `Text To Image`: Utils to convert text to image using a font
-- `Styles Loader`: Load csv files and populate a dropdown from the rows (à la A111)
+- `Styles Loader`: Load csv files and populate a dropdown from the rows (à la A111)  
   <img src="https://github.com/melMass/comfy_mtb/assets/7041726/02fe3211-18ee-4e54-a029-931388f5fde8" width=320/>
 - `Smart Step`: A very basic node to get step percent to use in KSampler advanced,
 - `Qr Code`: Basic QR Code generator
@@ -43,14 +43,14 @@ Before proceeding, please be aware of the licenses associated with certain libra
 
 ### image interpolation (animation)
 - `Load Film Model`: Loads a [FILM](https://github.com/google-research/frame-interpolation) model
-- `Film Interpolation`: Process input frames using [FILM](https://github.com/google-research/frame-interpolation)
+- `Film Interpolation`: Process input frames using [FILM](https://github.com/google-research/frame-interpolation)  
   <img src="https://github.com/melMass/comfy_mtb/assets/7041726/3afd1647-6634-4b92-a34b-51432e6a9834" width=400/>
 - `Export to Prores (experimental)`: Exports the input frames to a ProRes 4444 mov file. This is using ffmpeg stdin to send raw numpy arrays, used with `Film Interpolation` and very simple for now but could be expanded upon.
 
 ### face detection / swapping
 - `Face Swap`: Face swap using deepinsight/insightface models (this node used to be called `Roop` in early versions, it does the same, roop is *just* an app that uses those model)
   > **Note**
-  > The face index allow you to choose which face to replace as you can see here:
+  > The face index allow you to choose which face to replace as you can see here:  
   <img src="https://github.com/melMass/comfy_mtb/assets/7041726/2e9d6066-c466-4a01-bd6c-315f7f1e8b42" width=320/>
 - `Load Face Swap Model`: Load an insightface model for face swapping
 - `Restore Face`: Using [GFPGan](https://github.com/TencentARC/GFPGAN) to restore faces, works great in conjunction with `Face Swap` and supports Comfy native upscalers for the `bg_upscaler`
@@ -70,7 +70,7 @@ Before proceeding, please be aware of the licenses associated with certain libra
 - `Denoise`: Denoise the input image,
 - `Image Compare`: Compare two images and return a difference image
 - `Image Premultiply`: Premultiply image with mask
-- `Image Remove Background Rembg`: [RemBG](https://github.com/danielgatis/rembg) powered background removal.
+- `Image Remove Background Rembg`: [RemBG](https://github.com/danielgatis/rembg) powered background removal.  
   <img src="https://github.com/melMass/comfy_mtb/assets/7041726/e69253b4-c03c-45e9-92b5-aa46fb887be8" width=320/>
 - `Image Resize Factor`: Extracted mostly from [WAS Node Suite](https://github.com/WASasquatch/was-node-suite-comfyui), with a few edits (most notably multiple image support) and less features.
 - `Mask To Image`: Converts a mask (alpha) to an RGB image with a color and background
@@ -80,7 +80,7 @@ Before proceeding, please be aware of the licenses associated with certain libra
 - `Colored Image`: Constant color image of given size
 - `RGB to HSV`: -,
 - `HSV to RGB`: -,
-- `Color Correct`: Basic color correction tools
+- `Color Correct`: Basic color correction tools  
   <img src="https://github.com/melMass/comfy_mtb/assets/7041726/7c20ac83-31ff-40ea-a1a0-06c2acefb2ef" width=345/>
 
         
