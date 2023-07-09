@@ -24,7 +24,9 @@ If you use the `python-embed` mode of comfyui (the standalone release) then you 
 #### Google Colab
 
 Add a new code cell just after the **Run ComfyUI with localtunnel (Recommended Way)** header (before the code cell)
-![preview of where to add it on colab](image.png)
+![preview of where to add it on colab](https://github.com/melMass/comfy_mtb/assets/7041726/35df2ef1-14f9-44cd-aa65-353829188cd7)
+
+
 ```python
 # download the nodes
 !git clone --recursive https://github.com/melMass/comfy_mtb.git custom_nodes/comfy_mtb
@@ -64,4 +66,4 @@ then follow the prompt or just press enter to download every models.
 
 On first run the script [tries to symlink](https://github.com/melMass/comfy_mtb/blob/d982b69a58c05ccead9c49370764beaa4549992a/__init__.py#L45-L61) the [web extensions](https://github.com/melMass/comfy_mtb/tree/main/web) to your comfy `web/extensions` folder. In case it fails you can manually copy the mtb folder to `ComfyUI/web/extensions` it only provides a color widget for now shared by a few nodes:  
 
-<img alt="color widget preview" src="https://github.com/melMass/comfy_mtb/assets/7041726/cff7e66a-4cc4-4866-b35b-10af0bb2d110" width=320>
+<img alt="color widget preview" src="https://github.com/melMass/comfy_mtb/assets/7041726/cff7e66a-4cc4-4866-b35b-10af0bb2d110" width=450>
