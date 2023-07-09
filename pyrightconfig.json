@@ -1,0 +1,18 @@
+{
+    "exclude": [
+        "**/node_modules",
+        "**/__pycache__",
+    ],
+    "ignore": [
+        "extern"
+    ],
+    "defineConstant": {
+        "DEBUG": true
+    },
+    "venvPath": "../../../.venv/",
+    "reportMissingImports": true,
+    "reportMissingTypeStubs": false,
+    "pythonVersion": "3.10",
+    "pythonPlatform": "Windows",
+    "reportOptionalMemberAccess": "none"
+}
