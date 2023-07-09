@@ -7,45 +7,36 @@ Before proceeding, please be aware of the licenses associated with certain libra
 - [MTB Nodes](#mtb-nodes)
 - [Installation](#installation)
 - [Node List](#node-list)
-  - [misc utils](#misc-utils)
-  - [Textures](#textures)
-  - [image interpolation (animation)](#image-interpolation-animation)
-  - [face detection / swapping](#face-detection--swapping)
-  - [latent utils](#latent-utils)
   - [bbox](#bbox)
-  - [image ops](#image-ops)
   - [colors](#colors)
+  - [face detection / swapping](#face-detection--swapping)
+  - [image interpolation (animation)](#image-interpolation-animation)
+  - [image ops](#image-ops)
+  - [latent utils](#latent-utils)
+  - [misc utils](#misc-utils)
+  - [textures](#textures)
 - [Comfy Resources](#comfy-resources)
 
 
 ## Installation
 
-- Move to [INSTALL.md](./INSTALL.md)
+- Moved to [INSTALL.md](./INSTALL.md)
 
 
 ## Node List
 
-### misc utils
-- `Concat Images`: Takes two image stream and merge them as a batch of images supported by other Comfy pipelines.
-- `Image Resize Factor`: **Deprecated**, I since discovered the builtin image resize.
-- `Text To Image`: Utils to convert text to image using a font
-- `Styles Loader`: Load csv files and populate a dropdown from the rows (à la A111)  
-  <img src="https://github.com/melMass/comfy_mtb/assets/7041726/02fe3211-18ee-4e54-a029-931388f5fde8" width=320/>
-- `Smart Step`: A very basic node to get step percent to use in KSampler advanced,
-- `Qr Code`: Basic QR Code generator
-- `Save Tensors`: Debug node that will probably be removed in the future
-- `Int to Number`: Supplement for WASSuite number nodes
-- `Smart Step`: A very basic tool to control the steps (start/stop) of the `KAdvancedSampler` using percentage
+### bbox
+- `Bounding Box`: BBox constructor (custom type),
+- `BBox From Mask`: From a mask extract the bounding box
+- `Crop`: Crop image from BBox
+- `Uncrop`: Uncrop image from BBox
 
-### Textures
-
-- `DeepBump`: Normal & height maps generation from single pictures
-
-### image interpolation (animation)
-- `Load Film Model`: Loads a [FILM](https://github.com/google-research/frame-interpolation) model
-- `Film Interpolation`: Process input frames using [FILM](https://github.com/google-research/frame-interpolation)  
-  <img src="https://github.com/melMass/comfy_mtb/assets/7041726/3afd1647-6634-4b92-a34b-51432e6a9834" width=400/>
-- `Export to Prores (experimental)`: Exports the input frames to a ProRes 4444 mov file. This is using ffmpeg stdin to send raw numpy arrays, used with `Film Interpolation` and very simple for now but could be expanded upon.
+### colors
+- `Colored Image`: Constant color image of given size
+- `RGB to HSV`: -,
+- `HSV to RGB`: -,
+- `Color Correct`: Basic color correction tools  
+  <img src="https://github.com/melMass/comfy_mtb/assets/7041726/7c20ac83-31ff-40ea-a1a0-06c2acefb2ef" width=345/>
 
 ### face detection / swapping
 - `Face Swap`: Face swap using deepinsight/insightface models (this node used to be called `Roop` in early versions, it does the same, roop is *just* an app that uses those model)
@@ -55,14 +46,11 @@ Before proceeding, please be aware of the licenses associated with certain libra
 - `Load Face Swap Model`: Load an insightface model for face swapping
 - `Restore Face`: Using [GFPGan](https://github.com/TencentARC/GFPGAN) to restore faces, works great in conjunction with `Face Swap` and supports Comfy native upscalers for the `bg_upscaler`
   
-### latent utils
-- `Latent Lerp`: Linear interpolation (blend) between two latent 
-
-### bbox
-- `Bounding Box`: BBox constructor (custom type),
-- `BBox From Mask`: From a mask extract the bounding box
-- `Crop`: Crop image from BBox
-- `Uncrop`: Uncrop image from BBox
+### image interpolation (animation)
+- `Load Film Model`: Loads a [FILM](https://github.com/google-research/frame-interpolation) model
+- `Film Interpolation`: Process input frames using [FILM](https://github.com/google-research/frame-interpolation)  
+  <img src="https://github.com/melMass/comfy_mtb/assets/7041726/3afd1647-6634-4b92-a34b-51432e6a9834" width=400/>
+- `Export to Prores (experimental)`: Exports the input frames to a ProRes 4444 mov file. This is using ffmpeg stdin to send raw numpy arrays, used with `Film Interpolation` and very simple for now but could be expanded upon.
 
 ### image ops
 - `Blur`: Blur an image using a Gaussian filter.
@@ -76,14 +64,26 @@ Before proceeding, please be aware of the licenses associated with certain libra
 - `Mask To Image`: Converts a mask (alpha) to an RGB image with a color and background
 - `Save Image Grid`: Save all the images in the input batch as a grid of images.
 
-### colors
-- `Colored Image`: Constant color image of given size
-- `RGB to HSV`: -,
-- `HSV to RGB`: -,
-- `Color Correct`: Basic color correction tools  
-  <img src="https://github.com/melMass/comfy_mtb/assets/7041726/7c20ac83-31ff-40ea-a1a0-06c2acefb2ef" width=345/>
+### latent utils
+- `Latent Lerp`: Linear interpolation (blend) between two latent 
 
-        
+
+### misc utils
+- `Concat Images`: Takes two image stream and merge them as a batch of images supported by other Comfy pipelines.
+- `Image Resize Factor`: **Deprecated**, I since discovered the builtin image resize.
+- `Text To Image`: Utils to convert text to image using a font
+- `Styles Loader`: Load csv files and populate a dropdown from the rows (à la A111)  
+  <img src="https://github.com/melMass/comfy_mtb/assets/7041726/02fe3211-18ee-4e54-a029-931388f5fde8" width=320/>
+- `Smart Step`: A very basic node to get step percent to use in KSampler advanced,
+- `Qr Code`: Basic QR Code generator
+- `Save Tensors`: Debug node that will probably be removed in the future
+- `Int to Number`: Supplement for WASSuite number nodes
+- `Smart Step`: A very basic tool to control the steps (start/stop) of the `KAdvancedSampler` using percentage
+
+### textures
+
+- `DeepBump`: Normal & height maps generation from single pictures
+
 ## Comfy Resources
 
 **Guides**:
