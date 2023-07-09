@@ -20,6 +20,8 @@
 #### Comfy-portable / standalone (from ComfyUI releases)
 
 If you use the `python-embeded` from ComfyUI standalone then you are not able to pip install dependencies with binaries when they don't have wheels, in this case check the last [release](https://github.com/melMass/comfy_mtb/releases) there is a bundle for linux and windows with prebuilt wheels (only the ones that require building from source), check [this issue (#1)](https://github.com/melMass/comfy_mtb/issues/1) for more info.
+![image](https://github.com/melMass/comfy_mtb/assets/7041726/2934fa14-3725-427c-8b9e-2b4f60ba1b7b)
+
 
 #### Google Colab
 
