@@ -74,6 +74,26 @@ const custom = (node, inputName, inputData, app) => {
 
 }
 
+const dynamic_connection = (node, index, connected, connectionPrefix = "input_", connectionType = "PSDLAYER") => {
+
+    // remove all non connected inputs
+    if (!connected && node.inputs.length > 1) {
+        node.removeInput(index)
+
+        // make inputs sequential again
+        for (let i = 0; i < node.inputs.length; i++) {
+            node.inputs[i].name = `${connectionPrefix}${i + 1}`
+        }
+    }
+
+    // add an extra input
+    if (node.inputs[node.inputs.length - 1].link != undefined) {
+        node.addInput(`${connectionPrefix}${node.inputs.length + 1}`, connectionType)
+    }
+
+
+}
+
 /**
  * @returns {import("./types/comfy").ComfyExtension} extension
  */
@@ -179,36 +199,19 @@ const mtb_widgets = {
     //     // Register the custom widget in LiteGraph.js
     //     LiteGraph.registered_widgets["VIDEO"] = videoWidget;
     // },
-    /**
-     * 
-     * @param {import("./types/litegraph").LGraphNode} node 
-     */
-    async nodeCreated(node, app) {
-        if (node.comfyClass === "Psd Save (mtb)") {
-            node.onConnectionsChange = function (type, index, connected, link_info) {
 
-                // remove all non connected inputs
-                if (!connected && node.inputs.length > 1) {
-                    node.removeInput(index)
 
-                    // make inputs sequential again
-                    for (let i = 0; i < node.inputs.length; i++) {
-                        node.inputs[i].name = `input_${i + 1}`
-                    }
-                }
+    async beforeRegisterNodeDef(nodeType, nodeData, app) {
+        if (nodeData.name === "Psd Save (mtb)") {
 
-                // add an extra input
-                if (node.inputs[node.inputs.length - 1].link != undefined) {
-                    node.addInput(`input_${node.inputs.length + 1}`, "PSDLAYER")
+            // const onConnectionsChange = nodeType.prototype.onConnectionsChange;
+            nodeType.prototype.onConnectionsChange = function (type, index, connected, link_info) {
+                // const r = onConnectionsChange ? onConnectionsChange.apply(this, arguments) : undefined;
+                dynamic_connection(this, index, connected)
                 }
 
 
             }
-
-        }
-    },
-
-    async beforeRegisterNodeDef(nodeType, nodeData, app) {
         // console.log(nodeData.output)
         // if (nodeData.output.includes("VIDEO") && nodeData.output_node) {
         //     console.log(`Found video output for ${nodeType}`)
