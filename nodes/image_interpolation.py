@@ -82,6 +82,10 @@ class FilmInterpolation:
         film_model: interpolator.Interpolator,
     ):
         n = images.size(0)
+        # check if images is an empty tensor and return it...
+        if n == 0:
+            return (images,)
+
         # check if tensorflow GPU is available
         available_gpus = tf.config.list_physical_devices("GPU")
         if not len(available_gpus):
@@ -184,6 +188,8 @@ class ExportToProRes:
         fps: float,
         prefix: str,
     ):
+        if images.size(0) == 0:
+            return ("",)
         output_dir = Path(folder_paths.get_output_directory())
         id = f"{prefix}_{uuid.uuid4()}.mov"
 
