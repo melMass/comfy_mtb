@@ -29,7 +29,7 @@ function getBrightness(rgbObj) {
 
 
 /**
- * @returns {import("/types/litegraph").IWidget} widget
+ * @returns {import("./types/litegraph").IWidget} widget
  */
 const custom = (key, val, compute = false) => {
     /** @type {import("/types/litegraph").IWidget} */

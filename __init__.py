@@ -1,3 +1,7 @@
+import os
+
+os.environ["TF_FORCE_GPU_ALLOW_GROWTH"] = "true"
+
 import traceback
 from .log import log, blue_text, cyan_text, get_summary, get_label
 from .utils import here
