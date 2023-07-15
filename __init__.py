@@ -83,3 +83,13 @@ log.info(
         for k, doc in NODE_CLASS_MAPPINGS_DEBUG.items()
     )
 )
+
+# - WAS Dictionary
+MANIFEST = {
+    "name": "MTB Nodes",  # The title that will be displayed on Node Class menu,. and Node Class view
+    "version": (0, 1, 0),  # Version of the custom_node or sub module
+    "author": "Mel Massadian",  # Author or organization of the custom_node or sub module
+    "project": "https://github.com/melMass/comfy_mtb",  # The address that the `name` value will link to on Node Class Views
+    "description": "Set of nodes that enhance your animation workflow and provide a range of useful tools including features such as manipulating bounding boxes, perform color corrections, swap faces in images, interpolate frames for smooth animation, export to ProRes format, apply various image operations, work with latent spaces, generate QR codes, and create normal and height maps for textures.",
+}
+

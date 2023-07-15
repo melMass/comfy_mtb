@@ -83,7 +83,8 @@ def tensor2np(tensor: torch.Tensor) -> Union[np.ndarray, List[np.ndarray]]:
         batch_count = tensor.size(0)
     if batch_count > 1:
         out = []
-        out.extend([tensor2np(tensor[i]) for i in range(batch_count)])
+        for i in range(batch_count):
+            out.extend(tensor2np(tensor[i]))
         return out
 
     return [np.clip(255.0 * tensor.cpu().numpy().squeeze(), 0, 255).astype(np.uint8)]
