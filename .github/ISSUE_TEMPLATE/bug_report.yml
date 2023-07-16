@@ -1,7 +1,7 @@
 name: 🐞 Bug Report
-title: '[bug] '
+title: "[bug] "
 description: Report a bug
-labels: ['type: 🐛 bug', 'status: 🧹 needs triage']
+labels: ["type: 🐛 bug", "status: 🧹 needs triage"]
 
 body:
   - type: markdown
@@ -44,7 +44,7 @@ body:
     id: info
     attributes:
       label: Platform and versions
-      description: 'informations about the environment you run Comfy in'
+      description: "informations about the environment you run Comfy in"
       render: sh
       placeholder: |
         - OS: [e.g. Linux]
