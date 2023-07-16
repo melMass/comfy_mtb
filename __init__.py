@@ -7,15 +7,43 @@ from .log import log, blue_text, cyan_text, get_summary, get_label
 from .utils import here
 import importlib
 import os
+import ast
 
 NODE_CLASS_MAPPINGS = {}
 NODE_DISPLAY_NAME_MAPPINGS = {}
 NODE_CLASS_MAPPINGS_DEBUG = {}
 
 
+def extract_nodes_from_source(source_code):
+    nodes = []
+    try:
+        parsed = ast.parse(source_code)
+        for node in ast.walk(parsed):
+            if isinstance(node, ast.Assign) and len(node.targets) == 1:
+                target = node.targets[0]
+                if isinstance(target, ast.Name) and target.id == "__nodes__":
+                    value = ast.get_source_segment(source_code, node.value)
+                    node_value = ast.parse(value).body[0].value
+                    if isinstance(node_value, ast.List) or isinstance(
+                        node_value, ast.Tuple
+                    ):
+                        for element in node_value.elts:
+                            if isinstance(element, ast.Name):
+                                print(element.id)
+                                nodes.append(element.id)
+
+                    break
+    except SyntaxError:
+        log.error("Failed to parse")
+        pass  # File couldn't be parsed
+    return nodes
+
+
 def load_nodes():
     errors = []
     nodes = []
+    nodes_failed = []
+
     for filename in (here / "nodes").iterdir():
         if filename.suffix == ".py":
             module_name = filename.stem
@@ -26,14 +54,20 @@ def load_nodes():
                 )
                 _nodes = getattr(module, "__nodes__")
                 nodes.extend(_nodes)
-
                 log.debug(f"Imported {module_name} nodes")
 
             except AttributeError:
                 pass  # wip nodes
             except Exception:
                 error_message = traceback.format_exc().splitlines()[-1]
-                errors.append(f"Failed to import {module_name} because {error_message}")
+                errors.append(
+                    f"Failed to import module {module_name} because {error_message}"
+                )
+                # Read __nodes__ variable from the source file
+                with open(filename, "r") as file:
+                    source_code = file.read()
+                    extracted_nodes = extract_nodes_from_source(source_code)
+                    nodes_failed.extend(extracted_nodes)
 
     if errors:
         log.error(
@@ -44,7 +78,7 @@ def load_nodes():
             + "If you think this is a bug, please report it on the github page (https://github.com/melMass/comfy_mtb/issues)"
         )
 
-    return nodes
+    return (nodes, nodes_failed)
 
 
 # - REGISTER WEB EXTENSIONS
@@ -66,7 +100,7 @@ else:
     )
 
 # - REGISTER NODES
-nodes = load_nodes()
+nodes, failed = load_nodes()
 for node_class in nodes:
     class_name = node_class.__name__
     node_label = f"{get_label(class_name)} (mtb)"

@@ -88,4 +88,3 @@ def tensor2np(tensor: torch.Tensor) -> Union[np.ndarray, List[np.ndarray]]:
         return out
 
     return [np.clip(255.0 * tensor.cpu().numpy().squeeze(), 0, 255).astype(np.uint8)]
-
