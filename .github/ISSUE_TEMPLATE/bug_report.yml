@@ -1,0 +1,67 @@
+name: 🐞 Bug Report
+title: "[bug] "
+description: Report a bug
+labels: ["type: 🐛 bug", "status: 🧹 needs triage"]
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Before submiting an issue
+        - Make sure to read the README & INSTALL instructions.  
+        - Please search for [existing issues](https://github.com/melMass/comfy_mtb/issues?q=is%3Aissue) around your problem before filing a report.
+
+        ### Try using the debug mode to get more info
+
+        If you use the env variable `MTB_DEBUG=true`, debug message from the extension will appear in the terminal.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Describe the bug
+      description: A clear description of what the bug is. Include screenshots if applicable.
+      placeholder: Bug description
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction
+      description: Steps to reproduce the behavior.
+      placeholder: |
+        1. Add node xxx ...
+        2. Connect to xxx ...
+        3. See error
+
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: Expected behavior
+      description: A clear description of what you expected to happen.
+
+  - type: textarea
+    id: info
+    attributes:
+      label: Platform and versions
+      description: "informations about the environment you run Comfy in"
+      render: sh
+      placeholder: |
+        - OS: [e.g. Linux]
+        - Comfy Mode [e.g. custom env, standalone, google colab]
+
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Console output
+      description: Paste the console output without backticks
+      render: sh
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Add any other context about the problem here.
