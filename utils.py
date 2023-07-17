@@ -77,7 +77,7 @@ def np2tensor(img_np: np.ndarray | List[np.ndarray]) -> torch.Tensor:
     return torch.from_numpy(img_np.astype(np.float32) / 255.0).unsqueeze(0)
 
 
-def tensor2np(tensor: torch.Tensor) -> Union[np.ndarray, List[np.ndarray]]:
+def tensor2np(tensor: torch.Tensor) -> List[np.ndarray]:
     batch_count = 1
     if len(tensor.shape) > 3:
         batch_count = tensor.size(0)

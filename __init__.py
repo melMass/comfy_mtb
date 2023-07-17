@@ -14,8 +14,14 @@ NODE_DISPLAY_NAME_MAPPINGS = {}
 NODE_CLASS_MAPPINGS_DEBUG = {}
 
 
-def extract_nodes_from_source(source_code):
+def extract_nodes_from_source(filename):
+    source_code = ""
+
+    with open(filename, "r") as file:
+        source_code = file.read()
+
     nodes = []
+
     try:
         parsed = ast.parse(source_code)
         for node in ast.walk(parsed):
@@ -36,6 +42,7 @@ def extract_nodes_from_source(source_code):
     except SyntaxError:
         log.error("Failed to parse")
         pass  # File couldn't be parsed
+
     return nodes
 
 
@@ -64,13 +71,10 @@ def load_nodes():
                     f"Failed to import module {module_name} because {error_message}"
                 )
                 # Read __nodes__ variable from the source file
-                with open(filename, "r") as file:
-                    source_code = file.read()
-                    extracted_nodes = extract_nodes_from_source(source_code)
-                    nodes_failed.extend(extracted_nodes)
+                nodes_failed.extend(extract_nodes_from_source(filename))
 
     if errors:
-        log.error(
+        log.info(
             f"Some nodes failed to load:\n\t"
             + "\n\t".join(errors)
             + "\n\n"
@@ -91,11 +95,11 @@ elif web_extensions_root.exists():
     try:
         os.symlink((here / "web"), web_mtb.as_posix())
     except Exception:  # OSError
-        log.error(
+        log.warn(
             f"Failed to create symlink to {web_mtb}. Please copy the folder manually."
         )
 else:
-    log.error(
+    log.warn(
         f"Comfy root probably not found automatically, please copy the folder {web_mtb} manually in the web/extensions folder of ComfyUI"
     )
 
@@ -126,4 +130,3 @@ MANIFEST = {
     "project": "https://github.com/melMass/comfy_mtb",  # The address that the `name` value will link to on Node Class Views
     "description": "Set of nodes that enhance your animation workflow and provide a range of useful tools including features such as manipulating bounding boxes, perform color corrections, swap faces in images, interpolate frames for smooth animation, export to ProRes format, apply various image operations, work with latent spaces, generate QR codes, and create normal and height maps for textures.",
 }
-

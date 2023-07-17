@@ -100,8 +100,8 @@ class FaceSwap:
     ):
         def do_swap(img):
             model_management.throw_exception_if_processing_interrupted()
-            img = tensor2pil(img)
-            ref = tensor2pil(reference)
+            img = tensor2pil(img)[0]
+            ref = tensor2pil(reference)[0]
             face_ids = {
                 int(x) for x in faces_index.strip(",").split(",") if x.isnumeric()
             }

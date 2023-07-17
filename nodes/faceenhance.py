@@ -111,7 +111,7 @@ class BGUpscaleWrapper:
 
         self.upscale_model.cpu()
         s = torch.clamp(s.movedim(-3, -1), min=0, max=1.0)
-        return (tensor2np(s),)
+        return (tensor2np(s)[0],)
 
 
 import sys
@@ -150,9 +150,8 @@ class RestoreFace:
         weight,
         save_tmp_steps,
     ) -> torch.Tensor:
-        pimage = tensor2pil(image)
-        width, height = pimage.size
-
+        pimage = tensor2np(image)[0]
+        width, height = pimage.shape[1], pimage.shape[0]
         source_img = cv2.cvtColor(np.array(pimage), cv2.COLOR_RGB2BGR)
 
         sys.stdout = NullWriter()
