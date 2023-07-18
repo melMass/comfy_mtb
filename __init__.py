@@ -8,6 +8,7 @@ from .utils import here
 import importlib
 import os
 import ast
+import json
 
 NODE_CLASS_MAPPINGS = {}
 NODE_DISPLAY_NAME_MAPPINGS = {}
@@ -113,6 +114,18 @@ for node_class in nodes:
     NODE_CLASS_MAPPINGS_DEBUG[node_label] = node_class.__doc__
     # TODO: I removed this, I find it more convenient to write without spaces, but it breaks every of my workflows
     # TODO (cont): and until I find a way to automate the conversion, I'll leave it like this
+
+    if os.environ.get("MTB_EXPORT"):
+        with open(here / "node_list.json", "w") as f:
+            f.write(
+                json.dumps(
+                    {
+                        k: NODE_CLASS_MAPPINGS_DEBUG[k]
+                        for k in sorted(NODE_CLASS_MAPPINGS_DEBUG.keys())
+                    },
+                    indent=4,
+                )
+            )
 
 log.info(
     f"Loaded the following nodes:\n\t"
