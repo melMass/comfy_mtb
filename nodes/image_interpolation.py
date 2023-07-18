@@ -33,6 +33,10 @@ def get_image(filename, subfolder, folder_type):
 
 
 class GetBatchFromHistory:
+    """Experimental node to load images from the history of the server.
+
+    Queue item without output are ignore in the count."""
+
     @classmethod
     def INPUT_TYPES(cls):
         return {

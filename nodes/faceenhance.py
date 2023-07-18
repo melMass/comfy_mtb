@@ -16,6 +16,8 @@ from typing import Tuple
 
 
 class LoadFaceEnhanceModel:
+    """Loads a GFPGan or RestoreFormer model for face enhancement."""
+
     def __init__(self) -> None:
         pass
 
@@ -118,6 +120,8 @@ import sys
 
 
 class RestoreFace:
+    """Uses GFPGan to restore faces"""
+
     def __init__(self) -> None:
         pass
 

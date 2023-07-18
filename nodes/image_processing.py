@@ -276,6 +276,35 @@ class ImageCompare:
         return (torch.from_numpy(image),)
 
 
+import requests
+
+
+class LoadImageFromUrl:
+    """Load an image from the given URL"""
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "url": (
+                    "STRING",
+                    {
+                        "default": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a7/Example.jpg/800px-Example.jpg"
+                    },
+                ),
+            }
+        }
+
+    RETURN_TYPES = ("IMAGE",)
+    FUNCTION = "load"
+    CATEGORY = "image"
+
+    def load(self, url):
+        # get the image from the url
+        image = Image.open(requests.get(url, stream=True).raw)
+        return (pil2tensor(image),)
+
+
 class Denoise:
     """Denoise an image using total variation minimization."""
 
@@ -477,9 +506,7 @@ class ImagePremultiply:
 
 
 class ImageResizeFactor:
-    """
-    Extracted mostly from WAS Node Suite, with a few edits (most notably multiple image support) and less features.
-    """
+    """Extracted mostly from WAS Node Suite, with a few edits (most notably multiple image support) and less features."""
 
     def __init__(self):
         pass
@@ -717,4 +744,5 @@ __nodes__ = [
     ImagePremultiply,
     ImageResizeFactor,
     SaveImageGrid,
+    LoadImageFromUrl,
 ]
