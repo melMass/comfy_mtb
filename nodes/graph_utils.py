@@ -1,6 +1,7 @@
 import torch
 import folder_paths
 import os
+from ..log import log
 
 
 class SaveTensors:
@@ -64,6 +65,33 @@ class SaveTensors:
         return f"{filename_prefix}_{counter:05}"
 
 
-__nodes__ = [
-    SaveTensors,
-]
+class StringReplace:
+    """Basic string replacement"""
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "string": ("STRING", {"forceInput": True}),
+                "old": ("STRING", {"default": ""}),
+                "new": ("STRING", {"default": ""}),
+            }
+        }
+
+    FUNCTION = "replace_str"
+    RETURN_TYPES = ("STRING",)
+    CATEGORY = "string"
+
+    def replace_str(self, string: str, old: str, new: str):
+        log.debug(f"Current string: {string}")
+        log.debug(f"Find string: {old}")
+        log.debug(f"Replace string: {new}")
+
+        string = string.replace(old, new)
+
+        log.debug(f"New string: {string}")
+
+        return (string,)
+
+
+__nodes__ = [SaveTensors, StringReplace]

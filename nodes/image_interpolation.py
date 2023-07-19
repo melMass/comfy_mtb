@@ -59,6 +59,7 @@ class GetBatchFromHistory:
         offset=0,
     ):
         if not enable or count == 0:
+            log.debug("Load from history is disabled for this iteration")
             return (torch.zeros(0),)
         frames = []
         server_address = "localhost:3000"

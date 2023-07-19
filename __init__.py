@@ -14,6 +14,8 @@ NODE_CLASS_MAPPINGS = {}
 NODE_DISPLAY_NAME_MAPPINGS = {}
 NODE_CLASS_MAPPINGS_DEBUG = {}
 
+__version__ = "0.1.0"
+
 
 def extract_nodes_from_source(filename):
     source_code = ""
@@ -134,6 +136,26 @@ log.info(
         for k, doc in NODE_CLASS_MAPPINGS_DEBUG.items()
     )
 )
+
+# - ENDPOINT
+from server import PromptServer
+from .log import mklog
+from aiohttp import web
+
+endlog = mklog("endpoint")
+
+
+@PromptServer.instance.routes.get("/mtb-status")
+async def get_full_library(request):
+    files = []
+    endlog.debug("Getting status")
+    return web.json_response(
+        {
+            "registered": NODE_CLASS_MAPPINGS_DEBUG,
+            "failed": failed,
+        }
+    )
+
 
 # - WAS Dictionary
 MANIFEST = {
