@@ -9,7 +9,7 @@ class SaveTensors:
 
     def __init__(self):
         self.output_dir = folder_paths.get_output_directory()
-        self.type = "output"
+        self.type = "mtb/debug"
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -27,7 +27,7 @@ class SaveTensors:
     FUNCTION = "save"
     OUTPUT_NODE = True
     RETURN_TYPES = ()
-    CATEGORY = "utils"
+    CATEGORY = "mtb/debug"
 
     def save(
         self,
@@ -80,7 +80,7 @@ class StringReplace:
 
     FUNCTION = "replace_str"
     RETURN_TYPES = ("STRING",)
-    CATEGORY = "string"
+    CATEGORY = "mtb/string"
 
     def replace_str(self, string: str, old: str, new: str):
         log.debug(f"Current string: {string}")

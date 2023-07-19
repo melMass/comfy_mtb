@@ -52,7 +52,7 @@ class LoadFaceEnhanceModel:
     RETURN_TYPES = ("FACEENHANCE_MODEL",)
     RETURN_NAMES = ("model",)
     FUNCTION = "load_model"
-    CATEGORY = "face"
+    CATEGORY = "mtb/facetools"
 
     def load_model(self, model_name, upscale=2, bg_upsampler=None):
         basic = "RestoreFormer" not in model_name
@@ -127,7 +127,7 @@ class RestoreFace:
 
     RETURN_TYPES = ("IMAGE",)
     FUNCTION = "restore"
-    CATEGORY = "face"
+    CATEGORY = "mtb/facetools"
 
     @classmethod
     def INPUT_TYPES(cls):

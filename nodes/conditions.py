@@ -35,7 +35,7 @@ class SmartStep:
     RETURN_TYPES = ("INT", "INT", "INT")
     RETURN_NAMES = ("step", "start", "end")
     FUNCTION = "do_step"
-    CATEGORY = "conditioning"
+    CATEGORY = "mtb/conditioning"
 
     def do_step(self, step, start_percent, end_percent):
         start = int(step * start_percent / 100)
@@ -92,7 +92,7 @@ class StylesLoader:
             }
         }
 
-    CATEGORY = "conditioning"
+    CATEGORY = "mtb/conditioning"
 
     RETURN_TYPES = ("STRING", "STRING")
     RETURN_NAMES = ("positive", "negative")
@@ -168,7 +168,7 @@ class TextToImage:
     RETURN_TYPES = ("IMAGE",)
     RETURN_NAMES = ("image",)
     FUNCTION = "text_to_image"
-    CATEGORY = "utils"
+    CATEGORY = "mtb/generate"
 
     def text_to_image(
         self, text, font, wrap, font_size, width, height, color, background

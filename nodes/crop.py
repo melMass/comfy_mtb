@@ -6,6 +6,7 @@ import numpy as np
 
 class BoundingBox:
     """The bounding box (BBOX) custom type used by other nodes"""
+
     def __init__(self):
         pass
 
@@ -28,7 +29,7 @@ class BoundingBox:
 
     RETURN_TYPES = ("BBOX",)
     FUNCTION = "do_crop"
-    CATEGORY = "image/crop"
+    CATEGORY = "mtb/crop"
 
     def do_crop(self, x, y, width, height):
         return (x, y, width, height)
@@ -36,6 +37,7 @@ class BoundingBox:
 
 class BBoxFromMask:
     """From a mask extract the bounding box"""
+
     def __init__(self):
         pass
 
@@ -59,10 +61,9 @@ class BBoxFromMask:
         "image (optional)",
     )
     FUNCTION = "extract_bounding_box"
-    CATEGORY = "image/crop"
+    CATEGORY = "mtb/crop"
 
     def extract_bounding_box(self, mask: torch.Tensor, image=None):
-
         mask = tensor2pil(mask)
 
         alpha_channel = np.array(mask)
@@ -92,6 +93,7 @@ class Crop:
     The bounding box can be given as a tuple of (x, y, width, height) or as a BBOX type
     The BBOX input takes precedence over the tuple input
     """
+
     def __init__(self):
         pass
 
@@ -120,12 +122,11 @@ class Crop:
     RETURN_TYPES = ("IMAGE", "MASK", "BBOX")
     FUNCTION = "do_crop"
 
-    CATEGORY = "image/crop"
+    CATEGORY = "mtb/crop"
 
     def do_crop(
         self, image: torch.Tensor, mask=None, x=0, y=0, width=256, height=256, bbox=None
     ):
-
         image = image.numpy()
         if mask:
             mask = mask.numpy()
@@ -149,6 +150,7 @@ class Uncrop:
 
     The bounding box can be given as a tuple of (x, y, width, height) or as a BBOX type
     The BBOX input takes precedence over the tuple input"""
+
     def __init__(self):
         pass
 
@@ -169,7 +171,7 @@ class Uncrop:
     RETURN_TYPES = ("IMAGE",)
     FUNCTION = "do_crop"
 
-    CATEGORY = "image/crop"
+    CATEGORY = "mtb/crop"
 
     def do_crop(self, image, crop_image, bbox, border_blending):
         def inset_border(image, border_width=20, border_color=(0)):
@@ -214,9 +216,4 @@ class Uncrop:
         return (pil2tensor(image.convert("RGB")),)
 
 
-__nodes__ = [
-    BBoxFromMask,
-    BoundingBox,
-    Crop,
-    Uncrop
-]
+__nodes__ = [BBoxFromMask, BoundingBox, Crop, Uncrop]

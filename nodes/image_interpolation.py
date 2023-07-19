@@ -49,7 +49,7 @@ class GetBatchFromHistory:
 
     RETURN_TYPES = ("IMAGE",)
     RETURN_NAMES = "images"
-    CATEGORY = "animation"
+    CATEGORY = "mtb/animation"
     FUNCTION = "load_from_history"
 
     def load_from_history(
@@ -129,7 +129,7 @@ class LoadFilmModel:
 
     RETURN_TYPES = ("FILM_MODEL",)
     FUNCTION = "load_model"
-    CATEGORY = "face"
+    CATEGORY = "mtb/frame iterpolation"
 
     def load_model(self, film_model: str):
         model_path = Path(folder_paths.models_dir) / "FILM" / film_model
@@ -163,7 +163,7 @@ class FilmInterpolation:
 
     RETURN_TYPES = ("IMAGE",)
     FUNCTION = "do_interpolation"
-    CATEGORY = "animation"
+    CATEGORY = "mtb/frame iterpolation"
 
     def do_interpolation(
         self,
@@ -218,7 +218,7 @@ class ConcatImages:
 
     RETURN_TYPES = ("IMAGE",)
     FUNCTION = "concat_images"
-    CATEGORY = "animation"
+    CATEGORY = "mtb/image"
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -270,7 +270,7 @@ class ExportToProres:
     RETURN_TYPES = ("VIDEO",)
     OUTPUT_NODE = True
     FUNCTION = "export_prores"
-    CATEGORY = "animation"
+    CATEGORY = "mtb/IO"
 
     def export_prores(
         self,

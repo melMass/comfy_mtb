@@ -18,7 +18,7 @@ class LatentLerp:
     RETURN_TYPES = ("LATENT",)
     FUNCTION = "lerp_latent"
 
-    CATEGORY = "latent"
+    CATEGORY = "mtb/latent"
 
     def lerp_latent(self, A, B, t):
         a = A.copy()

@@ -68,7 +68,7 @@ class ColorCorrect:
 
     RETURN_TYPES = ("IMAGE",)
     FUNCTION = "correct"
-    CATEGORY = "image/postprocessing"
+    CATEGORY = "mtb/image processing"
 
     @staticmethod
     def gamma_correction_tensor(image, gamma):
@@ -198,7 +198,7 @@ class HsvToRgb:
 
     RETURN_TYPES = ("IMAGE",)
     FUNCTION = "convert"
-    CATEGORY = "image/postprocessing"
+    CATEGORY = "mtb/image processing"
 
     def convert(self, image):
         image = image.numpy()
@@ -228,7 +228,7 @@ class RgbToHsv:
 
     RETURN_TYPES = ("IMAGE",)
     FUNCTION = "convert"
-    CATEGORY = "image/postprocessing"
+    CATEGORY = "mtb/image processing"
 
     def convert(self, image):
         image = image.numpy()
@@ -261,7 +261,7 @@ class ImageCompare:
 
     RETURN_TYPES = ("IMAGE",)
     FUNCTION = "compare"
-    CATEGORY = "image"
+    CATEGORY = "mtb/image"
 
     def compare(self, imageA: torch.Tensor, imageB: torch.Tensor, mode):
         imageA = imageA.numpy()
@@ -297,7 +297,7 @@ class LoadImageFromUrl:
 
     RETURN_TYPES = ("IMAGE",)
     FUNCTION = "load"
-    CATEGORY = "image"
+    CATEGORY = "mtb/IO"
 
     def load(self, url):
         # get the image from the url
@@ -325,7 +325,7 @@ class Denoise:
 
     RETURN_TYPES = ("IMAGE",)
     FUNCTION = "denoise"
-    CATEGORY = "image/postprocessing"
+    CATEGORY = "mtb/image processing"
 
     def denoise(self, image: torch.Tensor, weight):
         image = image.numpy()
@@ -360,7 +360,7 @@ class Blur:
 
     RETURN_TYPES = ("IMAGE",)
     FUNCTION = "blur"
-    CATEGORY = "image/postprocessing"
+    CATEGORY = "mtb/image processing"
 
     def blur(self, image: torch.Tensor, sigmaX, sigmaY):
         image = image.numpy()
@@ -387,7 +387,7 @@ class DeglazeImage:
     def INPUT_TYPES(cls):
         return {"required": {"image": ("IMAGE",)}}
 
-    CATEGORY = "image"
+    CATEGORY = "mtb/image processing"
 
     RETURN_TYPES = ("IMAGE",)
     FUNCTION = "deglaze_image"
@@ -412,7 +412,7 @@ class MaskToImage:
             }
         }
 
-    CATEGORY = "image/mask"
+    CATEGORY = "mtb/generate"
 
     RETURN_TYPES = ("IMAGE",)
 
@@ -453,7 +453,7 @@ class ColoredImage:
             }
         }
 
-    CATEGORY = "image"
+    CATEGORY = "mtb/generate"
 
     RETURN_TYPES = ("IMAGE",)
 
@@ -483,7 +483,7 @@ class ImagePremultiply:
             }
         }
 
-    CATEGORY = "image"
+    CATEGORY = "mtb/image"
     RETURN_TYPES = ("IMAGE",)
     FUNCTION = "premultiply"
 
@@ -531,7 +531,7 @@ class ImageResizeFactor:
             },
         }
 
-    CATEGORY = "image"
+    CATEGORY = "mtb/image"
     RETURN_TYPES = ("IMAGE", "MASK")
     FUNCTION = "resize"
 
@@ -651,7 +651,7 @@ class SaveImageGrid:
 
     OUTPUT_NODE = True
 
-    CATEGORY = "image"
+    CATEGORY = "mtb/IO"
 
     def create_image_grid(self, image_list):
         total_images = len(image_list)

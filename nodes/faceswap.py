@@ -46,7 +46,7 @@ class LoadFaceSwapModel:
 
     RETURN_TYPES = ("FACESWAP_MODEL",)
     FUNCTION = "load_model"
-    CATEGORY = "face"
+    CATEGORY = "mtb/facetools"
 
     def load_model(self, faceswap_model: str):
         model_path = os.path.join(
@@ -88,7 +88,7 @@ class FaceSwap:
 
     RETURN_TYPES = ("IMAGE",)
     FUNCTION = "swap"
-    CATEGORY = "face"
+    CATEGORY = "mtb/facetools"
 
     def swap(
         self,

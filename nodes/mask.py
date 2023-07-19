@@ -52,7 +52,7 @@ class ImageRemoveBackgroundRembg:
         "Image",
     )
     FUNCTION = "remove_background"
-    CATEGORY = "image"
+    CATEGORY = "mtb/image"
 
     # bgcolor: Optional[Tuple[int, int, int, int]]
     def remove_background(

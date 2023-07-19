@@ -271,7 +271,7 @@ class DeepBump:
     RETURN_TYPES = ("IMAGE",)
     FUNCTION = "apply"
 
-    CATEGORY = "image processing"
+    CATEGORY = "mtb/textures"
 
     def apply(
         self,
