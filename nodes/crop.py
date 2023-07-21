@@ -1,10 +1,25 @@
 import torch
-from ..utils import tensor2pil, pil2tensor
-from PIL import Image, ImageFilter, ImageDraw
+from ..utils import tensor2pil, pil2tensor, tensor2np, np2tensor
+from PIL import Image, ImageFilter, ImageDraw, ImageChops
 import numpy as np
 
+from ..log import log
 
-class BoundingBox:
+
+class BoolInput:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {"required": {"bool": ("BOOL",)}}
+
+    RETURN_TYPES = ("BOOL",)
+    FUNCTION = "do_bool"
+    CATEGORY = "mtb/test"
+
+    def do_bool(self, bool):
+        return (bool,)
+
+
+class Bbox:
     """The bounding box (BBOX) custom type used by other nodes"""
 
     def __init__(self):
@@ -14,6 +29,7 @@ class BoundingBox:
     def INPUT_TYPES(cls):
         return {
             "required": {
+                # "bbox": ("BBOX",),
                 "x": ("INT", {"default": 0, "max": 10000000, "min": 0, "step": 1}),
                 "y": ("INT", {"default": 0, "max": 10000000, "min": 0, "step": 1}),
                 "width": (
@@ -31,11 +47,12 @@ class BoundingBox:
     FUNCTION = "do_crop"
     CATEGORY = "mtb/crop"
 
-    def do_crop(self, x, y, width, height):
+    def do_crop(self, x, y, width, height):  # bbox
         return (x, y, width, height)
+        # return bbox
 
 
-class BBoxFromMask:
+class BboxFromMask:
     """From a mask extract the bounding box"""
 
     def __init__(self):
@@ -64,9 +81,22 @@ class BBoxFromMask:
     CATEGORY = "mtb/crop"
 
     def extract_bounding_box(self, mask: torch.Tensor, image=None):
-        mask = tensor2pil(mask)
+        # if image != None:
+        #     if mask.size(0) != image.size(0):
+        #         if mask.size(0) != 1:
+        #             log.error(
+        #                 f"Batch count mismatch for mask and image, it can either be 1 mask for X images, or X masks for X images (mask: {mask.shape} | image: {image.shape})"
+        #             )
 
-        alpha_channel = np.array(mask)
+        #             raise Exception(
+        #                 f"Batch count mismatch for mask and image, it can either be 1 mask for X images, or X masks for X images (mask: {mask.shape} | image: {image.shape})"
+        #             )
+
+        _mask = tensor2pil(1.0 - mask)[0]
+
+        # we invert it
+        alpha_channel = np.array(_mask)
+
         non_zero_indices = np.nonzero(alpha_channel)
 
         min_x, max_x = np.min(non_zero_indices[1]), np.max(non_zero_indices[1])
@@ -75,11 +105,16 @@ class BBoxFromMask:
         # Create a bounding box tuple
         if image != None:
             # Convert the image to a NumPy array
-            image = image.numpy()
-            # Crop the image from the bounding box
-            image = image[:, min_y:max_y, min_x:max_x]
-            image = torch.from_numpy(image)
+            imgs = tensor2np(image)
+            out = []
+            for img in imgs:
+                # Crop the image from the bounding box
+                img = img[min_y:max_y, min_x:max_x, :]
+                log.debug(f"Cropped image to shape {img.shape}")
+                out.append(img)
 
+            image = np2tensor(out)
+            log.debug(f"Cropped images shape: {image.shape}")
         bounding_box = (min_x, min_y, max_x - min_x, max_y - min_y)
         return (
             bounding_box,
@@ -145,6 +180,38 @@ class Crop:
         )
 
 
+# def calculate_intersection(rect1, rect2):
+#     x_left = max(rect1[0], rect2[0])
+#     y_top = max(rect1[1], rect2[1])
+#     x_right = min(rect1[2], rect2[2])
+#     y_bottom = min(rect1[3], rect2[3])
+
+#     return (x_left, y_top, x_right, y_bottom)
+
+
+def bbox_check(bbox, target_size=None):
+    if not target_size:
+        return bbox
+
+    new_bbox = (
+        bbox[0],
+        bbox[1],
+        min(target_size[0] - bbox[0], bbox[2]),
+        min(target_size[1] - bbox[1], bbox[3]),
+    )
+    if new_bbox != bbox:
+        log.warn(f"BBox too big, constrained to {new_bbox}")
+
+    return new_bbox
+
+
+def bbox_to_region(bbox, target_size=None):
+    bbox = bbox_check(bbox, target_size)
+
+    # to region
+    return (bbox[0], bbox[1], bbox[0] + bbox[2], bbox[1] + bbox[3])
+
+
 class Uncrop:
     """Uncrops an image to a given bounding box
 
@@ -184,36 +251,63 @@ class Uncrop:
             )
             return bordered_image
 
-        image = tensor2pil(image)
-        crop_img = tensor2pil(crop_image)
-        crop_img = crop_img.convert("RGB")
+        single = image.size(0) == 1
+        if image.size(0) != crop_image.size(0):
+            if not single:
+                raise ValueError(
+                    "The Image batch count is greater than 1, but doesn't match the crop_image batch count. If using batches they should either match or only crop_image must be greater than 1"
+                )
 
-        # uncrop the image based on the bounding box
-        bb_x, bb_y, bb_width, bb_height = bbox
+        images = tensor2pil(image)
+        crop_imgs = tensor2pil(crop_image)
+        out_images = []
+        for i, crop in enumerate(crop_imgs):
+            if single:
+                img = images[0]
+            else:
+                img = images[i]
 
-        if border_blending > 1.0:
-            border_blending = 1.0
-        elif border_blending < 0.0:
-            border_blending = 0.0
+            # uncrop the image based on the bounding box
+            bb_x, bb_y, bb_width, bb_height = bbox
 
-        blend_ratio = (max(crop_img.size) / 2) * float(border_blending)
+            paste_region = bbox_to_region((bb_x, bb_y, bb_width, bb_height), img.size)
+            # log.debug(f"Paste region: {paste_region}")
+            # new_region = adjust_paste_region(img.size, paste_region)
+            # log.debug(f"Adjusted paste region: {new_region}")
+            # # Check if the adjusted paste region is different from the original
 
-        blend = image.convert("RGBA")
-        mask = Image.new("L", image.size, 0)
+            crop_img = crop.convert("RGB")
 
-        mask_block = Image.new("L", (bb_width, bb_height), 255)
-        mask_block = inset_border(mask_block, int(blend_ratio / 2), (0))
+            log.debug(f"Crop image size: {crop_img.size}")
+            log.debug(f"Image size: {img.size}")
 
-        mask.paste(mask_block, (bb_x, bb_y, bb_x + bb_width, bb_y + bb_height))
-        blend.paste(crop_img, (bb_x, bb_y, bb_x + bb_width, bb_y + bb_height))
+            if border_blending > 1.0:
+                border_blending = 1.0
+            elif border_blending < 0.0:
+                border_blending = 0.0
 
-        mask = mask.filter(ImageFilter.BoxBlur(radius=blend_ratio / 4))
-        mask = mask.filter(ImageFilter.GaussianBlur(radius=blend_ratio / 4))
+            blend_ratio = (max(crop_img.size) / 2) * float(border_blending)
 
-        blend.putalpha(mask)
-        image = Image.alpha_composite(image.convert("RGBA"), blend)
+            blend = img.convert("RGBA")
+            mask = Image.new("L", img.size, 0)
 
-        return (pil2tensor(image.convert("RGB")),)
+            mask_block = Image.new("L", (bb_width, bb_height), 255)
+            mask_block = inset_border(mask_block, int(blend_ratio / 2), (0))
+
+            mask.paste(mask_block, paste_region)
+            log.debug(f"Blend size: {blend.size} | kind {blend.mode}")
+            log.debug(f"Crop image size: {crop_img.size} | kind {crop_img.mode}")
+            log.debug(f"BBox: {paste_region}")
+            blend.paste(crop_img, paste_region)
+
+            mask = mask.filter(ImageFilter.BoxBlur(radius=blend_ratio / 4))
+            mask = mask.filter(ImageFilter.GaussianBlur(radius=blend_ratio / 4))
+
+            blend.putalpha(mask)
+            img = Image.alpha_composite(img.convert("RGBA"), blend)
+            out_images.append(img.convert("RGB"))
+
+        return (pil2tensor(out_images),)
 
 
-__nodes__ = [BBoxFromMask, BoundingBox, Crop, Uncrop]
+__nodes__ = [BboxFromMask, Bbox, Crop, Uncrop, BoolInput]
