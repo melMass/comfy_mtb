@@ -8,188 +8,512 @@ import { ComfyWidgets } from "/scripts/widgets.js";
 
 const newTypes = ["BOOL", "COLOR", "BBOX"]
 
-const bboxWidget = (key, val) => {
-    /** @type {import("./types/litegraph").IWidget} */
-    const widget = {
-        name: key,
-        type: "BBOX",
-        // options: val,
-        y: 0,
-        value: val?.default || [0, 0, 0, 0],
-        options: {},
 
-        draw: function (ctx,
-            node,
-            widget_width,
-            widgetY,
-            height) {
-            const hide = this.type !== "BBOX" && app.canvas.ds.scale > 0.5;
+export const MtbWidgets = {
+    BBOX: (key, val) => {
+        /** @type {import("./types/litegraph").IWidget} */
+        const widget = {
+            name: key,
+            type: "BBOX",
+            // options: val,
+            y: 0,
+            value: val?.default || [0, 0, 0, 0],
+            options: {},
 
-            const show_text = true;
-            const outline_color = LiteGraph.WIDGET_OUTLINE_COLOR;
-            const background_color = LiteGraph.WIDGET_BGCOLOR;
-            const text_color = LiteGraph.WIDGET_TEXT_COLOR;
-            const secondary_text_color = LiteGraph.WIDGET_SECONDARY_TEXT_COLOR;
-            const H = LiteGraph.NODE_WIDGET_HEIGHT;
+            draw: function (ctx,
+                node,
+                widget_width,
+                widgetY,
+                height) {
+                const hide = this.type !== "BBOX" && app.canvas.ds.scale > 0.5;
 
-            var margin = 15;
-            var numWidgets = 4; // Number of stacked widgets
+                const show_text = true;
+                const outline_color = LiteGraph.WIDGET_OUTLINE_COLOR;
+                const background_color = LiteGraph.WIDGET_BGCOLOR;
+                const text_color = LiteGraph.WIDGET_TEXT_COLOR;
+                const secondary_text_color = LiteGraph.WIDGET_SECONDARY_TEXT_COLOR;
+                const H = LiteGraph.NODE_WIDGET_HEIGHT;
 
-            if (hide) return;
+                var margin = 15;
+                var numWidgets = 4; // Number of stacked widgets
 
-            for (let i = 0; i < numWidgets; i++) {
-                let currentY = widgetY + i * (H + margin); // Adjust Y position for each widget
+                if (hide) return;
 
-                ctx.textAlign = "left";
-                ctx.strokeStyle = outline_color;
-                ctx.fillStyle = background_color;
-                ctx.beginPath();
-                if (show_text)
-                    ctx.roundRect(margin, currentY, widget_width - margin * 2, H, [H * 0.5]);
-                else
-                    ctx.rect(margin, currentY, widget_width - margin * 2, H);
-                ctx.fill();
-                if (show_text) {
-                    if (!this.disabled)
-                        ctx.stroke();
-                    ctx.fillStyle = text_color;
-                    if (!this.disabled) {
-                        ctx.beginPath();
-                        ctx.moveTo(margin + 16, currentY + 5);
-                        ctx.lineTo(margin + 6, currentY + H * 0.5);
-                        ctx.lineTo(margin + 16, currentY + H - 5);
-                        ctx.fill();
-                        ctx.beginPath();
-                        ctx.moveTo(widget_width - margin - 16, currentY + 5);
-                        ctx.lineTo(widget_width - margin - 6, currentY + H * 0.5);
-                        ctx.lineTo(widget_width - margin - 16, currentY + H - 5);
-                        ctx.fill();
+                for (let i = 0; i < numWidgets; i++) {
+                    let currentY = widgetY + i * (H + margin); // Adjust Y position for each widget
+
+                    ctx.textAlign = "left";
+                    ctx.strokeStyle = outline_color;
+                    ctx.fillStyle = background_color;
+                    ctx.beginPath();
+                    if (show_text)
+                        ctx.roundRect(margin, currentY, widget_width - margin * 2, H, [H * 0.5]);
+                    else
+                        ctx.rect(margin, currentY, widget_width - margin * 2, H);
+                    ctx.fill();
+                    if (show_text) {
+                        if (!this.disabled)
+                            ctx.stroke();
+                        ctx.fillStyle = text_color;
+                        if (!this.disabled) {
+                            ctx.beginPath();
+                            ctx.moveTo(margin + 16, currentY + 5);
+                            ctx.lineTo(margin + 6, currentY + H * 0.5);
+                            ctx.lineTo(margin + 16, currentY + H - 5);
+                            ctx.fill();
+                            ctx.beginPath();
+                            ctx.moveTo(widget_width - margin - 16, currentY + 5);
+                            ctx.lineTo(widget_width - margin - 6, currentY + H * 0.5);
+                            ctx.lineTo(widget_width - margin - 16, currentY + H - 5);
+                            ctx.fill();
+                        }
+                        ctx.fillStyle = secondary_text_color;
+                        ctx.fillText(this.label || this.name, margin * 2 + 5, currentY + H * 0.7);
+                        ctx.fillStyle = text_color;
+                        ctx.textAlign = "right";
+
+                        ctx.fillText(
+                            Number(this.value).toFixed(
+                                this.options?.precision !== undefined
+                                    ? this.options.precision
+                                    : 3
+                            ),
+                            widget_width - margin * 2 - 20,
+                            currentY + H * 0.7
+                        );
                     }
-                    ctx.fillStyle = secondary_text_color;
-                    ctx.fillText(this.label || this.name, margin * 2 + 5, currentY + H * 0.7);
-                    ctx.fillStyle = text_color;
-                    ctx.textAlign = "right";
-
-                    ctx.fillText(
-                        Number(this.value).toFixed(
-                            this.options?.precision !== undefined
-                                ? this.options.precision
-                                : 3
-                        ),
-                        widget_width - margin * 2 - 20,
-                        currentY + H * 0.7
-                    );
                 }
-            }
-        },
-        mouse: function (event, pos, node) {
-            var old_value = this.value;
-            var x = pos[0] - node.pos[0];
-            var y = pos[1] - node.pos[1];
-            var width = node.size[0];
-            var H = LiteGraph.NODE_WIDGET_HEIGHT;
-            var margin = 5;
-            var numWidgets = 4; // Number of stacked widgets
+            },
+            mouse: function (event, pos, node) {
+                var old_value = this.value;
+                var x = pos[0] - node.pos[0];
+                var y = pos[1] - node.pos[1];
+                var width = node.size[0];
+                var H = LiteGraph.NODE_WIDGET_HEIGHT;
+                var margin = 5;
+                var numWidgets = 4; // Number of stacked widgets
 
-            for (let i = 0; i < numWidgets; i++) {
-                let currentY = y + i * (H + margin); // Adjust Y position for each widget
+                for (let i = 0; i < numWidgets; i++) {
+                    let currentY = y + i * (H + margin); // Adjust Y position for each widget
 
 
-                if (event.type == LiteGraph.pointerevents_method + "move" && this.type == "BBOX") {
-                    if (event.deltaX)
-                        this.value += event.deltaX * 0.1 * (this.options?.step || 1);
-                    if (this.options.min != null && this.value < this.options.min) {
-                        this.value = this.options.min;
-                    }
-                    if (this.options.max != null && this.value > this.options.max) {
-                        this.value = this.options.max;
-                    }
-                } else if (event.type == LiteGraph.pointerevents_method + "down") {
-                    var values = this.options?.values;
-                    if (values && values.constructor === Function) {
-                        values = this.options.values(w, node);
-                    }
-                    var values_list = null;
-
-                    var delta = x < 40 ? -1 : x > widget_width - 40 ? 1 : 0;
-                    if (this.type == "BBOX") {
-                        this.value += delta * 0.1 * (this.options.step || 1);
+                    if (event.type == LiteGraph.pointerevents_method + "move" && this.type == "BBOX") {
+                        if (event.deltaX)
+                            this.value += event.deltaX * 0.1 * (this.options?.step || 1);
                         if (this.options.min != null && this.value < this.options.min) {
                             this.value = this.options.min;
                         }
                         if (this.options.max != null && this.value > this.options.max) {
                             this.value = this.options.max;
                         }
-                    } else if (delta) { //clicked in arrow, used for combos
-                        var index = -1;
-                        this.last_mouseclick = 0; //avoids dobl click event
-                        if (values.constructor === Object)
-                            index = values_list.indexOf(String(this.value)) + delta;
-                        else
-                            index = values_list.indexOf(this.value) + delta;
-                        if (index >= values_list.length) {
-                            index = values_list.length - 1;
+                    } else if (event.type == LiteGraph.pointerevents_method + "down") {
+                        var values = this.options?.values;
+                        if (values && values.constructor === Function) {
+                            values = this.options.values(w, node);
                         }
-                        if (index < 0) {
-                            index = 0;
-                        }
-                        if (values.constructor === Array)
-                            this.value = values[index];
-                        else
-                            this.value = index;
-                    }
-                } //end mousedown
-                else if (event.type == LiteGraph.pointerevents_method + "up" && this.type == "BBOX") {
-                    var delta = x < 40 ? -1 : x > widget_width - 40 ? 1 : 0;
-                    if (event.click_time < 200 && delta == 0) {
-                        this.prompt("Value", this.value, function (v) {
-                            // check if v is a valid equation or a number
-                            if (/^[0-9+\-*/()\s]+|\d+\.\d+$/.test(v)) {
-                                try {//solve the equation if possible
-                                    v = eval(v);
-                                } catch (e) { }
+                        var values_list = null;
+
+                        var delta = x < 40 ? -1 : x > widget_width - 40 ? 1 : 0;
+                        if (this.type == "BBOX") {
+                            this.value += delta * 0.1 * (this.options.step || 1);
+                            if (this.options.min != null && this.value < this.options.min) {
+                                this.value = this.options.min;
                             }
-                            this.value = Number(v);
-                            shared.inner_value_change(this, this.value, event);
-                        }.bind(w),
-                            event);
+                            if (this.options.max != null && this.value > this.options.max) {
+                                this.value = this.options.max;
+                            }
+                        } else if (delta) { //clicked in arrow, used for combos
+                            var index = -1;
+                            this.last_mouseclick = 0; //avoids dobl click event
+                            if (values.constructor === Object)
+                                index = values_list.indexOf(String(this.value)) + delta;
+                            else
+                                index = values_list.indexOf(this.value) + delta;
+                            if (index >= values_list.length) {
+                                index = values_list.length - 1;
+                            }
+                            if (index < 0) {
+                                index = 0;
+                            }
+                            if (values.constructor === Array)
+                                this.value = values[index];
+                            else
+                                this.value = index;
+                        }
+                    } //end mousedown
+                    else if (event.type == LiteGraph.pointerevents_method + "up" && this.type == "BBOX") {
+                        var delta = x < 40 ? -1 : x > widget_width - 40 ? 1 : 0;
+                        if (event.click_time < 200 && delta == 0) {
+                            this.prompt("Value", this.value, function (v) {
+                                // check if v is a valid equation or a number
+                                if (/^[0-9+\-*/()\s]+|\d+\.\d+$/.test(v)) {
+                                    try {//solve the equation if possible
+                                        v = eval(v);
+                                    } catch (e) { }
+                                }
+                                this.value = Number(v);
+                                shared.inner_value_change(this, this.value, event);
+                            }.bind(w),
+                                event);
+                        }
                     }
+
+                    if (old_value != this.value)
+                        setTimeout(
+                            function () {
+                                shared.inner_value_change(this, this.value, event);
+                            }.bind(this),
+                            20
+                        );
+
+                    app.canvas.setDirty(true);
                 }
 
-                if (old_value != this.value)
-                    setTimeout(
-                        function () {
-                            shared.inner_value_change(this, this.value, event);
-                        }.bind(this),
-                        20
-                    );
+            },
+            computeSize: function (width) {
+                return [width, LiteGraph.NODE_WIDGET_HEIGHT * 4];
+            },
+            // onDrawBackground: function (ctx) {
+            //     if (!this.flags.collapsed) return;
+            //     this.inputEl.style.display = "block";
+            //     this.inputEl.style.top = this.graphcanvas.offsetTop + this.pos[1] + "px";
+            //     this.inputEl.style.left = this.graphcanvas.offsetLeft + this.pos[0] + "px";
+            // },
+            // onInputChange: function (e) {
+            //     const property = e.target.dataset.property;
+            //     const bbox = this.getInputData(0);
+            //     if (!bbox) return;
+            //     bbox[property] = parseFloat(e.target.value);
+            //     this.setOutputData(0, bbox);
+            // }
+        }
 
-                app.canvas.setDirty(true);
+        widget.desc = "Represents a Bounding Box with x, y, width, and height.";
+        return widget
+
+    },
+    BOOL: (key, val, compute = false) => {
+        /** @type {import("/types/litegraph").IWidget} */
+        const widget = {
+            name: key,
+            type: "BOOL",
+            options: { default: false },
+            y: 0,
+            value: val || false,
+            draw: function (ctx,
+                node,
+                widget_width,
+                widgetY,
+                height) {
+                const hide = this.type !== "BOOL" && app.canvas.ds.scale > 0.5
+                if (hide) {
+                    return
+                }
+                const outline_color = LiteGraph.WIDGET_OUTLINE_COLOR;
+                const background_color = LiteGraph.WIDGET_BGCOLOR;
+                const text_color = LiteGraph.WIDGET_TEXT_COLOR;
+                const H = LiteGraph.NODE_WIDGET_HEIGHT;
+                const arrowSize = 8;
+
+                var margin = 15;
+                if (hide) return;
+
+                var currentY = widgetY;
+
+                ctx.textAlign = "left";
+                ctx.strokeStyle = outline_color;
+                ctx.fillStyle = background_color;
+                ctx.beginPath();
+                // ctx.roundRect(margin, currentY, widget_width - margin * 2, H, [H * 0.5]);
+                ctx.rect(margin, currentY, H, H); // Draw checkbox square
+
+                ctx.fill();
+                ctx.stroke();
+
+                ctx.fillStyle = text_color;
+                // ctx.fillText(this.label || this.name, margin * 2 + 5, currentY + H * 0.7);
+                ctx.fillText(this.label || this.name, H + margin * 2, currentY + H * 0.7);
+
+
+                // Draw arrow if the value is true
+                // Draw checkmark if the value is true
+                if (this.value) {
+                    ctx.fillStyle = text_color;
+                    ctx.beginPath();
+                    ctx.moveTo(margin + H * 0.15, currentY + H * 0.5);
+                    ctx.lineTo(margin + H * 0.4, currentY + H * 0.8);
+                    ctx.lineTo(margin + H * 0.85, currentY + H * 0.2);
+                    ctx.stroke();
+                }
+
+            },
+            get value() {
+
+                return this.inputEl.value === "true";
+            },
+            set value(x) {
+                this.inputEl.value = x;
+            },
+            computeSize: function (width) {
+                return [width, 32];
+            },
+            mouse: function (event, pos, node) {
+                // var x = pos[0] - node.pos[0];
+                // var y = pos[1] - node.pos[1];
+                // var width = node.size[0];
+                // var H = LiteGraph.NODE_WIDGET_HEIGHT;
+                // var margin = 15;
+
+                // if (event.type == LiteGraph.pointerevents_method + "down") {
+                //     if (x > margin && x < widget_width - margin && y > widgetY && y < widgetY + H) {
+                //         this.value = !this.value; // Toggle checkbox value
+                //         shared.inner_value_change(this, this.value, event);
+                //         app.canvas.setDirty(true);
+                //     }
+                // }
+                if (event.type === "pointerdown") {
+                    // get widgets of type type : "COLOR"
+                    const widgets = node.widgets.filter(w => w.type === "BOOL");
+
+                    for (const w of widgets) {
+                        // color picker
+                        const rect = [w.last_y, w.last_y + 32];
+                        if (pos[1] > rect[0] && pos[1] < rect[1]) {
+                            // picker.style.position = "absolute";
+                            // picker.style.left = ( pos[0]) + "px";
+                            // picker.style.top = (  pos[1]) + "px";
+
+                            // place at screen center
+                            // picker.style.position = "absolute";
+                            // picker.style.left = (window.innerWidth / 2) + "px";
+                            // picker.style.top = (window.innerHeight / 2) + "px";
+                            // picker.style.transform = "translate(-50%, -50%)";
+                            // picker.style.zIndex = 1000;
+                            console.log("Clicked a BOOL", this.value)
+
+                            this.value = this.value ? "false" : "true"
+
+                        }
+                    }
+                }
+            }
+        }
+
+        // create a checkbox
+        widget.inputEl = document.createElement("input")
+        widget.inputEl.type = "checkbox"
+        widget.inputEl.value = false
+        document.body.appendChild(widget.inputEl);
+        return widget
+
+    },
+    COLOR: (key, val, compute = false) => {
+        /** @type {import("/types/litegraph").IWidget} */
+        const widget = {}
+        widget.y = 0
+        widget.name = key;
+        widget.type = "COLOR";
+        widget.options = { default: "#ff0000" };
+        widget.value = val || "#ff0000";
+        widget.draw = function (ctx,
+            node,
+            widgetWidth,
+            widgetY,
+            height) {
+            const hide = this.type !== "COLOR" && app.canvas.ds.scale > 0.5
+            if (hide) {
+                return
             }
 
-        },
-        computeSize: function (width) {
-            return [width, LiteGraph.NODE_WIDGET_HEIGHT * 4];
-        },
-        // onDrawBackground: function (ctx) {
-        //     if (!this.flags.collapsed) return;
-        //     this.inputEl.style.display = "block";
-        //     this.inputEl.style.top = this.graphcanvas.offsetTop + this.pos[1] + "px";
-        //     this.inputEl.style.left = this.graphcanvas.offsetLeft + this.pos[0] + "px";
-        // },
-        // onInputChange: function (e) {
-        //     const property = e.target.dataset.property;
-        //     const bbox = this.getInputData(0);
-        //     if (!bbox) return;
-        //     bbox[property] = parseFloat(e.target.value);
-        //     this.setOutputData(0, bbox);
-        // }
+            const border = 3;
+            // draw a rect with a border and a fill color
+            ctx.fillStyle = "#000";
+            ctx.fillRect(0, widgetY, widgetWidth, height);
+            ctx.fillStyle = this.value;
+            ctx.fillRect(border, widgetY + border, widgetWidth - border * 2, height - border * 2);
+            // write the input name
+            // choose the fill based on the luminoisty of this.value color
+            const color = parseCss(this.value.default || this.value)
+            if (!color) {
+                return
+            }
+            ctx.fillStyle = shared.isColorBright(color.values, 125) ? "#000" : "#fff";
+
+
+            ctx.font = "14px Arial";
+            ctx.textAlign = "center";
+            ctx.fillText(this.name, widgetWidth * 0.5, widgetY + 14);
+
+
+
+            // ctx.strokeStyle = "#fff";
+            // ctx.strokeRect(border, widgetY + border, widgetWidth - border * 2, height - border * 2);
+
+
+            // ctx.fillStyle = "#000";
+            // ctx.fillRect(widgetWidth/2 - border / 2 , widgetY + border / 2 , widgetWidth/2 + border / 2, height + border / 2);
+            // ctx.fillStyle = this.value;
+            // ctx.fillRect(widgetWidth/2, widgetY, widgetWidth/2, height);
+
+        }
+        widget.mouse = function (e, pos, node) {
+            if (e.type === "pointerdown") {
+                // get widgets of type type : "COLOR"
+                const widgets = node.widgets.filter(w => w.type === "COLOR");
+
+                for (const w of widgets) {
+                    // color picker
+                    const rect = [w.last_y, w.last_y + 32];
+                    if (pos[1] > rect[0] && pos[1] < rect[1]) {
+                        console.log("color picker", node)
+                        const picker = document.createElement("input");
+                        picker.type = "color";
+                        picker.value = this.value;
+                        // picker.style.position = "absolute";
+                        // picker.style.left = ( pos[0]) + "px";
+                        // picker.style.top = (  pos[1]) + "px";
+
+                        // place at screen center
+                        picker.style.position = "absolute";
+                        picker.style.left = "999999px"//(window.innerWidth / 2) + "px";
+                        picker.style.top = "999999px" //(window.innerHeight / 2) + "px";
+                        // picker.style.transform = "translate(-50%, -50%)";
+                        // picker.style.zIndex = 1000;
+
+
+
+                        document.body.appendChild(picker);
+
+                        picker.addEventListener("change", () => {
+                            this.value = picker.value;
+                            node.graph._version++;
+                            node.setDirtyCanvas(true, true);
+                            picker.remove();
+                        });
+
+                        picker.click()
+
+                    }
+                }
+            }
+        }
+        widget.computeSize = function (width) {
+            return [width, 32];
+        }
+
+        return widget;
+    },
+
+    DEBUG_IMG: (val, index) => {
+        const w = {
+            name: `anything_${index}`,
+            type: "image",
+            value: val,
+            draw: function (ctx,
+                node,
+                widgetWidth,
+                widgetY,
+                height) {
+                const [cw, ch] = this.computeSize(widgetWidth)
+                shared.offsetDOMWidget(this, ctx, node, widgetWidth, widgetY, ch)
+            },
+            computeSize: function (width) {
+                const ratio = this.inputRatio || 1;
+                if (width) {
+                    return [width, width / ratio + 4]
+                }
+                return [128, 128]
+            },
+            onRemove: function () {
+                if (this.inputEl) {
+                    this.inputEl.remove();
+                }
+            }
+        }
+
+        w.inputEl = document.createElement("img");
+        w.inputEl.src = w.value;
+        w.inputEl.onload = function () {
+            w.inputRatio = w.inputEl.naturalWidth / w.inputEl.naturalHeight;
+        }
+        document.body.appendChild(w.inputEl);
+        return w
+    },
+    DEBUG_STRING: (val, index) => {
+        const w = {
+            name: `anything_${index}`,
+            type: "debug_text",
+            val: val,
+            draw: function (ctx,
+                node,
+                widgetWidth,
+                widgetY,
+                height) {
+                // const [cw, ch] = this.computeSize(widgetWidth)
+                shared.offsetDOMWidget(this, ctx, node, widgetWidth, widgetY, height)
+            },
+            computeSize: function (width) {
+                const value = this.inputEl.innerHTML
+                if (!value) {
+                    return [32, 32]
+                }
+                if (!width) {
+                    log(`No width ${this.parent.size}`)
+                }
+
+                const fontSize = 25; // Assuming 1rem = 16px
+
+                const oldFont = app.ctx.font
+                app.ctx.font = `${fontSize}px Arial`;
+
+                const words = value.split(" ");
+                const lines = [];
+                let currentLine = "";
+                for (const word of words) {
+                    const testLine = currentLine.length === 0 ? word : `${currentLine} ${word}`;
+
+                    const testWidth = app.ctx.measureText(testLine).width;
+
+                    // log(`Testing line ${testLine}, width: ${testWidth}, width: ${width}, ratio: ${testWidth / width}`)
+                    if (testWidth > width) {
+                        lines.push(currentLine);
+                        currentLine = word;
+                    } else {
+                        currentLine = testLine;
+                    }
+                }
+                app.ctx.font = oldFont;
+                lines.push(currentLine);
+
+                // Step 3: Calculate the widget width and height
+                const textHeight = lines.length * (fontSize + 2); // You can adjust the line height (2 in this case)
+                const maxLineWidth = lines.reduce((maxWidth, line) => Math.max(maxWidth, app.ctx.measureText(line).width), 0);
+                const widgetWidth = Math.max(width || this.width || 32, maxLineWidth);
+                const widgetHeight = textHeight + 10; // Additional padding for spacing
+                return [widgetWidth, widgetHeight + 4]
+
+            },
+            onRemove: function () {
+                if (this.inputEl) {
+                    this.inputEl.remove();
+                }
+
+            }
+        }
+        w.inputEl = document.createElement("p");
+        w.inputEl.style.textAlign = "center";
+        w.inputEl.style.fontSize = "1.5em";
+        w.inputEl.style.color = "var(--input-text)";
+        w.inputEl.style.fontFamily = "monospace";
+        w.inputEl.innerHTML = val
+        document.body.appendChild(w.inputEl);
+
+        return w
     }
-
-    widget.desc = "Represents a Bounding Box with x, y, width, and height.";
-    return widget
-
 }
+
+
+
 const bboxWidgetDOM = (key, val) => {
     /** @type {import("./types/litegraph").IWidget} */
     const widget = {
@@ -266,221 +590,12 @@ const bboxWidgetDOM = (key, val) => {
 /**
  * @returns {import("./types/litegraph").IWidget} widget
  */
-const boolWidget = (key, val, compute = false) => {
-    /** @type {import("/types/litegraph").IWidget} */
-    const widget = {
-        name: key,
-        type: "BOOL",
-        options: { default: false },
-        y: 0,
-        value: val || false,
-        draw: function (ctx,
-            node,
-            widget_width,
-            widgetY,
-            height) {
-            const hide = this.type !== "BOOL" && app.canvas.ds.scale > 0.5
-            if (hide) {
-                return
-            }
-            const outline_color = LiteGraph.WIDGET_OUTLINE_COLOR;
-            const background_color = LiteGraph.WIDGET_BGCOLOR;
-            const text_color = LiteGraph.WIDGET_TEXT_COLOR;
-            const H = LiteGraph.NODE_WIDGET_HEIGHT;
-            const arrowSize = 8;
 
-            var margin = 15;
-            if (hide) return;
-
-            var currentY = widgetY;
-
-            ctx.textAlign = "left";
-            ctx.strokeStyle = outline_color;
-            ctx.fillStyle = background_color;
-            ctx.beginPath();
-            // ctx.roundRect(margin, currentY, widget_width - margin * 2, H, [H * 0.5]);
-            ctx.rect(margin, currentY, H, H); // Draw checkbox square
-
-            ctx.fill();
-            ctx.stroke();
-
-            ctx.fillStyle = text_color;
-            // ctx.fillText(this.label || this.name, margin * 2 + 5, currentY + H * 0.7);
-            ctx.fillText(this.label || this.name, H + margin * 2, currentY + H * 0.7);
-
-
-            // Draw arrow if the value is true
-            // Draw checkmark if the value is true
-            if (this.value) {
-                ctx.fillStyle = text_color;
-                ctx.beginPath();
-                ctx.moveTo(margin + H * 0.15, currentY + H * 0.5);
-                ctx.lineTo(margin + H * 0.4, currentY + H * 0.8);
-                ctx.lineTo(margin + H * 0.85, currentY + H * 0.2);
-                ctx.stroke();
-            }
-
-        },
-        get value() {
-
-            return this.inputEl.value === "true";
-        },
-        set value(x) {
-            this.inputEl.value = x;
-        },
-        computeSize: function (width) {
-            return [width, 32];
-        },
-        mouse: function (event, pos, node) {
-            // var x = pos[0] - node.pos[0];
-            // var y = pos[1] - node.pos[1];
-            // var width = node.size[0];
-            // var H = LiteGraph.NODE_WIDGET_HEIGHT;
-            // var margin = 15;
-
-            // if (event.type == LiteGraph.pointerevents_method + "down") {
-            //     if (x > margin && x < widget_width - margin && y > widgetY && y < widgetY + H) {
-            //         this.value = !this.value; // Toggle checkbox value
-            //         shared.inner_value_change(this, this.value, event);
-            //         app.canvas.setDirty(true);
-            //     }
-            // }
-            if (event.type === "pointerdown") {
-                // get widgets of type type : "COLOR"
-                const widgets = node.widgets.filter(w => w.type === "BOOL");
-
-                for (const w of widgets) {
-                    // color picker
-                    const rect = [w.last_y, w.last_y + 32];
-                    if (pos[1] > rect[0] && pos[1] < rect[1]) {
-                        // picker.style.position = "absolute";
-                        // picker.style.left = ( pos[0]) + "px";
-                        // picker.style.top = (  pos[1]) + "px";
-
-                        // place at screen center
-                        // picker.style.position = "absolute";
-                        // picker.style.left = (window.innerWidth / 2) + "px";
-                        // picker.style.top = (window.innerHeight / 2) + "px";
-                        // picker.style.transform = "translate(-50%, -50%)";
-                        // picker.style.zIndex = 1000;
-                        console.log("Clicked a BOOL", this.value)
-
-                        this.value = this.value ? "false" : "true"
-
-                    }
-                }
-            }
-        }
-    }
-
-    // create a checkbox
-    widget.inputEl = document.createElement("input")
-    widget.inputEl.type = "checkbox"
-    widget.inputEl.value = false
-    document.body.appendChild(widget.inputEl);
-    return widget
-
-}
 
 /**
  * @returns {import("./types/litegraph").IWidget} widget
  */
-const colorWidget = (key, val, compute = false) => {
-    /** @type {import("/types/litegraph").IWidget} */
-    const widget = {}
-    widget.y = 0
-    widget.name = key;
-    widget.type = "COLOR";
-    widget.options = { default: "#ff0000" };
-    widget.value = val || "#ff0000";
-    widget.draw = function (ctx,
-        node,
-        widgetWidth,
-        widgetY,
-        height) {
-        const hide = this.type !== "COLOR" && app.canvas.ds.scale > 0.5
-        if (hide) {
-            return
-        }
 
-        const border = 3;
-        // draw a rect with a border and a fill color
-        ctx.fillStyle = "#000";
-        ctx.fillRect(0, widgetY, widgetWidth, height);
-        ctx.fillStyle = this.value;
-        ctx.fillRect(border, widgetY + border, widgetWidth - border * 2, height - border * 2);
-        // write the input name
-        // choose the fill based on the luminoisty of this.value color
-        const color = parseCss(this.value.default || this.value)
-        if (!color) {
-            return
-        }
-        ctx.fillStyle = shared.isColorBright(color.values, 125) ? "#000" : "#fff";
-
-
-        ctx.font = "14px Arial";
-        ctx.textAlign = "center";
-        ctx.fillText(this.name, widgetWidth * 0.5, widgetY + 14);
-
-
-
-        // ctx.strokeStyle = "#fff";
-        // ctx.strokeRect(border, widgetY + border, widgetWidth - border * 2, height - border * 2);
-
-
-        // ctx.fillStyle = "#000";
-        // ctx.fillRect(widgetWidth/2 - border / 2 , widgetY + border / 2 , widgetWidth/2 + border / 2, height + border / 2);
-        // ctx.fillStyle = this.value;
-        // ctx.fillRect(widgetWidth/2, widgetY, widgetWidth/2, height);
-
-    }
-    widget.mouse = function (e, pos, node) {
-        if (e.type === "pointerdown") {
-            // get widgets of type type : "COLOR"
-            const widgets = node.widgets.filter(w => w.type === "COLOR");
-
-            for (const w of widgets) {
-                // color picker
-                const rect = [w.last_y, w.last_y + 32];
-                if (pos[1] > rect[0] && pos[1] < rect[1]) {
-                    console.log("color picker", node)
-                    const picker = document.createElement("input");
-                    picker.type = "color";
-                    picker.value = this.value;
-                    // picker.style.position = "absolute";
-                    // picker.style.left = ( pos[0]) + "px";
-                    // picker.style.top = (  pos[1]) + "px";
-
-                    // place at screen center
-                    picker.style.position = "absolute";
-                    picker.style.left = "999999px"//(window.innerWidth / 2) + "px";
-                    picker.style.top = "999999px" //(window.innerHeight / 2) + "px";
-                    // picker.style.transform = "translate(-50%, -50%)";
-                    // picker.style.zIndex = 1000;
-
-
-
-                    document.body.appendChild(picker);
-
-                    picker.addEventListener("change", () => {
-                        this.value = picker.value;
-                        node.graph._version++;
-                        node.setDirtyCanvas(true, true);
-                        picker.remove();
-                    });
-
-                    picker.click()
-
-                }
-            }
-        }
-    }
-    widget.computeSize = function (width) {
-        return [width, 32];
-    }
-
-    return widget;
-}
 
 
 // VIDEO: (node, inputName, inputData, app) => {
@@ -591,7 +706,7 @@ const mtb_widgets = {
                 console.debug("Registering bool")
 
                 return {
-                    widget: node.addCustomWidget(boolWidget(inputName, inputData[1]?.default || false)),
+                    widget: node.addCustomWidget(MtbWidgets.BOOL(inputName, inputData[1]?.default || false)),
                     minWidth: 150,
                     minHeight: 30,
                 };
@@ -600,20 +715,20 @@ const mtb_widgets = {
             COLOR: (node, inputName, inputData, app) => {
                 console.debug("Registering color")
                 return {
-                    widget: node.addCustomWidget(colorWidget(inputName, inputData[1]?.default || "#ff0000")),
+                    widget: node.addCustomWidget(MtbWidgets.COLOR(inputName, inputData[1]?.default || "#ff0000")),
                     minWidth: 150,
                     minHeight: 30,
                 }
             },
-            BBOX: (node, inputName, inputData, app) => {
-                console.debug("Registering bbox")
-                return {
-                    widget: node.addCustomWidget(bboxWidget(inputName, inputData[1]?.default || [0, 0, 0, 0])),
-                    minWidth: 150,
-                    minHeight: 30,
-                }
+            // BBOX: (node, inputName, inputData, app) => {
+            //     console.debug("Registering bbox")
+            //     return {
+            //         widget: node.addCustomWidget(MtbWidgets.BBOX(inputName, inputData[1]?.default || [0, 0, 0, 0])),
+            //         minWidth: 150,
+            //         minHeight: 30,
+            //     }
 
-            }
+            // }
         }
     },
     /**
@@ -646,7 +761,6 @@ const mtb_widgets = {
                 for (const [key, input] of Object.entries(rinputs)) {
                     switch (input[0]) {
                         case "COLOR":
-                            console.log(this)
                             // const colW = colorWidget(key, input[1])
                             // this.addCustomWidget(colW)
                             // const associated_input = this.inputs.findIndex((i) => i.widget?.name === key);
@@ -738,12 +852,34 @@ const mtb_widgets = {
                 }
                 break
             }
+            case "Save Gif (mtb)": {
+                const onExecuted = nodeType.prototype.onExecuted;
+                nodeType.prototype.onExecuted = function (message) {
+                    const r = onExecuted ? onExecuted.apply(this, message) : undefined;
+                    console.log(message)
+                    let imgURLs = []
+                    if (message && message.gif) {
+                        imgURLs = imgURLs.concat(message.gif.map(params => {
+                            return api.apiURL("/view?" + new URLSearchParams(params).toString());
+                        }))
+                        console.log(imgURLs)
+                        for (const img of imgURLs) {
+                            const w = this.addCustomWidget(MtbWidgets.DEBUG_IMG(img, 0))
+                            w.parent = this;
+                        }
+                    }
+                    return r
+
+                }
+                break
+            }
             case "Animation Builder (mtb)": {
                 // console.log(nodeType.prototype)
 
 
-
+                const onNodeCreated = nodeType.prototype.onNodeCreated;
                 nodeType.prototype.onNodeCreated = function () {
+                    const r = onNodeCreated ? onNodeCreated.apply(this, arguments) : undefined;
 
                     this.changeMode(LiteGraph.ALWAYS)
                     // api.addEventListener("executed", ({ detail }) => {
@@ -840,11 +976,11 @@ frame: ${this.value % total_frames.value}`;
 
                     }
 
+                    return r
+
                 }
                 const onExecuted = nodeType.prototype.onExecuted;
-
                 nodeType.prototype.onExecuted = function (data) {
-                    console.log("executed node", this)
                     onExecuted?.apply(this, data)
                     if (this.widgets) {
                         const pos = this.widgets.findIndex((w) => w.name === "preview");
@@ -872,29 +1008,6 @@ frame: ${this.value % total_frames.value}`;
 
                 // }
                 console.debug(`Registered ${nodeType.name} node extra events`)
-                break
-
-            }
-
-            case "Debug (mtb)": {
-                // console.log(`Registered ${nodeType.name} node extra events`)
-                // nodeType.prototype.onConnectionsChange = function (type, index, connected, link_info) {
-                //     // const r = onConnectionsChange ? onConnectionsChange.apply(this, arguments) : undefined;
-                //     console.debug({
-                //         type, index, connected, link_info
-                //     })
-
-                //     shared.dynamic_connection(this, index, connected, "anything_", "*")
-                // }
-
-                // const onNodeCreated = nodeType.prototype.onNodeCreated;
-                // nodeType.prototype.onNodeCreated = function () {
-                //     const r = onNodeCreated ? onNodeCreated.apply(this, arguments) : undefined;
-
-                //     this.addInput(`input_${this.inputs.length + 1}`, "*")
-
-                // }
-
                 break
 
             }
