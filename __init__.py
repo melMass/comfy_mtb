@@ -141,11 +141,12 @@ log.info(
 from server import PromptServer
 from .log import mklog
 from aiohttp import web
+from importlib import reload
 
 endlog = mklog("endpoint")
 
 
-@PromptServer.instance.routes.get("/mtb-status")
+@PromptServer.instance.routes.get("/mtb/status")
 async def get_full_library(request):
     files = []
     endlog.debug("Getting status")
@@ -155,6 +156,65 @@ async def get_full_library(request):
             "failed": failed,
         }
     )
+
+
+@PromptServer.instance.routes.post("/mtb/debug")
+async def set_debug(request):
+    json_data = await request.json()
+    enabled = json_data.get("enabled")
+    if enabled:
+        os.environ["MTB_DEBUG"] = "true"
+    else:
+        if "MTB_DEBUG" in os.environ:
+            # del os.environ["MTB_DEBUG"]
+            os.environ.pop("MTB_DEBUG")
+    return web.json_response({"message": f"Debug mode {'set' if enabled else 'unset'}"})
+
+
+@PromptServer.instance.routes.get("/mtb")
+async def get_home(request):
+    from . import endpoint
+
+    reload(endpoint)
+    # Check if the request prefers HTML content
+    if "text/html" in request.headers.get("Accept", ""):
+        # # Return an HTML page
+        html_response = f"""
+        <div class="flex-container menu">
+            <a href="/mtb/debug">debug</a>
+            <a href="/mtb/status">status</a>
+        </div>            
+        """
+        return web.Response(
+            text=endpoint.render_base_template("MTB", html_response),
+            content_type="text/html",
+        )
+
+    # Return JSON for other requests
+    return web.json_response({"message": "Welcome to MTB!"})
+
+
+@PromptServer.instance.routes.get("/mtb/debug")
+async def get_debug(request):
+    from . import endpoint
+
+    reload(endpoint)
+    enabled = False
+    if "MTB_DEBUG" in os.environ:
+        enabled = True
+    # Check if the request prefers HTML content
+    if "text/html" in request.headers.get("Accept", ""):
+        # # Return an HTML page
+        html_response = f"""
+            <h1>MTB Debug Status: {'Enabled' if enabled else 'Disabled'}</h1>
+        """
+        return web.Response(
+            text=endpoint.render_base_template("Debug", html_response),
+            content_type="text/html",
+        )
+
+    # Return JSON for other requests
+    return web.json_response({"enabled": enabled})
 
 
 # - WAS Dictionary
