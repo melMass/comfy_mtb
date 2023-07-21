@@ -5,6 +5,8 @@ import torch
 
 
 class Debug:
+    """Experimental node to debug any Comfy values, support for more types and widgets is planned"""
+
     @classmethod
     def INPUT_TYPES(cls):
         return {

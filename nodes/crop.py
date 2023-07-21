@@ -6,19 +6,6 @@ import numpy as np
 from ..log import log
 
 
-class BoolInput:
-    @classmethod
-    def INPUT_TYPES(cls):
-        return {"required": {"bool": ("BOOL",)}}
-
-    RETURN_TYPES = ("BOOL",)
-    FUNCTION = "do_bool"
-    CATEGORY = "mtb/test"
-
-    def do_bool(self, bool):
-        return (bool,)
-
-
 class Bbox:
     """The bounding box (BBOX) custom type used by other nodes"""
 
@@ -310,4 +297,4 @@ class Uncrop:
         return (pil2tensor(out_images),)
 
 
-__nodes__ = [BboxFromMask, Bbox, Crop, Uncrop, BoolInput]
+__nodes__ = [BboxFromMask, Bbox, Crop, Uncrop]
