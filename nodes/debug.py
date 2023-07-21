@@ -35,7 +35,8 @@ class Debug:
                     buffered = io.BytesIO()
                     im.save(buffered, format="JPEG")
                     b64_imgs.append(
-                        base64.b64encode(buffered.getvalue()).decode("utf-8")
+                        "data:image/jpeg;base64,"
+                        + base64.b64encode(buffered.getvalue()).decode("utf-8")
                     )
 
                 output["ui"]["b64_images"] += b64_imgs
