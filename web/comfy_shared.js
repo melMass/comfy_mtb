@@ -1,7 +1,14 @@
 import { app } from "/scripts/app.js";
 
+export const log = (...args) => {
+    if (window.MTB_DEBUG) {
+        console.debug(...args);
+    }
+
+}
+
 //- WIDGET UTILS
-const CONVERTED_TYPE = "converted-widget";
+export const CONVERTED_TYPE = "converted-widget";
 
 export function offsetDOMWidget(widget, ctx, node, widgetWidth, widgetY, height) {
     const margin = 10;
@@ -18,7 +25,9 @@ export function offsetDOMWidget(widget, ctx, node, widgetWidth, widgetY, height)
         left: `${transform.a + transform.e}px`,
         top: `${transform.d + transform.f}px`,
         width: `${widgetWidth - (margin * 2)}px`,
-        height: `${widget.parent.inputHeight - (margin * 2)}px`,
+        // height: `${(widget.parent?.inputHeight || 32) - (margin * 2)}px`,
+        height: `${(height || widget.parent?.inputHeight || 32) - (margin * 2)}px`,
+
         position: "absolute",
         background: (!node.color) ? '' : node.color,
         color: (!node.color) ? '' : 'white',
@@ -46,11 +55,10 @@ export const dynamic_connection = (node, index, connected, connectionPrefix = "i
 
     // remove all non connected inputs
     if (!connected && node.inputs.length > 1) {
-        console.debug(`Removing input ${index} (${node.inputs[index].name})`)
+        log(`Removing input ${index} (${node.inputs[index].name})`)
         if (node.widgets) {
             const w = node.widgets.find((w) => w.name === node.inputs[index].name);
             if (w) {
-
                 w.onRemove?.();
                 node.widgets.length = node.widgets.length - 1
             }
@@ -59,13 +67,13 @@ export const dynamic_connection = (node, index, connected, connectionPrefix = "i
 
         // make inputs sequential again
         for (let i = 0; i < node.inputs.length; i++) {
-            node.inputs[i].name = `${connectionPrefix}${i + 1}`
+            node.inputs[i].label = `${connectionPrefix}${i + 1}`
         }
     }
 
     // add an extra input
     if (node.inputs[node.inputs.length - 1].link != undefined) {
-        console.debug(`Adding input ${node.inputs.length + 1} (${connectionPrefix}${node.inputs.length + 1})`)
+        log(`Adding input ${node.inputs.length + 1} (${connectionPrefix}${node.inputs.length + 1})`)
 
         node.addInput(`${connectionPrefix}${node.inputs.length + 1}`, connectionType)
     }
@@ -145,7 +153,7 @@ export function convertToWidget(node, widget) {
 export function convertToInput(node, widget, config) {
     hideWidget(node, widget);
 
-    const { linkType } = shared.getWidgetType(config);
+    const { linkType } = getWidgetType(config);
 
     // Add input and store widget config for creating on primitive node
     const sz = node.size;
@@ -184,6 +192,50 @@ export function hideWidgetForGood(node, widget, suffix = "") {
     }
 }
 
+export function fixWidgets(node) {
+    if (node.inputs) {
+        for (const input of node.inputs) {
+            log(input)
+            if (input.widget || node.widgets) {
+                // if (newTypes.includes(input.type)) {
+                const matching_widget = node.widgets.find((w) => w.name === input.name);
+                if (matching_widget) {
+
+
+                    // if (matching_widget.hidden) {
+                    //     log(`Already hidden skipping ${matching_widget.name}`)
+                    //     continue
+                    // }
+                    const w = node.widgets.find((w) => w.name === matching_widget.name);
+                    if (w && w.type != CONVERTED_TYPE) {
+                        log(w)
+                        log(`hidding ${w.name}(${w.type}) from ${node.type}`)
+                        log(node)
+                        hideWidget(node, w);
+                    } else {
+                        log(`converting to widget ${w}`)
+
+                        convertToWidget(node, input)
+                    }
+                }
+            }
+        }
+    }
+}
+export function inner_value_change(widget, value, event = undefined) {
+    if (widget.type == "number" || widget.type == "BBOX") {
+        value = Number(value);
+    } else if (widget.type == "BOOL") {
+        value = Boolean(value)
+    }
+    widget.value = value;
+    if (widget.options && widget.options.property && node.properties[widget.options.property] !== undefined) {
+        node.setProperty(widget.options.property, value);
+    }
+    if (widget.callback) {
+        widget.callback(widget.value, app.canvas, node, pos, event);
+    }
+}
 
 //- COLOR UTILS
 export function isColorBright(rgb, threshold = 240) {
@@ -193,4 +245,38 @@ export function isColorBright(rgb, threshold = 240) {
 
 function getBrightness(rgbObj) {
     return Math.round(((parseInt(rgbObj[0]) * 299) + (parseInt(rgbObj[1]) * 587) + (parseInt(rgbObj[2]) * 114)) / 1000)
+}
+
+//- HTML / CSS UTILS
+export function defineClass(className, classStyles) {
+    const styleSheets = document.styleSheets;
+
+    // Helper function to check if the class exists in a style sheet
+    function classExistsInStyleSheet(styleSheet) {
+        const rules = styleSheet.rules || styleSheet.cssRules;
+        for (const rule of rules) {
+            if (rule.selectorText === `.${className}`) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // Check if the class is already defined in any of the style sheets
+    let classExists = false;
+    for (const styleSheet of styleSheets) {
+        if (classExistsInStyleSheet(styleSheet)) {
+            classExists = true;
+            break;
+        }
+    }
+
+    // If the class doesn't exist, add the new class definition to the first style sheet
+    if (!classExists) {
+        if (styleSheets[0].insertRule) {
+            styleSheets[0].insertRule(`.${className} { ${classStyles} }`, 0);
+        } else if (styleSheets[0].addRule) {
+            styleSheets[0].addRule(`.${className}`, classStyles, 0);
+        }
+    }
 }
