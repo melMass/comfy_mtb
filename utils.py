@@ -53,7 +53,8 @@ def tensor2pil(image: torch.Tensor) -> List[Image.Image]:
 
     if batch_count > 1:
         out = []
-        out.extend([tensor2pil(image[i]) for i in range(batch_count)])
+        for i in range(batch_count):
+            out.extend(tensor2pil(image[i]))
         return out
 
     return [
