@@ -16,7 +16,7 @@ class IntToBool:
 
     RETURN_TYPES = ("BOOL",)
     FUNCTION = "int_to_bool"
-    CATEGORY = "number"
+    CATEGORY = "mtb/number"
 
     def int_to_bool(self, int):
         return (bool(int),)
@@ -47,7 +47,7 @@ class IntToNumber:
 
     RETURN_TYPES = ("NUMBER",)
     FUNCTION = "int_to_number"
-    CATEGORY = "number"
+    CATEGORY = "mtb/number"
 
     def int_to_number(self, int):
         return (int,)
@@ -78,7 +78,7 @@ class FloatToNumber:
 
     RETURN_TYPES = ("NUMBER",)
     FUNCTION = "float_to_number"
-    CATEGORY = "number"
+    CATEGORY = "mtb/number"
 
     def float_to_number(self, float):
         return (float,)

@@ -90,19 +90,21 @@ class ColorCorrect:
 
     @staticmethod
     def hsv_adjustment(image: torch.Tensor, hue, saturation, value):
-        image = tensor2pil(image)
-        hsv_image = image.convert("HSV")
+        images = tensor2pil(image)
+        out = []
+        for img in images:
+            hsv_image = img.convert("HSV")
 
-        h, s, v = hsv_image.split()
+            h, s, v = hsv_image.split()
 
-        h = h.point(lambda x: (x + hue * 255) % 256)
-        s = s.point(lambda x: int(x * saturation))
-        v = v.point(lambda x: int(x * value))
+            h = h.point(lambda x: (x + hue * 255) % 256)
+            s = s.point(lambda x: int(x * saturation))
+            v = v.point(lambda x: int(x * value))
 
-        hsv_image = Image.merge("HSV", (h, s, v))
-        rgb_image = hsv_image.convert("RGB")
-
-        return pil2tensor(rgb_image)
+            hsv_image = Image.merge("HSV", (h, s, v))
+            rgb_image = hsv_image.convert("RGB")
+            out.append(rgb_image)
+        return pil2tensor(out)
 
     @staticmethod
     def hsv_adjustment_tensor_not_working(image: torch.Tensor, hue, saturation, value):
@@ -182,64 +184,6 @@ class ColorCorrect:
         return (image,)
 
 
-class HsvToRgb:
-    """Convert HSV image to RGB"""
-
-    def __init__(self):
-        pass
-
-    @classmethod
-    def INPUT_TYPES(cls):
-        return {
-            "required": {
-                "image": ("IMAGE",),
-            }
-        }
-
-    RETURN_TYPES = ("IMAGE",)
-    FUNCTION = "convert"
-    CATEGORY = "mtb/image processing"
-
-    def convert(self, image):
-        image = image.numpy()
-
-        image = image.squeeze()
-        # image = image.transpose(1,2,3,0)
-        image = hsv2rgb(image)
-        image = np.expand_dims(image, axis=0)
-
-        # image = image.transpose(3,0,1,2)
-        return (torch.from_numpy(image),)
-
-
-class RgbToHsv:
-    """Convert RGB image to HSV"""
-
-    def __init__(self):
-        pass
-
-    @classmethod
-    def INPUT_TYPES(cls):
-        return {
-            "required": {
-                "image": ("IMAGE",),
-            }
-        }
-
-    RETURN_TYPES = ("IMAGE",)
-    FUNCTION = "convert"
-    CATEGORY = "mtb/image processing"
-
-    def convert(self, image):
-        image = image.numpy()
-
-        image = np.squeeze(image)
-        image = rgb2hsv(image)
-        image = np.expand_dims(image, axis=0)
-
-        return (torch.from_numpy(image),)
-
-
 class ImageCompare:
     """Compare two images and return a difference image"""
 
@@ -305,37 +249,6 @@ class LoadImageFromUrl:
         return (pil2tensor(image),)
 
 
-class Denoise:
-    """Denoise an image using total variation minimization."""
-
-    def __init__(self):
-        pass
-
-    @classmethod
-    def INPUT_TYPES(cls):
-        return {
-            "required": {
-                "image": ("IMAGE",),
-                "weight": (
-                    "FLOAT",
-                    {"default": 0.5, "min": 0.0, "max": 1.0, "step": 0.01},
-                ),
-            }
-        }
-
-    RETURN_TYPES = ("IMAGE",)
-    FUNCTION = "denoise"
-    CATEGORY = "mtb/image processing"
-
-    def denoise(self, image: torch.Tensor, weight):
-        image = image.numpy()
-        image = image.squeeze()
-        image = denoise_tv_chambolle(image, weight=weight)
-
-        image = np.expand_dims(image, axis=0)
-        return (torch.from_numpy(image),)
-
-
 class Blur:
     """Blur an image using a Gaussian filter."""
 
@@ -371,29 +284,29 @@ class Blur:
 
 
 # https://github.com/lllyasviel/AdverseCleaner/blob/main/clean.py
-def deglaze_np_img(np_img):
-    y = np_img.copy()
-    for _ in range(64):
-        y = cv2.bilateralFilter(y, 5, 8, 8)
-    for _ in range(4):
-        y = guidedFilter(np_img, y, 4, 16)
-    return y
+# def deglaze_np_img(np_img):
+#     y = np_img.copy()
+#     for _ in range(64):
+#         y = cv2.bilateralFilter(y, 5, 8, 8)
+#     for _ in range(4):
+#         y = guidedFilter(np_img, y, 4, 16)
+#     return y
 
 
-class DeglazeImage:
-    """Remove adversarial noise from images"""
+# class DeglazeImage:
+#     """Remove adversarial noise from images"""
 
-    @classmethod
-    def INPUT_TYPES(cls):
-        return {"required": {"image": ("IMAGE",)}}
+#     @classmethod
+#     def INPUT_TYPES(cls):
+#         return {"required": {"image": ("IMAGE",)}}
 
-    CATEGORY = "mtb/image processing"
+#     CATEGORY = "mtb/image processing"
 
-    RETURN_TYPES = ("IMAGE",)
-    FUNCTION = "deglaze_image"
+#     RETURN_TYPES = ("IMAGE",)
+#     FUNCTION = "deglaze_image"
 
-    def deglaze_image(self, image):
-        return (np2tensor(deglaze_np_img(tensor2np(image))),)
+#     def deglaze_image(self, image):
+#         return (np2tensor(deglaze_np_img(tensor2np(image))),)
 
 
 class MaskToImage:
@@ -489,20 +402,32 @@ class ImagePremultiply:
 
     def premultiply(self, image, mask, invert):
         invert = invert == "True"
-        image = tensor2pil(image)
-        mask = tensor2pil(mask).convert("L")
 
+        images = tensor2pil(image)
         if invert:
-            mask = ImageChops.invert(mask)
+            masks = tensor2pil(mask)  # .convert("L")
+        else:
+            masks = tensor2pil(1.0 - mask)
 
-        image.putalpha(mask)
+        single = False
+        if len(mask) == 1:
+            single = True
+
+        masks = [x.convert("L") for x in masks]
+
+        out = []
+        for i, img in enumerate(images):
+            cur_mask = masks[0] if single else masks[i]
+
+            img.putalpha(cur_mask)
+            out.append(img)
 
         # if invert:
         #     image = Image.composite(image,Image.new("RGBA", image.size, color=(0,0,0,0)), mask)
         # else:
         #     image = Image.composite(Image.new("RGBA", image.size, color=(0,0,0,0)), image, mask)
 
-        return (pil2tensor(image),)
+        return (pil2tensor(out),)
 
 
 class ImageResizeFactor:
@@ -733,12 +658,9 @@ class SaveImageGrid:
 
 __nodes__ = [
     ColorCorrect,
-    HsvToRgb,
-    RgbToHsv,
     ImageCompare,
-    Denoise,
     Blur,
-    DeglazeImage,
+    # DeglazeImage,
     MaskToImage,
     ColoredImage,
     ImagePremultiply,

@@ -44,7 +44,7 @@ class LoadFaceEnhanceModel:
                     [x.name for x in cls.get_models()],
                     {"default": "None"},
                 ),
-                "upscale": ("INT", {"default": 2}),
+                "upscale": ("INT", {"default": 1}),
             },
             "optional": {"bg_upsampler": ("UPSCALE_MODEL", {"default": None})},
         }

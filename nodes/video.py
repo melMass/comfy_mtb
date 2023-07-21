@@ -31,7 +31,7 @@ class LoadImageSequence:
             }
         }
 
-    CATEGORY = "video"
+    CATEGORY = "mtb/IO"
     FUNCTION = "load_image"
     RETURN_TYPES = (
         "IMAGE",
@@ -183,7 +183,7 @@ class SaveImageSequence:
 
     OUTPUT_NODE = True
 
-    CATEGORY = "image"
+    CATEGORY = "mtb/IO"
 
     def save_images(
         self,

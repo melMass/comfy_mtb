@@ -1,6 +1,7 @@
 from rembg import remove
 from ..utils import pil2tensor, tensor2pil
 from PIL import Image
+import comfy.utils
 
 
 class ImageRemoveBackgroundRembg:
@@ -65,27 +66,41 @@ class ImageRemoveBackgroundRembg:
         post_process_mask,
         bgcolor,
     ):
-        image = remove(
-            data=tensor2pil(image),
-            alpha_matting=alpha_matting == "True",
-            alpha_matting_foreground_threshold=alpha_matting_foreground_threshold,
-            alpha_matting_background_threshold=alpha_matting_background_threshold,
-            alpha_matting_erode_size=alpha_matting_erode_size,
-            session=None,
-            only_mask=False,
-            post_process_mask=post_process_mask == "True",
-            bgcolor=None,
-        )
+        pbar = comfy.utils.ProgressBar(image.size(0))
+        images = tensor2pil(image)
 
-        # extract the alpha to a new image
-        mask = image.getchannel(3)
+        out_img = []
+        out_mask = []
+        out_img_on_bg = []
 
-        # add our bgcolor behind the image
-        image_on_bg = Image.new("RGBA", image.size, bgcolor)
+        for img in images:
+            img_rm = remove(
+                data=img,
+                alpha_matting=alpha_matting == "True",
+                alpha_matting_foreground_threshold=alpha_matting_foreground_threshold,
+                alpha_matting_background_threshold=alpha_matting_background_threshold,
+                alpha_matting_erode_size=alpha_matting_erode_size,
+                session=None,
+                only_mask=False,
+                post_process_mask=post_process_mask == "True",
+                bgcolor=None,
+            )
 
-        image_on_bg.paste(image, mask=mask)
+            # extract the alpha to a new image
+            mask = img_rm.getchannel(3)
 
-        return (pil2tensor(image), pil2tensor(mask), pil2tensor(image_on_bg))
+            # add our bgcolor behind the image
+            image_on_bg = Image.new("RGBA", img_rm.size, bgcolor)
+
+            image_on_bg.paste(img_rm, mask=mask)
+
+            out_img.append(img_rm)
+            out_mask.append(mask)
+            out_img_on_bg.append(image_on_bg)
+
+            pbar.update(1)
+
+        return (pil2tensor(out_img), pil2tensor(out_mask), pil2tensor(out_img_on_bg))
 
 
 __nodes__ = [
