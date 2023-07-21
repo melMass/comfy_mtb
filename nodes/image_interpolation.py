@@ -7,9 +7,7 @@ from ..log import log
 import torch
 from frame_interpolation.eval import util, interpolator
 from ..utils import tensor2np
-import uuid
 import numpy as np
-import subprocess
 import comfy
 from PIL import Image
 import urllib.request
@@ -33,9 +31,9 @@ def get_image(filename, subfolder, folder_type):
 
 
 class GetBatchFromHistory:
-    """Experimental node to load images from the history of the server.
+    """Very experimental node to load images from the history of the server.
 
-    Queue item without output are ignore in the count."""
+    Queue items without output are ignore in the count."""
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -62,10 +60,9 @@ class GetBatchFromHistory:
             log.debug("Load from history is disabled for this iteration")
             return (torch.zeros(0),)
         frames = []
-        server_address = "localhost:3000"
 
         with urllib.request.urlopen(
-            "http://{}/history".format(server_address)
+            "http://{}:{}/history".format(args.listen, args.port)
         ) as response:
             history = json.loads(response.read())
 
@@ -250,95 +247,9 @@ class ConcatImages:
         return (self.concatenate_tensors(imageA, imageB),)
 
 
-class ExportToProres:
-    """Export to ProRes 4444 (Experimental)"""
-
-    def __init__(self):
-        pass
-
-    @classmethod
-    def INPUT_TYPES(cls):
-        return {
-            "required": {
-                "images": ("IMAGE",),
-                # "frames": ("FRAMES",),
-                "fps": ("FLOAT", {"default": 24, "min": 1}),
-                "prefix": ("STRING", {"default": "export"}),
-            }
-        }
-
-    RETURN_TYPES = ("VIDEO",)
-    OUTPUT_NODE = True
-    FUNCTION = "export_prores"
-    CATEGORY = "mtb/IO"
-
-    def export_prores(
-        self,
-        images: torch.Tensor,
-        fps: float,
-        prefix: str,
-    ):
-        if images.size(0) == 0:
-            return ("",)
-        output_dir = Path(folder_paths.get_output_directory())
-        id = f"{prefix}_{uuid.uuid4()}.mov"
-
-        log.debug(f"Exporting to {output_dir / id}")
-
-        frames = tensor2np(images)
-        log.debug(f"Frames type {type(frames[0])}")
-        log.debug(f"Exporting {len(frames)} frames")
-
-        frames = [frame.astype(np.uint16) * 257 for frame in frames]
-
-        height, width, _ = frames[0].shape
-
-        out_path = (output_dir / id).as_posix()
-
-        # Prepare the FFmpeg command
-        command = [
-            "ffmpeg",
-            "-y",
-            "-f",
-            "rawvideo",
-            "-vcodec",
-            "rawvideo",
-            "-s",
-            f"{width}x{height}",
-            "-pix_fmt",
-            "rgb48le",
-            "-r",
-            str(fps),
-            "-i",
-            "-",
-            "-c:v",
-            "prores_ks",
-            "-profile:v",
-            "4",
-            "-pix_fmt",
-            "yuva444p10le",
-            "-r",
-            str(fps),
-            "-y",
-            out_path,
-        ]
-
-        process = subprocess.Popen(command, stdin=subprocess.PIPE)
-
-        for frame in frames:
-            model_management.throw_exception_if_processing_interrupted()
-            process.stdin.write(frame.tobytes())
-
-        process.stdin.close()
-        process.wait()
-
-        return (out_path,)
-
-
 __nodes__ = [
     LoadFilmModel,
     FilmInterpolation,
-    ExportToProres,
     ConcatImages,
     GetBatchFromHistory,
 ]
