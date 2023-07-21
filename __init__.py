@@ -139,9 +139,10 @@ log.info(
 
 # - ENDPOINT
 from server import PromptServer
-from .log import mklog
+from .log import mklog, log
 from aiohttp import web
 from importlib import reload
+import logging
 
 endlog = mklog("endpoint")
 
@@ -164,10 +165,15 @@ async def set_debug(request):
     enabled = json_data.get("enabled")
     if enabled:
         os.environ["MTB_DEBUG"] = "true"
+        log.setLevel(logging.DEBUG)
+        log.debug("Debug mode set")
+
     else:
         if "MTB_DEBUG" in os.environ:
             # del os.environ["MTB_DEBUG"]
             os.environ.pop("MTB_DEBUG")
+            log.setLevel(logging.INFO)
+
     return web.json_response({"message": f"Debug mode {'set' if enabled else 'unset'}"})
 
 
