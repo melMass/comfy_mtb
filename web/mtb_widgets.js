@@ -549,54 +549,6 @@ const mtb_widgets = {
         catch (e) {
             console.error('Error:', error);
         }
-        class MyMapNode {
-            constructor() {
-
-                this.addInput("input", "number");
-                this.addOutput("output", "number");
-                this.addWidget("combo", "output_mode", "FLOAT", this.onChangeMode.bind(this), {
-                    values: ["FLOAT", "INT"],
-                });
-
-                this.properties = {
-                    src_min: 0,
-                    src_max: 1,
-                    target_min: 0,
-                    target_max: 1,
-                    output_mode: "FLOAT",
-                };
-
-                this.size = [140, 100];
-            }
-
-            static title = "Map Range";
-
-            onChangeMode(value) {
-                this.properties.output_mode = value;
-            }
-
-            onExecute() {
-                const input = this.getInputData(0);
-                if (input === undefined) return;
-
-                const src_min = this.properties.src_min;
-                const src_max = this.properties.src_max;
-                const target_min = this.properties.target_min;
-                const target_max = this.properties.target_max;
-
-                let output;
-
-                if (this.properties.output_mode === "FLOAT") {
-                    output = ((input - src_min) / (src_max - src_min)) * (target_max - target_min) + target_min;
-                } else {
-                    output = Math.floor(((input - src_min) / (src_max - src_min)) * (target_max - target_min) + target_min);
-                }
-
-                this.setOutputData(0, output);
-            }
-        }
-
-        LiteGraph.registerNodeType("mtb/math/fit", MyMapNode);
     },
 
     setup: () => {
