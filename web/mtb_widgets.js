@@ -15,7 +15,7 @@ const bboxWidget = (key, val) => {
         type: "BBOX",
         // options: val,
         y: 0,
-        value: val || [0, 0, 0, 0],
+        value: val?.default || [0, 0, 0, 0],
         options: {},
 
         draw: function (ctx,
@@ -23,59 +23,63 @@ const bboxWidget = (key, val) => {
             widget_width,
             widgetY,
             height) {
-            const hide = this.type !== "BBOX" && app.canvas.ds.scale > 0.5
+            const hide = this.type !== "BBOX" && app.canvas.ds.scale > 0.5;
 
-            const show_text = true
+            const show_text = true;
             const outline_color = LiteGraph.WIDGET_OUTLINE_COLOR;
             const background_color = LiteGraph.WIDGET_BGCOLOR;
             const text_color = LiteGraph.WIDGET_TEXT_COLOR;
             const secondary_text_color = LiteGraph.WIDGET_SECONDARY_TEXT_COLOR;
             const H = LiteGraph.NODE_WIDGET_HEIGHT;
 
-
             var margin = 15;
+            var numWidgets = 4; // Number of stacked widgets
+
             if (hide) return;
 
-            ctx.textAlign = "left";
-            ctx.strokeStyle = outline_color;
-            ctx.fillStyle = background_color;
-            ctx.beginPath();
-            if (show_text)
-                ctx.roundRect(margin, widgetY, widget_width - margin * 2, H, [H * 0.5]);
-            else
-                ctx.rect(margin, widgetY, widget_width - margin * 2, H);
-            ctx.fill();
-            if (show_text) {
-                if (!this.disabled)
-                    ctx.stroke();
-                ctx.fillStyle = text_color;
-                if (!this.disabled) {
-                    ctx.beginPath();
-                    ctx.moveTo(margin + 16, widgetY + 5);
-                    ctx.lineTo(margin + 6, widgetY + H * 0.5);
-                    ctx.lineTo(margin + 16, widgetY + H - 5);
-                    ctx.fill();
-                    ctx.beginPath();
-                    ctx.moveTo(widget_width - margin - 16, widgetY + 5);
-                    ctx.lineTo(widget_width - margin - 6, widgetY + H * 0.5);
-                    ctx.lineTo(widget_width - margin - 16, widgetY + H - 5);
-                    ctx.fill();
+            for (let i = 0; i < numWidgets; i++) {
+                let currentY = widgetY + i * (H + margin); // Adjust Y position for each widget
+
+                ctx.textAlign = "left";
+                ctx.strokeStyle = outline_color;
+                ctx.fillStyle = background_color;
+                ctx.beginPath();
+                if (show_text)
+                    ctx.roundRect(margin, currentY, widget_width - margin * 2, H, [H * 0.5]);
+                else
+                    ctx.rect(margin, currentY, widget_width - margin * 2, H);
+                ctx.fill();
+                if (show_text) {
+                    if (!this.disabled)
+                        ctx.stroke();
+                    ctx.fillStyle = text_color;
+                    if (!this.disabled) {
+                        ctx.beginPath();
+                        ctx.moveTo(margin + 16, currentY + 5);
+                        ctx.lineTo(margin + 6, currentY + H * 0.5);
+                        ctx.lineTo(margin + 16, currentY + H - 5);
+                        ctx.fill();
+                        ctx.beginPath();
+                        ctx.moveTo(widget_width - margin - 16, currentY + 5);
+                        ctx.lineTo(widget_width - margin - 6, currentY + H * 0.5);
+                        ctx.lineTo(widget_width - margin - 16, currentY + H - 5);
+                        ctx.fill();
+                    }
+                    ctx.fillStyle = secondary_text_color;
+                    ctx.fillText(this.label || this.name, margin * 2 + 5, currentY + H * 0.7);
+                    ctx.fillStyle = text_color;
+                    ctx.textAlign = "right";
+
+                    ctx.fillText(
+                        Number(this.value).toFixed(
+                            this.options?.precision !== undefined
+                                ? this.options.precision
+                                : 3
+                        ),
+                        widget_width - margin * 2 - 20,
+                        currentY + H * 0.7
+                    );
                 }
-                ctx.fillStyle = secondary_text_color;
-                ctx.fillText(this.label || this.name, margin * 2 + 5, widgetY + H * 0.7);
-                ctx.fillStyle = text_color;
-                ctx.textAlign = "right";
-
-                ctx.fillText(
-                    Number(this.value).toFixed(
-                        this.options?.precision !== undefined
-                            ? this.options.precision
-                            : 3
-                    ),
-                    widget_width - margin * 2 - 20,
-                    widgetY + H * 0.7
-                );
-
             }
         },
         mouse: function (event, pos, node) {
@@ -83,98 +87,89 @@ const bboxWidget = (key, val) => {
             var x = pos[0] - node.pos[0];
             var y = pos[1] - node.pos[1];
             var width = node.size[0];
+            var H = LiteGraph.NODE_WIDGET_HEIGHT;
+            var margin = 5;
+            var numWidgets = 4; // Number of stacked widgets
 
-            if (event.type == LiteGraph.pointerevents_method + "move" && this.type == "BBOX") {
-                if (event.deltaX)
-                    this.value += event.deltaX * 0.1 * (this.options?.step || 1);
-                if (this.options.min != null && this.value < this.options.min) {
-                    this.value = this.options.min;
-                }
-                if (this.options.max != null && this.value > this.options.max) {
-                    this.value = this.options.max;
-                }
-            } else if (event.type == LiteGraph.pointerevents_method + "down") {
-                var values = this.options?.values;
-                if (values && values.constructor === Function) {
-                    values = this.options.values(w, node);
-                }
-                var values_list = null;
+            for (let i = 0; i < numWidgets; i++) {
+                let currentY = y + i * (H + margin); // Adjust Y position for each widget
 
-                var delta = x < 40 ? -1 : x > widget_width - 40 ? 1 : 0;
-                if (this.type == "BBOX") {
-                    this.value += delta * 0.1 * (this.options.step || 1);
+
+                if (event.type == LiteGraph.pointerevents_method + "move" && this.type == "BBOX") {
+                    if (event.deltaX)
+                        this.value += event.deltaX * 0.1 * (this.options?.step || 1);
                     if (this.options.min != null && this.value < this.options.min) {
                         this.value = this.options.min;
                     }
                     if (this.options.max != null && this.value > this.options.max) {
                         this.value = this.options.max;
                     }
-                } else if (delta) { //clicked in arrow, used for combos 
-                    var index = -1;
-                    this.last_mouseclick = 0; //avoids dobl click event
-                    if (values.constructor === Object)
-                        index = values_list.indexOf(String(this.value)) + delta;
-                    else
-                        index = values_list.indexOf(this.value) + delta;
-                    if (index >= values_list.length) {
-                        index = values_list.length - 1;
+                } else if (event.type == LiteGraph.pointerevents_method + "down") {
+                    var values = this.options?.values;
+                    if (values && values.constructor === Function) {
+                        values = this.options.values(w, node);
                     }
-                    if (index < 0) {
-                        index = 0;
-                    }
-                    if (values.constructor === Array)
-                        this.value = values[index];
-                    else
-                        this.value = index;
-                } else { //combo clicked 
-                    var text_values = values != values_list ? Object.values(values) : values;
-                    var menu = new LiteGraph.ContextMenu(text_values, {
-                        scale: Math.max(1, this.ds.scale),
-                        event: event,
-                        className: "dark",
-                        callback: inner_clicked.bind(w)
-                    },
-                        ref_window);
-                    function inner_clicked(v, option, event) {
-                        if (values != values_list)
-                            v = text_values.indexOf(v);
-                        this.value = v;
-                        shared.inner_value_change(this, v, event);
-                        app.canvas.setDirty(true)
-                        return false;
-                    }
-                }
-            } //end mousedown
-            else if (event.type == LiteGraph.pointerevents_method + "up" && this.type == "BBOX") {
-                var delta = x < 40 ? -1 : x > widget_width - 40 ? 1 : 0;
-                if (event.click_time < 200 && delta == 0) {
-                    this.prompt("Value", this.value, function (v) {
-                        // check if v is a valid equation or a number
-                        if (/^[0-9+\-*/()\s]+|\d+\.\d+$/.test(v)) {
-                            try {//solve the equation if possible
-                                v = eval(v);
-                            } catch (e) { }
+                    var values_list = null;
+
+                    var delta = x < 40 ? -1 : x > widget_width - 40 ? 1 : 0;
+                    if (this.type == "BBOX") {
+                        this.value += delta * 0.1 * (this.options.step || 1);
+                        if (this.options.min != null && this.value < this.options.min) {
+                            this.value = this.options.min;
                         }
-                        this.value = Number(v);
-                        shared.inner_value_change(this, this.value, event);
-                    }.bind(w),
-                        event);
+                        if (this.options.max != null && this.value > this.options.max) {
+                            this.value = this.options.max;
+                        }
+                    } else if (delta) { //clicked in arrow, used for combos
+                        var index = -1;
+                        this.last_mouseclick = 0; //avoids dobl click event
+                        if (values.constructor === Object)
+                            index = values_list.indexOf(String(this.value)) + delta;
+                        else
+                            index = values_list.indexOf(this.value) + delta;
+                        if (index >= values_list.length) {
+                            index = values_list.length - 1;
+                        }
+                        if (index < 0) {
+                            index = 0;
+                        }
+                        if (values.constructor === Array)
+                            this.value = values[index];
+                        else
+                            this.value = index;
+                    }
+                } //end mousedown
+                else if (event.type == LiteGraph.pointerevents_method + "up" && this.type == "BBOX") {
+                    var delta = x < 40 ? -1 : x > widget_width - 40 ? 1 : 0;
+                    if (event.click_time < 200 && delta == 0) {
+                        this.prompt("Value", this.value, function (v) {
+                            // check if v is a valid equation or a number
+                            if (/^[0-9+\-*/()\s]+|\d+\.\d+$/.test(v)) {
+                                try {//solve the equation if possible
+                                    v = eval(v);
+                                } catch (e) { }
+                            }
+                            this.value = Number(v);
+                            shared.inner_value_change(this, this.value, event);
+                        }.bind(w),
+                            event);
+                    }
                 }
+
+                if (old_value != this.value)
+                    setTimeout(
+                        function () {
+                            shared.inner_value_change(this, this.value, event);
+                        }.bind(this),
+                        20
+                    );
+
+                app.canvas.setDirty(true);
             }
-
-            if (old_value != this.value)
-                setTimeout(
-                    function () {
-                        shared.inner_value_change(this, this.value, event);
-                    }.bind(this),
-                    20
-                );
-
-            app.canvas.setDirty(true)
 
         },
         computeSize: function (width) {
-            return [width, 32];
+            return [width, LiteGraph.NODE_WIDGET_HEIGHT * 4];
         },
         // onDrawBackground: function (ctx) {
         //     if (!this.flags.collapsed) return;
@@ -264,7 +259,7 @@ const bboxWidgetDOM = (key, val) => {
     document.body.appendChild(widget.inputEl);
 
 
-    console.log(widget.inputEl)
+    console.log("Bounding Box Widget DOM", widget.inputEl)
     return widget
 
 }
@@ -281,32 +276,49 @@ const boolWidget = (key, val, compute = false) => {
         value: val || false,
         draw: function (ctx,
             node,
-            widgetWidth,
+            widget_width,
             widgetY,
             height) {
-            const hide = this.type !== "BOOL"
+            const hide = this.type !== "BOOL" && app.canvas.ds.scale > 0.5
             if (hide) {
                 return
             }
-            const border = 6;
-            const w = 20;
-            ctx.fillStyle = "black";
+            const outline_color = LiteGraph.WIDGET_OUTLINE_COLOR;
+            const background_color = LiteGraph.WIDGET_BGCOLOR;
+            const text_color = LiteGraph.WIDGET_TEXT_COLOR;
+            const H = LiteGraph.NODE_WIDGET_HEIGHT;
+            const arrowSize = 8;
 
-            ctx.fillRect(24, widgetY, w, w);
+            var margin = 15;
+            if (hide) return;
+
+            var currentY = widgetY;
+
+            ctx.textAlign = "left";
+            ctx.strokeStyle = outline_color;
+            ctx.fillStyle = background_color;
+            ctx.beginPath();
+            // ctx.roundRect(margin, currentY, widget_width - margin * 2, H, [H * 0.5]);
+            ctx.rect(margin, currentY, H, H); // Draw checkbox square
+
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = text_color;
+            // ctx.fillText(this.label || this.name, margin * 2 + 5, currentY + H * 0.7);
+            ctx.fillText(this.label || this.name, H + margin * 2, currentY + H * 0.7);
+
+
+            // Draw arrow if the value is true
+            // Draw checkmark if the value is true
             if (this.value) {
-                ctx.fillStyle = "white";
-                ctx.fillRect(24 + border, widgetY + border, w - border * 2, height - border * 2);
+                ctx.fillStyle = text_color;
+                ctx.beginPath();
+                ctx.moveTo(margin + H * 0.15, currentY + H * 0.5);
+                ctx.lineTo(margin + H * 0.4, currentY + H * 0.8);
+                ctx.lineTo(margin + H * 0.85, currentY + H * 0.2);
+                ctx.stroke();
             }
-            console.log(typeof (this.value))
-            // write the input name
-            // choose the fill based on the luminoisty of this.value color
-
-            ctx.fillStyle = "white";
-
-
-            ctx.font = "14px Arial";
-            ctx.textAlign = "center";
-            ctx.fillText(this.name, widgetWidth * 0.5, widgetY + 14);
 
         },
         get value() {
@@ -319,8 +331,21 @@ const boolWidget = (key, val, compute = false) => {
         computeSize: function (width) {
             return [width, 32];
         },
-        mouse: function (e, pos, node) {
-            if (e.type === "pointerdown") {
+        mouse: function (event, pos, node) {
+            // var x = pos[0] - node.pos[0];
+            // var y = pos[1] - node.pos[1];
+            // var width = node.size[0];
+            // var H = LiteGraph.NODE_WIDGET_HEIGHT;
+            // var margin = 15;
+
+            // if (event.type == LiteGraph.pointerevents_method + "down") {
+            //     if (x > margin && x < widget_width - margin && y > widgetY && y < widgetY + H) {
+            //         this.value = !this.value; // Toggle checkbox value
+            //         shared.inner_value_change(this, this.value, event);
+            //         app.canvas.setDirty(true);
+            //     }
+            // }
+            if (event.type === "pointerdown") {
                 // get widgets of type type : "COLOR"
                 const widgets = node.widgets.filter(w => w.type === "BOOL");
 
@@ -328,7 +353,6 @@ const boolWidget = (key, val, compute = false) => {
                     // color picker
                     const rect = [w.last_y, w.last_y + 32];
                     if (pos[1] > rect[0] && pos[1] < rect[1]) {
-                        console.log("bool", this.value)
                         // picker.style.position = "absolute";
                         // picker.style.left = ( pos[0]) + "px";
                         // picker.style.top = (  pos[1]) + "px";
@@ -339,6 +363,7 @@ const boolWidget = (key, val, compute = false) => {
                         // picker.style.top = (window.innerHeight / 2) + "px";
                         // picker.style.transform = "translate(-50%, -50%)";
                         // picker.style.zIndex = 1000;
+                        console.log("Clicked a BOOL", this.value)
 
                         this.value = this.value ? "false" : "true"
 
@@ -513,9 +538,132 @@ const colorWidget = (key, val, compute = false) => {
 const mtb_widgets = {
     name: "mtb.widgets",
 
-    init: () => { },
+    init: async () => {
+        console.log("Registering mtb.widgets")
+        try {
+
+            const res = await api.fetchApi('/mtb/debug')
+            const msg = await res.json()
+            window.MTB_DEBUG = msg.enabled;
+        }
+        catch (e) {
+            console.error('Error:', error);
+        }
+        class MyMapNode {
+            constructor() {
+
+                this.addInput("input", "number");
+                this.addOutput("output", "number");
+                this.addWidget("combo", "output_mode", "FLOAT", this.onChangeMode.bind(this), {
+                    values: ["FLOAT", "INT"],
+                });
+
+                this.properties = {
+                    src_min: 0,
+                    src_max: 1,
+                    target_min: 0,
+                    target_max: 1,
+                    output_mode: "FLOAT",
+                };
+
+                this.size = [140, 100];
+            }
+
+            static title = "Map Range";
+
+            onChangeMode(value) {
+                this.properties.output_mode = value;
+            }
+
+            onExecute() {
+                const input = this.getInputData(0);
+                if (input === undefined) return;
+
+                const src_min = this.properties.src_min;
+                const src_max = this.properties.src_max;
+                const target_min = this.properties.target_min;
+                const target_max = this.properties.target_max;
+
+                let output;
+
+                if (this.properties.output_mode === "FLOAT") {
+                    output = ((input - src_min) / (src_max - src_min)) * (target_max - target_min) + target_min;
+                } else {
+                    output = Math.floor(((input - src_min) / (src_max - src_min)) * (target_max - target_min) + target_min);
+                }
+
+                this.setOutputData(0, output);
+            }
+        }
+
+        LiteGraph.registerNodeType("mtb/math/fit", MyMapNode);
+    },
+
+    setup: () => {
+        app.ui.settings.addSetting({
+            id: "mtb.Debug.enabled",
+            name: "[mtb] Enable Debug (py and js)",
+            type: "boolean",
+            defaultValue: false,
+
+            tooltip:
+                "This will enable debug messages in the console and in the python console respectively",
+            attrs: {
+                style: {
+                    fontFamily: "monospace",
+                },
+            },
+            async onChange(value) {
+                if (value) {
+                    console.log("Enabled DEBUG mode")
+                }
+                window.MTB_DEBUG = value;
+                await api.fetchApi('/mtb/debug', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        enabled: value
+
+                    })
+                }).then(response => { }).catch(error => {
+                    console.error('Error:', error);
+                });
+
+            },
+        });
+    },
 
 
+    getCustomWidgets: function () {
+        return {
+            BOOL: (node, inputName, inputData, app) => {
+                console.debug("Registering bool")
+
+                return {
+                    widget: node.addCustomWidget(boolWidget(inputName, inputData[1]?.default || false)),
+                    minWidth: 150,
+                    minHeight: 30,
+                };
+            },
+
+            COLOR: (node, inputName, inputData, app) => {
+                console.debug("Registering color")
+                return {
+                    widget: node.addCustomWidget(colorWidget(inputName, inputData[1]?.default || "#ff0000")),
+                    minWidth: 150,
+                    minHeight: 30,
+                }
+            },
+            BBOX: (node, inputName, inputData, app) => {
+                console.debug("Registering bbox")
+                return {
+                    widget: node.addCustomWidget(bboxWidget(inputName, inputData[1]?.default || [0, 0, 0, 0])),
+                    minWidth: 150,
+                    minHeight: 30,
+                }
+
+            }
+        }
+    },
     /**
      * @param {import("./types/comfy").NodeType} nodeType
      * @param {import("./types/comfy").NodeDef} nodeData
@@ -546,12 +694,13 @@ const mtb_widgets = {
                 for (const [key, input] of Object.entries(rinputs)) {
                     switch (input[0]) {
                         case "COLOR":
-                            const colW = colorWidget(key, input[1])
-                            this.addCustomWidget(colW)
-                            const associated_input = this.inputs.findIndex((i) => i.widget?.name === key);
-                            if (associated_input !== -1) {
-                                this.inputs[associated_input].widget = colW
-                            }
+                            console.log(this)
+                            // const colW = colorWidget(key, input[1])
+                            // this.addCustomWidget(colW)
+                            // const associated_input = this.inputs.findIndex((i) => i.widget?.name === key);
+                            // if (associated_input !== -1) {
+                            //     this.inputs[associated_input].widget = colW
+                            // }
 
 
 
@@ -559,29 +708,16 @@ const mtb_widgets = {
                         case "BOOL":
                             // const widg = boolWidget(key, input[1])
                             // this.addCustomWidget(widg)
-                            this.addWidget("toggle", key, false, function (value, widget, node) {
-                                console.log(value)
+                            // this.addWidget("toggle", key, false, function (value, widget, node) {
+                            //     console.log(value)
 
-                            })
+                            // })
                             //this.removeInput(this.inputs.findIndex((i) => i.widget?.name === key));
 
                             break;
                         case "BBOX":
-
-                            // const x_widget = ComfyWidgets.FLOAT(this, `${key}_x`, [undefined, { default: 1, min: 1, max: Number.MAX_SAFE_INTEGER }]).widget;
-                            // const y_widget = ComfyWidgets.FLOAT(this, `${key}_y`, [undefined, { default: 1, min: 1, max: Number.MAX_SAFE_INTEGER }]).widget;
-                            // const width_widget = ComfyWidgets.FLOAT(this, `${key}_width`, [undefined, { default: 1, min: 1, max: Number.MAX_SAFE_INTEGER }]).widget;
-                            // const height_widget = ComfyWidgets.FLOAT(this, `${key}_height`, [undefined, { default: 1, min: 1, max: Number.MAX_SAFE_INTEGER }]).widget;
-
-
-
-                            // this.addWidget("number", `${key}_x`, false, function (value, widget, node) { })
-                            // this.addWidget("number", `${key}_y`, false, function (value, widget, node) { })
-                            // this.addWidget("number", `${key}_width`, false, function (value, widget, node) { })
-                            // this.addWidget("number", `${key}_height`, false, function (value, widget, node) { })
-
-                            const bboxW = bboxWidget(key, input[1])
-                            this.addCustomWidget(bboxW)
+                            // const bboxW = bboxWidget(key, input[1])
+                            // this.addCustomWidget(bboxW)
                             break;
                         default:
                             break
@@ -603,40 +739,6 @@ const mtb_widgets = {
                 };
             }
 
-            //- On initial configure of nodes hide all converted widgets
-            const origOnConfigure = nodeType.prototype.onConfigure;
-            nodeType.prototype.onConfigure = function () {
-                const r = origOnConfigure ? origOnConfigure.apply(this, arguments) : undefined;
-                console.log(this)
-
-                if (this.inputs) {
-                    for (const input of this.inputs) {
-                        console.log(input)
-                        if (input.widget) {
-                            // if (newTypes.includes(input.type)) {
-
-                            console.log(input.widget)
-                            if (input.widget.hidden) {
-                                console.debug(`Already hidden skipping ${input.widget.name}`)
-                                continue
-                            }
-                            const w = this.widgets.find((w) => w.name === input.widget.name);
-                            if (w) {
-                                console.log(`hidding ${w.name} from ${this.label}`)
-                                shared.hideWidget(this, w);
-                            } else {
-                                console.log(`converting to widget ${w}`)
-
-                                shared.convertToWidget(this, input)
-                            }
-                        }
-                    }
-                }
-
-                return r;
-            };
-
-
             //- Extra menus
             const origGetExtraMenuOptions = nodeType.prototype.getExtraMenuOptions;
             nodeType.prototype.getExtraMenuOptions = function (_, options) {
@@ -646,11 +748,12 @@ const mtb_widgets = {
                     let toWidget = [];
                     for (const w of this.widgets) {
                         if (w.type === shared.CONVERTED_TYPE) {
-                            toWidget.push({
-                                content: `Convert ${w.name} to widget`,
-                                callback: () => shared.convertToWidget(this, w),
-                            });
-                        } else {
+                            //- This is already handled by widgetinputs.js
+                            // toWidget.push({
+                            //     content: `Convert ${w.name} to widget`,
+                            //     callback: () => shared.convertToWidget(this, w),
+                            // });
+                        } else if (newTypes.includes(w.type)) {
                             const config = nodeData?.input?.required[w.name] || nodeData?.input?.optional?.[w.name] || [w.type, w.options || {}];
 
                             toInput.push({
@@ -672,22 +775,6 @@ const mtb_widgets = {
             };
 
         }
-
-
-
-        // if (nodeData.input && nodeData.input.includes("BOOL")) {
-
-        //     addMenuHandler(nodeType, function (_, options) {
-        //         options.unshift({
-        //             content: "convert bool input to widget",
-        //             callback: () => {
-
-        //                 console.log("Nahh not yet")
-        //             },
-        //         });
-        //     });
-
-        // }
 
         //- Extending Python Nodes
         switch (nodeData.name) {
@@ -725,7 +812,7 @@ const mtb_widgets = {
 
                     raw_iteration._value = 0
                     // Object.defineProperty(raw_iteration, "value", {
-                    //     get() {  
+                    //     get() {
                     //         return this._value
                     //     },
                     //     set(value) {
@@ -800,28 +887,12 @@ frame: ${this.value % total_frames.value}`;
                         loop_preview.value = `current loop: ${raw_loop.value + 1}/${loop_count.value}`
 
                     }
-                    // ComfyWidgets.hideWidget()
-                    // if (raw_iteration > 0) {
-                    // raw_iteration.inputEl.readOnly = true
-                    // raw_iteration.inputEl.style.opacity = 0.6;
-                    // console.log(raw_iteration)
-                    // raw_iteration.onRemove?.();
-                    // console.log(this.widgets[raw_iteration].type);
-
-                    // raw_iteration.afterQueued = function () {
-                    //     this.value++
-                    // }
-                    // }
-
-
-
 
                 }
-                //LiteGraph.ALWAYS
                 const onExecuted = nodeType.prototype.onExecuted;
 
                 nodeType.prototype.onExecuted = function (data) {
-                    console.log("executed")
+                    console.log("executed node", this)
                     onExecuted?.apply(this, data)
                     if (this.widgets) {
                         const pos = this.widgets.findIndex((w) => w.name === "preview");
