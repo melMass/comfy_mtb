@@ -46,7 +46,7 @@ class LoadFaceSwapModel:
 
     RETURN_TYPES = ("FACESWAP_MODEL",)
     FUNCTION = "load_model"
-    CATEGORY = "face"
+    CATEGORY = "mtb/facetools"
 
     def load_model(self, faceswap_model: str):
         model_path = os.path.join(
@@ -88,7 +88,7 @@ class FaceSwap:
 
     RETURN_TYPES = ("IMAGE",)
     FUNCTION = "swap"
-    CATEGORY = "face"
+    CATEGORY = "mtb/facetools"
 
     def swap(
         self,
@@ -100,8 +100,8 @@ class FaceSwap:
     ):
         def do_swap(img):
             model_management.throw_exception_if_processing_interrupted()
-            img = tensor2pil(img)
-            ref = tensor2pil(reference)
+            img = tensor2pil(img)[0]
+            ref = tensor2pil(reference)[0]
             face_ids = {
                 int(x) for x in faces_index.strip(",").split(",") if x.isnumeric()
             }

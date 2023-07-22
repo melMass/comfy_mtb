@@ -1,0 +1,1349 @@
+{
+  "last_node_id": 82,
+  "last_link_id": 165,
+  "nodes": [
+    {
+      "id": 59,
+      "type": "Reroute",
+      "pos": [
+        -670,
+        980
+      ],
+      "size": [
+        75,
+        26
+      ],
+      "flags": {},
+      "order": 15,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "",
+          "type": "*",
+          "link": 124
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "VAE",
+          "links": [
+            139,
+            154
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "showOutputText": false,
+        "horizontal": false
+      }
+    },
+    {
+      "id": 56,
+      "type": "Reroute",
+      "pos": [
+        -2050,
+        980
+      ],
+      "size": [
+        75,
+        26
+      ],
+      "flags": {},
+      "order": 10,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "",
+          "type": "*",
+          "link": 117
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "VAE",
+          "links": [
+            124
+          ]
+        }
+      ],
+      "properties": {
+        "showOutputText": false,
+        "horizontal": false
+      }
+    },
+    {
+      "id": 65,
+      "type": "Reroute",
+      "pos": [
+        -1990,
+        160
+      ],
+      "size": [
+        75,
+        26
+      ],
+      "flags": {},
+      "order": 8,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "",
+          "type": "*",
+          "link": 134
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "MODEL",
+          "links": [
+            135
+          ]
+        }
+      ],
+      "properties": {
+        "showOutputText": false,
+        "horizontal": false
+      }
+    },
+    {
+      "id": 57,
+      "type": "Reroute",
+      "pos": [
+        -1200,
+        150
+      ],
+      "size": [
+        75,
+        26
+      ],
+      "flags": {},
+      "order": 12,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "",
+          "type": "*",
+          "link": 135
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "MODEL",
+          "links": [
+            120,
+            143
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "showOutputText": false,
+        "horizontal": false
+      }
+    },
+    {
+      "id": 5,
+      "type": "EmptyLatentImage",
+      "pos": [
+        -1410,
+        660
+      ],
+      "size": [
+        315,
+        106
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "outputs": [
+        {
+          "name": "LATENT",
+          "type": "LATENT",
+          "links": [
+            2,
+            153
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "EmptyLatentImage"
+      },
+      "widgets_values": [
+        768,
+        512,
+        1
+      ]
+    },
+    {
+      "id": 67,
+      "type": "Text",
+      "pos": [
+        -2280,
+        250
+      ],
+      "size": [
+        315,
+        58
+      ],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            142,
+            164
+          ],
+          "shape": 3,
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "Text"
+      },
+      "widgets_values": [
+        "Photo of a Face of a man (looking down), rim lighting, tokyo 1987"
+      ]
+    },
+    {
+      "id": 3,
+      "type": "KSampler",
+      "pos": [
+        -1010,
+        320
+      ],
+      "size": [
+        315,
+        474
+      ],
+      "flags": {},
+      "order": 17,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "link": 120
+        },
+        {
+          "name": "positive",
+          "type": "CONDITIONING",
+          "link": 4
+        },
+        {
+          "name": "negative",
+          "type": "CONDITIONING",
+          "link": 6
+        },
+        {
+          "name": "latent_image",
+          "type": "LATENT",
+          "link": 2
+        },
+        {
+          "name": "seed",
+          "type": "INT",
+          "link": 148,
+          "widget": {
+            "name": "seed",
+            "config": [
+              "INT",
+              {
+                "default": 0,
+                "min": 0,
+                "max": 18446744073709552000
+              }
+            ]
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "LATENT",
+          "type": "LATENT",
+          "links": [
+            138
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "KSampler"
+      },
+      "widgets_values": [
+        542821171532978,
+        "fixed",
+        45,
+        8,
+        "euler_ancestral",
+        "simple",
+        1
+      ]
+    },
+    {
+      "id": 72,
+      "type": "PrimitiveNode",
+      "pos": [
+        -1290,
+        880
+      ],
+      "size": [
+        210,
+        82
+      ],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "outputs": [
+        {
+          "name": "INT",
+          "type": "INT",
+          "links": [
+            148,
+            150
+          ],
+          "widget": {
+            "name": "seed",
+            "config": [
+              "INT",
+              {
+                "default": 0,
+                "min": 0,
+                "max": 18446744073709552000
+              }
+            ]
+          },
+          "slot_index": 0
+        }
+      ],
+      "title": "seed",
+      "properties": {},
+      "widgets_values": [
+        542821171532978,
+        "fixed"
+      ]
+    },
+    {
+      "id": 79,
+      "type": "Load Film Model (mtb)",
+      "pos": [
+        720,
+        590
+      ],
+      "size": [
+        315,
+        58
+      ],
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "outputs": [
+        {
+          "name": "FILM_MODEL",
+          "type": "FILM_MODEL",
+          "links": [
+            161
+          ],
+          "shape": 3
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "Load Film Model (mtb)"
+      },
+      "widgets_values": [
+        "Style"
+      ]
+    },
+    {
+      "id": 80,
+      "type": "PreviewImage",
+      "pos": [
+        1120,
+        190
+      ],
+      "size": [
+        210,
+        246
+      ],
+      "flags": {},
+      "order": 23,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 163,
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "PreviewImage"
+      }
+    },
+    {
+      "id": 71,
+      "type": "CLIPTextEncode",
+      "pos": [
+        -610,
+        400
+      ],
+      "size": [
+        210,
+        75.28300476074219
+      ],
+      "flags": {},
+      "order": 16,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "link": 152,
+          "slot_index": 0
+        },
+        {
+          "name": "text",
+          "type": "STRING",
+          "link": 151,
+          "widget": {
+            "name": "text",
+            "config": [
+              "STRING",
+              {
+                "multiline": true
+              }
+            ]
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "CONDITIONING",
+          "type": "CONDITIONING",
+          "links": [
+            144
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CLIPTextEncode"
+      },
+      "widgets_values": [
+        "Face of a man (looking down), rim lighting, tokyo 1987"
+      ]
+    },
+    {
+      "id": 19,
+      "type": "CLIPSetLastLayer",
+      "pos": [
+        -1980,
+        400
+      ],
+      "size": [
+        315,
+        58
+      ],
+      "flags": {},
+      "order": 9,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "link": 116
+        }
+      ],
+      "outputs": [
+        {
+          "name": "CLIP",
+          "type": "CLIP",
+          "links": [
+            28,
+            29,
+            152
+          ],
+          "shape": 3,
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CLIPSetLastLayer"
+      },
+      "widgets_values": [
+        -2
+      ]
+    },
+    {
+      "id": 6,
+      "type": "CLIPTextEncode",
+      "pos": [
+        -1320,
+        330
+      ],
+      "size": [
+        210,
+        54
+      ],
+      "flags": {},
+      "order": 13,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "link": 28
+        },
+        {
+          "name": "text",
+          "type": "STRING",
+          "link": 142,
+          "widget": {
+            "name": "text",
+            "config": [
+              "STRING",
+              {
+                "multiline": true
+              }
+            ]
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "CONDITIONING",
+          "type": "CONDITIONING",
+          "links": [
+            4
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CLIPTextEncode"
+      },
+      "widgets_values": [
+        "Face of a man (looking down), rim lighting, tokyo 1987"
+      ]
+    },
+    {
+      "id": 7,
+      "type": "CLIPTextEncode",
+      "pos": [
+        -1320,
+        430
+      ],
+      "size": [
+        210,
+        54
+      ],
+      "flags": {},
+      "order": 14,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "link": 29
+        },
+        {
+          "name": "text",
+          "type": "STRING",
+          "link": 87,
+          "widget": {
+            "name": "text",
+            "config": [
+              "STRING",
+              {
+                "multiline": true
+              }
+            ]
+          },
+          "slot_index": 1
+        }
+      ],
+      "outputs": [
+        {
+          "name": "CONDITIONING",
+          "type": "CONDITIONING",
+          "links": [
+            6,
+            145
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CLIPTextEncode"
+      },
+      "widgets_values": [
+        "worst quality, hands, embedding:EasyNegative,"
+      ]
+    },
+    {
+      "id": 20,
+      "type": "Styles Loader (mtb)",
+      "pos": [
+        -1650,
+        500
+      ],
+      "size": [
+        285.32098388671875,
+        78
+      ],
+      "flags": {
+        "collapsed": false
+      },
+      "order": 4,
+      "mode": 0,
+      "outputs": [
+        {
+          "name": "positive",
+          "type": "STRING",
+          "links": [],
+          "shape": 3
+        },
+        {
+          "name": "negative",
+          "type": "STRING",
+          "links": [
+            87
+          ],
+          "shape": 3,
+          "slot_index": 1
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "Styles Loader (mtb)"
+      },
+      "widgets_values": [
+        "❌Low Token"
+      ]
+    },
+    {
+      "id": 81,
+      "type": "Reroute",
+      "pos": [
+        -1740,
+        -10
+      ],
+      "size": [
+        75,
+        26
+      ],
+      "flags": {},
+      "order": 7,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "",
+          "type": "*",
+          "link": 164
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "STRING",
+          "links": [
+            165
+          ]
+        }
+      ],
+      "properties": {
+        "showOutputText": false,
+        "horizontal": false
+      }
+    },
+    {
+      "id": 69,
+      "type": "String Replace (mtb)",
+      "pos": [
+        -1000,
+        0
+      ],
+      "size": [
+        315,
+        82
+      ],
+      "flags": {},
+      "order": 11,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "string",
+          "type": "STRING",
+          "link": 165
+        }
+      ],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            151
+          ],
+          "shape": 3,
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "String Replace (mtb)"
+      },
+      "widgets_values": [
+        "(looking down)",
+        "(looking up)"
+      ]
+    },
+    {
+      "id": 75,
+      "type": "VAEDecodeTiled",
+      "pos": [
+        220,
+        620
+      ],
+      "size": [
+        210,
+        46
+      ],
+      "flags": {
+        "collapsed": false
+      },
+      "order": 20,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "samples",
+          "type": "LATENT",
+          "link": 155,
+          "slot_index": 0
+        },
+        {
+          "name": "vae",
+          "type": "VAE",
+          "link": 154,
+          "slot_index": 1
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            158
+          ],
+          "shape": 3,
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "VAEDecodeTiled"
+      }
+    },
+    {
+      "id": 78,
+      "type": "Film Interpolation (mtb)",
+      "pos": [
+        1140,
+        520
+      ],
+      "size": [
+        315,
+        78
+      ],
+      "flags": {},
+      "order": 22,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 160,
+          "slot_index": 0
+        },
+        {
+          "name": "film_model",
+          "type": "FILM_MODEL",
+          "link": 161,
+          "slot_index": 1
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            162
+          ],
+          "shape": 3,
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "Film Interpolation (mtb)"
+      },
+      "widgets_values": [
+        4
+      ]
+    },
+    {
+      "id": 70,
+      "type": "KSampler",
+      "pos": [
+        -300,
+        380
+      ],
+      "size": [
+        315,
+        474
+      ],
+      "flags": {},
+      "order": 18,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "link": 143
+        },
+        {
+          "name": "positive",
+          "type": "CONDITIONING",
+          "link": 144
+        },
+        {
+          "name": "negative",
+          "type": "CONDITIONING",
+          "link": 145
+        },
+        {
+          "name": "latent_image",
+          "type": "LATENT",
+          "link": 153,
+          "slot_index": 3
+        },
+        {
+          "name": "seed",
+          "type": "INT",
+          "link": 150,
+          "widget": {
+            "name": "seed",
+            "config": [
+              "INT",
+              {
+                "default": 0,
+                "min": 0,
+                "max": 18446744073709552000
+              }
+            ]
+          },
+          "slot_index": 4
+        }
+      ],
+      "outputs": [
+        {
+          "name": "LATENT",
+          "type": "LATENT",
+          "links": [
+            155
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "KSampler"
+      },
+      "widgets_values": [
+        542821171532978,
+        "fixed",
+        45,
+        8,
+        "euler_ancestral",
+        "simple",
+        1
+      ]
+    },
+    {
+      "id": 16,
+      "type": "CheckpointLoaderSimple",
+      "pos": [
+        -2470,
+        530
+      ],
+      "size": [
+        315,
+        98
+      ],
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "outputs": [
+        {
+          "name": "MODEL",
+          "type": "MODEL",
+          "links": [
+            134
+          ],
+          "slot_index": 0
+        },
+        {
+          "name": "CLIP",
+          "type": "CLIP",
+          "links": [
+            116
+          ],
+          "slot_index": 1
+        },
+        {
+          "name": "VAE",
+          "type": "VAE",
+          "links": [
+            117
+          ],
+          "slot_index": 2
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CheckpointLoaderSimple"
+      },
+      "widgets_values": [
+        "revAnimated_v122.safetensors"
+      ]
+    },
+    {
+      "id": 82,
+      "type": "Note",
+      "pos": [
+        -398,
+        25
+      ],
+      "size": [
+        500.61550625887776,
+        270.54209761186075
+      ],
+      "flags": {},
+      "order": 6,
+      "mode": 0,
+      "properties": {
+        "text": "THIS LOOKS A BIT MESSY BUT WE BASICALLY USE THE SAME INPUTS (MODEL, SEED etc), ONLY STRING REPLACING THE PROMPT, LOOKING DOWN -> LOOKING UP"
+      },
+      "widgets_values": [
+        "THIS LOOKS A BIT MESSY BUT WE BASICALLY USE THE SAME INPUTS (MODEL, SEED etc), ONLY STRING REPLACING THE PROMPT, LOOKING DOWN -> LOOKING UP\n"
+      ],
+      "color": "#222",
+      "bgcolor": "#000"
+    },
+    {
+      "id": 66,
+      "type": "VAEDecodeTiled",
+      "pos": [
+        231,
+        403
+      ],
+      "size": [
+        210,
+        46
+      ],
+      "flags": {
+        "collapsed": false
+      },
+      "order": 19,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "samples",
+          "type": "LATENT",
+          "link": 138
+        },
+        {
+          "name": "vae",
+          "type": "VAE",
+          "link": 139,
+          "slot_index": 1
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            157
+          ],
+          "shape": 3,
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "VAEDecodeTiled"
+      }
+    },
+    {
+      "id": 77,
+      "type": "Concat Images (mtb)",
+      "pos": [
+        661,
+        402
+      ],
+      "size": [
+        210,
+        46
+      ],
+      "flags": {},
+      "order": 21,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "imageA",
+          "type": "IMAGE",
+          "link": 157
+        },
+        {
+          "name": "imageB",
+          "type": "IMAGE",
+          "link": 158
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            160,
+            163
+          ],
+          "shape": 3,
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "Concat Images (mtb)"
+      }
+    },
+    {
+      "id": 76,
+      "type": "PreviewImage",
+      "pos": [
+        1517,
+        207
+      ],
+      "size": [
+        511.33429483925056,
+        675.8856963258129
+      ],
+      "flags": {},
+      "order": 24,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 162
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "PreviewImage"
+      }
+    }
+  ],
+  "links": [
+    [
+      2,
+      5,
+      0,
+      3,
+      3,
+      "LATENT"
+    ],
+    [
+      4,
+      6,
+      0,
+      3,
+      1,
+      "CONDITIONING"
+    ],
+    [
+      6,
+      7,
+      0,
+      3,
+      2,
+      "CONDITIONING"
+    ],
+    [
+      28,
+      19,
+      0,
+      6,
+      0,
+      "CLIP"
+    ],
+    [
+      29,
+      19,
+      0,
+      7,
+      0,
+      "CLIP"
+    ],
+    [
+      87,
+      20,
+      1,
+      7,
+      1,
+      "STRING"
+    ],
+    [
+      116,
+      16,
+      1,
+      19,
+      0,
+      "CLIP"
+    ],
+    [
+      117,
+      16,
+      2,
+      56,
+      0,
+      "*"
+    ],
+    [
+      120,
+      57,
+      0,
+      3,
+      0,
+      "MODEL"
+    ],
+    [
+      124,
+      56,
+      0,
+      59,
+      0,
+      "*"
+    ],
+    [
+      134,
+      16,
+      0,
+      65,
+      0,
+      "*"
+    ],
+    [
+      135,
+      65,
+      0,
+      57,
+      0,
+      "*"
+    ],
+    [
+      138,
+      3,
+      0,
+      66,
+      0,
+      "LATENT"
+    ],
+    [
+      139,
+      59,
+      0,
+      66,
+      1,
+      "VAE"
+    ],
+    [
+      142,
+      67,
+      0,
+      6,
+      1,
+      "STRING"
+    ],
+    [
+      143,
+      57,
+      0,
+      70,
+      0,
+      "MODEL"
+    ],
+    [
+      144,
+      71,
+      0,
+      70,
+      1,
+      "CONDITIONING"
+    ],
+    [
+      145,
+      7,
+      0,
+      70,
+      2,
+      "CONDITIONING"
+    ],
+    [
+      148,
+      72,
+      0,
+      3,
+      4,
+      "INT"
+    ],
+    [
+      150,
+      72,
+      0,
+      70,
+      4,
+      "INT"
+    ],
+    [
+      151,
+      69,
+      0,
+      71,
+      1,
+      "STRING"
+    ],
+    [
+      152,
+      19,
+      0,
+      71,
+      0,
+      "CLIP"
+    ],
+    [
+      153,
+      5,
+      0,
+      70,
+      3,
+      "LATENT"
+    ],
+    [
+      154,
+      59,
+      0,
+      75,
+      1,
+      "VAE"
+    ],
+    [
+      155,
+      70,
+      0,
+      75,
+      0,
+      "LATENT"
+    ],
+    [
+      157,
+      66,
+      0,
+      77,
+      0,
+      "IMAGE"
+    ],
+    [
+      158,
+      75,
+      0,
+      77,
+      1,
+      "IMAGE"
+    ],
+    [
+      160,
+      77,
+      0,
+      78,
+      0,
+      "IMAGE"
+    ],
+    [
+      161,
+      79,
+      0,
+      78,
+      1,
+      "FILM_MODEL"
+    ],
+    [
+      162,
+      78,
+      0,
+      76,
+      0,
+      "IMAGE"
+    ],
+    [
+      163,
+      77,
+      0,
+      80,
+      0,
+      "IMAGE"
+    ],
+    [
+      164,
+      67,
+      0,
+      81,
+      0,
+      "*"
+    ],
+    [
+      165,
+      81,
+      0,
+      69,
+      0,
+      "STRING"
+    ]
+  ],
+  "groups": [
+    {
+      "title": "GENERATE IMAGES",
+      "bounding": [
+        -2477,
+        -219,
+        3018,
+        1350
+      ],
+      "color": "#a1309b",
+      "locked": false
+    },
+    {
+      "title": "FILM INTERPOLATION",
+      "bounding": [
+        559,
+        66,
+        1264,
+        832
+      ],
+      "color": "#3f789e",
+      "locked": false
+    }
+  ],
+  "config": {},
+  "extra": {},
+  "version": 0.4
+}

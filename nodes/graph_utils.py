@@ -1,69 +1,75 @@
-import torch
-import folder_paths
-import os
+from ..log import log
 
 
-class SaveTensors:
-    """Debug node that will probably be removed in the future"""
-
-    def __init__(self):
-        self.output_dir = folder_paths.get_output_directory()
-        self.type = "output"
+class StringReplace:
+    """Basic string replacement"""
 
     @classmethod
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "filename_prefix": ("STRING", {"default": "ComfyPickle"}),
-            },
-            "optional": {
-                "image": ("IMAGE",),
-                "mask": ("MASK",),
-                "latent": ("LATENT",),
-            },
+                "string": ("STRING", {"forceInput": True}),
+                "old": ("STRING", {"default": ""}),
+                "new": ("STRING", {"default": ""}),
+            }
         }
 
-    FUNCTION = "save"
-    OUTPUT_NODE = True
-    RETURN_TYPES = ()
-    CATEGORY = "utils"
+    FUNCTION = "replace_str"
+    RETURN_TYPES = ("STRING",)
+    CATEGORY = "mtb/string"
 
-    def save(
+    def replace_str(self, string: str, old: str, new: str):
+        log.debug(f"Current string: {string}")
+        log.debug(f"Find string: {old}")
+        log.debug(f"Replace string: {new}")
+
+        string = string.replace(old, new)
+
+        log.debug(f"New string: {string}")
+
+        return (string,)
+
+
+class FitNumber:
+    """Fit the input float using a source and target range"""
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "value": ("FLOAT", {"default": 0, "forceInput": True}),
+                "clamp": ("BOOL", {"default": False}),
+                "source_min": ("FLOAT", {"default": 0.0}),
+                "source_max": ("FLOAT", {"default": 1.0}),
+                "target_min": ("FLOAT", {"default": 0.0}),
+                "target_max": ("FLOAT", {"default": 1.0}),
+            }
+        }
+
+    FUNCTION = "set_range"
+    RETURN_TYPES = ("FLOAT",)
+    CATEGORY = "mtb/math"
+
+    def set_range(
         self,
-        filename_prefix,
-        image: torch.Tensor = None,
-        mask: torch.Tensor = None,
-        latent: torch.Tensor = None,
+        value: float,
+        clamp: bool,
+        source_min: float,
+        source_max: float,
+        target_min: float,
+        target_max: float,
     ):
-        (
-            full_output_folder,
-            filename,
-            counter,
-            subfolder,
-            filename_prefix,
-        ) = folder_paths.get_save_image_path(filename_prefix, self.output_dir)
+        res = target_min + (target_max - target_min) * (value - source_min) / (
+            source_max - source_min
+        )
 
-        if image is not None:
-            image_file = f"{filename}_image_{counter:05}.pt"
-            torch.save(image, os.path.join(full_output_folder, image_file))
-            # np.save(os.path.join(full_output_folder, image_file), image.cpu().numpy())
+        if clamp:
+            if target_min > target_max:
+                res = max(min(res, target_min), target_max)
+            else:
+                res = max(min(res, target_max), target_min)
 
-        if mask is not None:
-            mask_file = f"{filename}_mask_{counter:05}.pt"
-            torch.save(mask, os.path.join(full_output_folder, mask_file))
-            # np.save(os.path.join(full_output_folder, mask_file), mask.cpu().numpy())
-
-        if latent is not None:
-            # for latent we must use pickle
-            latent_file = f"{filename}_latent_{counter:05}.pt"
-            torch.save(latent, os.path.join(full_output_folder, latent_file))
-            # pickle.dump(latent, open(os.path.join(full_output_folder, latent_file), "wb"))
-
-            # np.save(os.path.join(full_output_folder, latent_file), latent[""].cpu().numpy())
-
-        return f"{filename_prefix}_{counter:05}"
+        return (res,)
 
 
-__nodes__ = [
-    SaveTensors,
-]
+__nodes__ = [StringReplace, FitNumber]

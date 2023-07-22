@@ -16,6 +16,8 @@ from typing import Tuple
 
 
 class LoadFaceEnhanceModel:
+    """Loads a GFPGan or RestoreFormer model for face enhancement."""
+
     def __init__(self) -> None:
         pass
 
@@ -42,7 +44,7 @@ class LoadFaceEnhanceModel:
                     [x.name for x in cls.get_models()],
                     {"default": "None"},
                 ),
-                "upscale": ("INT", {"default": 2}),
+                "upscale": ("INT", {"default": 1}),
             },
             "optional": {"bg_upsampler": ("UPSCALE_MODEL", {"default": None})},
         }
@@ -50,7 +52,7 @@ class LoadFaceEnhanceModel:
     RETURN_TYPES = ("FACEENHANCE_MODEL",)
     RETURN_NAMES = ("model",)
     FUNCTION = "load_model"
-    CATEGORY = "face"
+    CATEGORY = "mtb/facetools"
 
     def load_model(self, model_name, upscale=2, bg_upsampler=None):
         basic = "RestoreFormer" not in model_name
@@ -111,19 +113,21 @@ class BGUpscaleWrapper:
 
         self.upscale_model.cpu()
         s = torch.clamp(s.movedim(-3, -1), min=0, max=1.0)
-        return (tensor2np(s),)
+        return (tensor2np(s)[0],)
 
 
 import sys
 
 
 class RestoreFace:
+    """Uses GFPGan to restore faces"""
+
     def __init__(self) -> None:
         pass
 
     RETURN_TYPES = ("IMAGE",)
     FUNCTION = "restore"
-    CATEGORY = "face"
+    CATEGORY = "mtb/facetools"
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -150,9 +154,8 @@ class RestoreFace:
         weight,
         save_tmp_steps,
     ) -> torch.Tensor:
-        pimage = tensor2pil(image)
-        width, height = pimage.size
-
+        pimage = tensor2np(image)[0]
+        width, height = pimage.shape[1], pimage.shape[0]
         source_img = cv2.cvtColor(np.array(pimage), cv2.COLOR_RGB2BGR)
 
         sys.stdout = NullWriter()

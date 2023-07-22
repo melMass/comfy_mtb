@@ -7,13 +7,100 @@ from ..log import log
 import torch
 from frame_interpolation.eval import util, interpolator
 from ..utils import tensor2np
-import uuid
 import numpy as np
-import subprocess
 import comfy
-
+from PIL import Image
+import urllib.request
+import urllib.parse
+import json
 import tensorflow as tf
 import comfy.model_management as model_management
+import io
+
+from comfy.cli_args import args
+from ..utils import pil2tensor
+
+
+def get_image(filename, subfolder, folder_type):
+    data = {"filename": filename, "subfolder": subfolder, "type": folder_type}
+    url_values = urllib.parse.urlencode(data)
+    with urllib.request.urlopen(
+        "http://{}:{}/view?{}".format(args.listen, args.port, url_values)
+    ) as response:
+        return io.BytesIO(response.read())
+
+
+class GetBatchFromHistory:
+    """Very experimental node to load images from the history of the server.
+
+    Queue items without output are ignore in the count."""
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "enable": ("BOOL", {"default": True}),
+                "count": ("INT", {"default": 1, "min": 0}),
+                "offset": ("INT", {"default": 0, "min": -1e9, "max": 1e9}),
+            },
+        }
+
+    RETURN_TYPES = ("IMAGE",)
+    RETURN_NAMES = "images"
+    CATEGORY = "mtb/animation"
+    FUNCTION = "load_from_history"
+
+    def load_from_history(
+        self,
+        enable=True,
+        count=0,
+        offset=0,
+    ):
+        if not enable or count == 0:
+            log.debug("Load from history is disabled for this iteration")
+            return (torch.zeros(0),)
+        frames = []
+
+        with urllib.request.urlopen(
+            "http://{}:{}/history".format(args.listen, args.port)
+        ) as response:
+            history = json.loads(response.read())
+
+            output_images = []
+            for k, run in history.items():
+                for o in run["outputs"]:
+                    for node_id in run["outputs"]:
+                        node_output = run["outputs"][node_id]
+                        if "images" in node_output:
+                            images_output = []
+                            for image in node_output["images"]:
+                                image_data = get_image(
+                                    image["filename"], image["subfolder"], image["type"]
+                                )
+                                images_output.append(image_data)
+                            output_images.extend(images_output)
+            if len(output_images) == 0:
+                return (torch.zeros(0),)
+            for i, image in enumerate(list(reversed(output_images))):
+                if i < offset:
+                    continue
+                if i >= offset + count:
+                    break
+                # Decode image as tensor
+                img = Image.open(image)
+                log.debug(f"Image from history {i} of shape {img.size}")
+                frames.append(img)
+
+                # Display the shape of the tensor
+                # print("Tensor shape:", image_tensor.shape)
+
+            # return (output_images,)
+
+            output = pil2tensor(
+                list(reversed(frames)),
+            )
+
+            return (output,)
 
 
 class LoadFilmModel:
@@ -39,7 +126,7 @@ class LoadFilmModel:
 
     RETURN_TYPES = ("FILM_MODEL",)
     FUNCTION = "load_model"
-    CATEGORY = "face"
+    CATEGORY = "mtb/frame iterpolation"
 
     def load_model(self, film_model: str):
         model_path = Path(folder_paths.models_dir) / "FILM" / film_model
@@ -73,7 +160,7 @@ class FilmInterpolation:
 
     RETURN_TYPES = ("IMAGE",)
     FUNCTION = "do_interpolation"
-    CATEGORY = "animation"
+    CATEGORY = "mtb/frame iterpolation"
 
     def do_interpolation(
         self,
@@ -82,6 +169,10 @@ class FilmInterpolation:
         film_model: interpolator.Interpolator,
     ):
         n = images.size(0)
+        # check if images is an empty tensor and return it...
+        if n == 0:
+            return (images,)
+
         # check if tensorflow GPU is available
         available_gpus = tf.config.list_physical_devices("GPU")
         if not len(available_gpus):
@@ -124,7 +215,7 @@ class ConcatImages:
 
     RETURN_TYPES = ("IMAGE",)
     FUNCTION = "concat_images"
-    CATEGORY = "animation"
+    CATEGORY = "mtb/image"
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -156,87 +247,9 @@ class ConcatImages:
         return (self.concatenate_tensors(imageA, imageB),)
 
 
-class ExportToProRes:
-    """Export to ProRes 4444 (Experimental)"""
-
-    def __init__(self):
-        pass
-
-    @classmethod
-    def INPUT_TYPES(cls):
-        return {
-            "required": {
-                "images": ("IMAGE",),
-                # "frames": ("FRAMES",),
-                "fps": ("FLOAT", {"default": 24, "min": 1}),
-                "prefix": ("STRING", {"default": "export"}),
-            }
-        }
-
-    RETURN_TYPES = ("VIDEO",)
-    OUTPUT_NODE = True
-    FUNCTION = "export_prores"
-    CATEGORY = "animation"
-
-    def export_prores(
-        self,
-        images: torch.Tensor,
-        fps: float,
-        prefix: str,
-    ):
-        output_dir = Path(folder_paths.get_output_directory())
-        id = f"{prefix}_{uuid.uuid4()}.mov"
-
-        log.debug(f"Exporting to {output_dir / id}")
-
-        frames = tensor2np(images)
-        log.debug(f"Frames type {type(frames)}")
-        log.debug(f"Exporting {len(frames)} frames")
-
-        frames = [frame.astype(np.uint16) * 257 for frame in frames]
-
-        height, width, _ = frames[0].shape
-
-        out_path = (output_dir / id).as_posix()
-
-        # Prepare the FFmpeg command
-        command = [
-            "ffmpeg",
-            "-y",
-            "-f",
-            "rawvideo",
-            "-vcodec",
-            "rawvideo",
-            "-s",
-            f"{width}x{height}",
-            "-pix_fmt",
-            "rgb48le",
-            "-r",
-            str(fps),
-            "-i",
-            "-",
-            "-c:v",
-            "prores_ks",
-            "-profile:v",
-            "4",
-            "-pix_fmt",
-            "yuva444p10le",
-            "-r",
-            str(fps),
-            "-y",
-            out_path,
-        ]
-
-        process = subprocess.Popen(command, stdin=subprocess.PIPE)
-
-        for frame in frames:
-            model_management.throw_exception_if_processing_interrupted()
-            process.stdin.write(frame.tobytes())
-
-        process.stdin.close()
-        process.wait()
-
-        return (out_path,)
-
-
-__nodes__ = [LoadFilmModel, FilmInterpolation, ExportToProRes, ConcatImages]
+__nodes__ = [
+    LoadFilmModel,
+    FilmInterpolation,
+    ConcatImages,
+    GetBatchFromHistory,
+]

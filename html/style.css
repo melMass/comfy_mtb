@@ -1,0 +1,52 @@
+html {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    background-color: rgb(33, 33, 33);
+    color: whitesmoke;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    font-family: monospace;
+    height: 100%;
+    background-color: rgb(33, 33, 33);
+
+}
+
+.title {
+    font-size: 2.5em;
+    font-weight: 700;
+    margin: 1em;
+}
+
+header {
+    display: flex;
+    align-items: center;
+    vertical-align: middle;
+    justify-content: space-between;
+    background-color: rgb(12, 12, 12);
+    padding: 1em;
+    margin: 0;
+}
+
+main {
+    display: flex;
+    align-items: center;
+    vertical-align: middle;
+    justify-content: center;
+    padding: 1em;
+    margin: 0;
+    height: 80%;
+}
+
+.flex-container {
+    display: flex;
+    flex-direction: column;
+}
+
+.menu {
+    font-size: 3em;
+    text-align: center;
+}
