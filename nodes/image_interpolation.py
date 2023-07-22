@@ -43,6 +43,7 @@ class GetBatchFromHistory:
                 "count": ("INT", {"default": 1, "min": 0}),
                 "offset": ("INT", {"default": 0, "min": -1e9, "max": 1e9}),
             },
+            "optional": {"passthrough_image": ("IMAGE",)},
         }
 
     RETURN_TYPES = ("IMAGE",)
@@ -55,8 +56,11 @@ class GetBatchFromHistory:
         enable=True,
         count=0,
         offset=0,
+        passthrough_image=None,
     ):
         if not enable or count == 0:
+            if passthrough_image is not None:
+                return (passthrough_image,)
             log.debug("Load from history is disabled for this iteration")
             return (torch.zeros(0),)
         frames = []
