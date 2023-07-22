@@ -1,13 +1,47 @@
 # Installation
 - [Installation](#installation)
-    - [Dependencies](#dependencies)
-      - [Custom virtualenv (I use this mainly)](#custom-virtualenv-i-use-this-mainly)
-      - [Comfy-portable / standalone (from ComfyUI releases)](#comfy-portable--standalone-from-comfyui-releases)
-      - [Google Colab](#google-colab)
-    - [Models Download](#models-download)
+  - [Automatic Install (Recommended)](#automatic-install-recommended)
+    - [ComfyUI Manager](#comfyui-manager)
+    - [Virtual Env](#virtual-env)
+  - [Models Download](#models-download)
     - [Web Extensions](#web-extensions)
+  - [Old installation method (MANUAL)](#old-installation-method-manual)
+    - [Dependencies](#dependencies)
 
+## Automatic Install (Recommended)
 
+### ComfyUI Manager
+
+As of version 0.1.0, this extension is meant to be installed with the [ComfyUI-Manager](https://github.com/ltdrdata/ComfyUI-Manager), which helps a lot with handling the various install issues faced by various environments.
+
+### Virtual Env
+There is also an experimental one liner install using the following command from ComfyUI's root. It will download the code, install the dependencies and run the install script:
+
+```bash
+curl -sSL "https://raw.githubusercontent.com/username/repo/main/install.py" | python3 -
+```
+
+## Models Download
+Some nodes require extra models to be downloaded, you can interactively do it using the same python environment as above:
+```bash
+python scripts/download_models.py
+```
+
+then follow the prompt or just press enter to download every models.
+
+> **Note**
+> You can use the following to download all models without prompt:
+  ```bash
+  python scripts/download_models.py -y
+  ```
+
+### Web Extensions
+
+On first run the script [tries to symlink](https://github.com/melMass/comfy_mtb/blob/d982b69a58c05ccead9c49370764beaa4549992a/__init__.py#L45-L61) the [web extensions](https://github.com/melMass/comfy_mtb/tree/main/web) to your comfy `web/extensions` folder. In case it fails you can manually copy the mtb folder to `ComfyUI/web/extensions` it only provides a color widget for now shared by a few nodes:  
+
+<img alt="color widget preview" src="https://github.com/melMass/comfy_mtb/assets/7041726/cff7e66a-4cc4-4866-b35b-10af0bb2d110" width=450>
+
+## Old installation method (MANUAL)
 ### Dependencies
 <details><summary><h4>Custom Virtualenv (I use this mainly)</h4></summary>
     
@@ -55,23 +89,3 @@ If after running this, colab complains about needing to restart runtime, do it, 
 
 </details>
 
-
-### Models Download
-Some nodes require extra models to be downloaded, you can interactively do it using the same python environment as above:
-```bash
-python scripts/download_models.py
-```
-
-then follow the prompt or just press enter to download every models.
-
-> **Note**
-> You can use the following to download all models without prompt:
-  ```bash
-  python scripts/download_models.py -y
-  ```
-
-### Web Extensions
-
-On first run the script [tries to symlink](https://github.com/melMass/comfy_mtb/blob/d982b69a58c05ccead9c49370764beaa4549992a/__init__.py#L45-L61) the [web extensions](https://github.com/melMass/comfy_mtb/tree/main/web) to your comfy `web/extensions` folder. In case it fails you can manually copy the mtb folder to `ComfyUI/web/extensions` it only provides a color widget for now shared by a few nodes:  
-
-<img alt="color widget preview" src="https://github.com/melMass/comfy_mtb/assets/7041726/cff7e66a-4cc4-4866-b35b-10af0bb2d110" width=450>
