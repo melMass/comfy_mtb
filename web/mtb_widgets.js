@@ -857,20 +857,52 @@ const mtb_widgets = {
                 nodeType.prototype.onExecuted = function (message) {
                     const r = onExecuted ? onExecuted.apply(this, message) : undefined;
                     console.log(message)
-                    let imgURLs = []
-                    if (message && message.gif) {
-                        imgURLs = imgURLs.concat(message.gif.map(params => {
-                            return api.apiURL("/view?" + new URLSearchParams(params).toString());
-                        }))
-                        console.log(imgURLs)
-                        for (const img of imgURLs) {
-                            const w = this.addCustomWidget(MtbWidgets.DEBUG_IMG(img, 0))
-                            w.parent = this;
-                        }
-                    }
-                    return r
+                    if (this.widgets) {
+                        const pos = this.widgets.findIndex((w) => w.name === "anything_0");
+                        if (pos !== -1) {
+                            for (let i = pos; i < this.widgets.length; i++) {
+                                console.log(this.widgets[i])
+                                console.log(this)
+                                this.widgets[i].onRemove?.();
 
+                            }
+                            this.widgets.length = pos
+
+
+                        }
+
+                        let imgURLs = []
+                        if (message && message.gif) {
+                            imgURLs = imgURLs.concat(message.gif.map(params => {
+                                return api.apiURL("/view?" + new URLSearchParams(params).toString());
+                            }))
+                            console.log(imgURLs)
+                            for (const img of imgURLs) {
+                                const w = this.addCustomWidget(MtbWidgets.DEBUG_IMG(img, 0))
+                                w.parent = this;
+                            }
+                        }
+                        this.setSize?.(this.computeSize())
+                        return r
+
+                    }
+
+                    const onRemoved = nodeType.prototype.onRemoved;
+                    nodeType.prototype.onRemoved = function (message) {
+                        const r = onRemoved ? onRemoved.apply(this, message) : undefined;
+                        if (!this.widgets) return r
+                        for (const w of this.widgets) {
+                            if (w.canvas) {
+                                w.canvas.remove();
+                            }
+                            w.onRemove?.()
+                            w.onRemoved?.()
+                        }
+                        return r
+
+                    }
                 }
+
                 break
             }
             case "Animation Builder (mtb)": {

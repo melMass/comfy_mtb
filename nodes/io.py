@@ -126,6 +126,9 @@ class SaveGif:
         height, width, _ = image[0].shape
 
         ruuid = uuid.uuid4()
+
+        ruuid = ruuid.hex[:10]
+
         out_path = f"{folder_paths.output_directory}/{ruuid}.gif"
 
         log.debug(f"Saving a gif file {width}x{height} as {ruuid}.gif")
