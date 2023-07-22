@@ -15,7 +15,6 @@ import stat
 
 
 here = Path(__file__).parent
-wheels_directory = here / "wheels"
 executable = sys.executable
 
 # - detect mode
@@ -184,8 +183,8 @@ def download_file(url, file_name):
                 progress_bar.update(len(chunk))
 
 
-def get_requirements(path):
-    with open(path, "r") as requirements_file:
+def get_requirements(path: Path):
+    with open(path.resolve(), "r") as requirements_file:
         requirements_txt = requirements_file.read()
 
     try:
@@ -218,6 +217,7 @@ def import_or_install(requirement, dry=False):
             color="green",
         )
     except ImportError:
+        print_formatted(f"Installing package {pip_name}...", "italic", color="yellow")
         if dry:
             print_formatted(
                 f"Dry-run: Package {pip_name} would be installed (import name: '{import_name}').",
@@ -262,9 +262,20 @@ def install_dependencies(dry=False):
 
 
 if __name__ == "__main__":
+    full = False
     if is_pipe():
-        print("Pipe detected, full install...")
-        sys.exit()
+        print_formatted("Pipe detected, full install...", color="green")
+        # we clone our repo
+        url = "https://github.com/melmass/comfy_mtb.git"
+        clone_dir = here / "custom_nodes" / "comfy_mtb"
+        if not clone_dir.exists():
+            clone_dir.parent.mkdir(parents=True, exist_ok=True)
+            print_formatted(f"Cloning {url} to {clone_dir}", "italic", color="yellow")
+            subprocess.check_call(["git", "clone", "--recursive", url, clone_dir])
+
+        # os.chdir(clone_dir)
+        here = clone_dir
+        full = True
 
     # Parse command-line arguments
     parser = argparse.ArgumentParser()
@@ -280,19 +291,21 @@ if __name__ == "__main__":
         help="Print what will happen without doing it (still making requests to the GH Api)",
     )
 
-    parser.add_argument(
-        "--version",
-        default=get_local_version(),
-        help="Version to check against the GitHub API",
-    )
+    # parser.add_argument(
+    #     "--version",
+    #     default=get_local_version(),
+    #     help="Version to check against the GitHub API",
+    # )
 
     args = parser.parse_args()
+    wheels_directory = here / "wheels"
+    print(f"Detected environment: {apply_color(mode,'cyan')}")
 
     # Install dependencies from requirements.txt
     # if args.requirements or mode == "venv":
     install_dependencies(dry=args.dry)
 
-    if not args.wheels and mode not in ["colab", "embeded"]:
+    if (not args.wheels and mode not in ["colab", "embeded"]) or not full:
         print_formatted(
             "Skipping wheel installation. Use --wheels to install wheel dependencies. (only needed for Comfy embed)",
             "italic",
@@ -304,6 +317,7 @@ if __name__ == "__main__":
         print(
             f"Downloading and installing release wheels since we are in a Comfy {apply_color(mode,'cyan')} environment",
         )
+
     # Fetch the JSON data from the GitHub API URL
     owner = "melmass"
     repo = "comfy_mtb"
@@ -353,13 +367,6 @@ if __name__ == "__main__":
         asset_download_url = asset["browser_download_url"]
         print_formatted(f"Downloading asset: {asset_name}", color="yellow")
         asset_dest = wheels_directory / asset_name
-        if asset_dest.exists():
-            print_formatted(
-                f"Asset '{asset_dest}' already exists. Skipping.",
-                "italic",
-                color="yellow",
-            )
-            continue
         download_file(asset_download_url, asset_dest)
 
         # - Unzip to wheels dir
