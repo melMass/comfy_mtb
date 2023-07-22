@@ -15,6 +15,21 @@ import shutil
 
 here = Path(__file__).parent
 wheels_directory = here / "wheels"
+executable = sys.executable
+
+# - detect mode
+mode = None
+if os.environ.get("COLAB_GPU"):
+    mode = "colab"
+elif "python_embeded" in executable:
+    mode = "embeded"
+elif ".venv" in executable:
+    mode = "venv"
+
+
+if mode == None:
+    mode = "unknown"
+
 # region ansi
 # ANSI escape sequences for text styling
 ANSI_FORMATS = {
@@ -109,6 +124,7 @@ except ImportError:
     print_formatted("Installing tqdm...", "italic", color="yellow")
     subprocess.check_call([sys.executable, "-m", "pip", "install", "--upgrade", "tqdm"])
     from tqdm import tqdm
+import importlib
 
 
 pip_map = {
@@ -154,78 +170,81 @@ def download_file(url, file_name):
                 progress_bar.update(len(chunk))
 
 
-from typing import Union, Literal
-
-
-def detect_mode() -> (
-    Union[Literal["colab"], Literal["embeded"] | Literal["venv"], None]
-):
-    if os.environ.get("COLAB_GPU"):
-        return "colab"
-    executable = sys.executable
-    if "python_embeded" in executable:
-        return "embeded"
-    if ".venv" in executable:
-        return "venv"
-
-
-# Install dependencies from requirements.txt
-def install_dependencies(dry=False):
-    with open("requirements.txt", "r") as requirements_file:
+def get_requirements(path):
+    with open(path, "r") as requirements_file:
         requirements_txt = requirements_file.read()
 
     try:
         parsed_requirements = requirements.parse(requirements_txt)
     except AttributeError:
         print_formatted(
-            "Failed to parse requirements.txt. Please make sure the file is correctly formatted.",
+            f"Failed to parse {path}. Please make sure the file is correctly formatted.",
             "bold",
             color="red",
         )
 
         return
 
+    return parsed_requirements
+
+
+def import_or_install(requirement, dry=False):
+    dependency = requirement.name.strip()
+    import_name = pip_map.get(dependency, dependency)
+
+    pip_name = dependency
+    if specs := requirement.specs:
+        pip_name += "".join(specs[0])
+
+    try:
+        import_module(import_name)
+        print_formatted(
+            f"Package {pip_name} already installed (import name: '{import_name}').",
+            "bold",
+            color="green",
+        )
+    except ImportError:
+        if dry:
+            print_formatted(
+                f"Dry-run: Package {pip_name} would be installed (import name: '{import_name}').",
+                color="yellow",
+            )
+        else:
+            try:
+                subprocess.check_call(
+                    [sys.executable, "-m", "pip", "install", pip_name]
+                )
+                print_formatted(
+                    f"Package {pip_name} installed successfully using pip package name  (import name: '{import_name}')",
+                    "bold",
+                    color="green",
+                )
+            except subprocess.CalledProcessError as e:
+                print_formatted(
+                    f"Failed to install package {pip_name} using pip package name  (import name: '{import_name}'). Error: {str(e)}",
+                    "bold",
+                    color="red",
+                )
+
+
+# Install dependencies from requirements.txt
+def install_dependencies(dry=False):
+    parsed_requirements = get_requirements(here / "requirements.txt")
+    if not parsed_requirements:
+        return
     print_formatted(
         "Installing dependencies from requirements.txt...", "italic", color="yellow"
     )
 
     for requirement in parsed_requirements:
-        dependency = requirement.name.strip()
-        import_name = pip_map.get(dependency, dependency)
+        import_or_install(requirement, dry=dry)
 
-        pip_name = dependency
-        if specs := requirement.specs:
-            pip_name += "".join(specs[0])
-
-        try:
-            import_module(import_name)
-            print_formatted(
-                f"Package {pip_name} already installed (import name: '{import_name}').",
-                "bold",
-                color="green",
-            )
-        except ImportError:
-            if dry:
-                print_formatted(
-                    f"Dry-run: Package {pip_name} would be installed (import name: '{import_name}').",
-                    color="yellow",
-                )
-            else:
-                try:
-                    subprocess.check_call(
-                        [sys.executable, "-m", "pip", "install", pip_name]
-                    )
-                    print_formatted(
-                        f"Package {pip_name} installed successfully using pip package name  (import name: '{import_name}')",
-                        "bold",
-                        color="green",
-                    )
-                except subprocess.CalledProcessError as e:
-                    print_formatted(
-                        f"Failed to install package {pip_name} using pip package name  (import name: '{import_name}'). Error: {str(e)}",
-                        "bold",
-                        color="red",
-                    )
+    if mode == "venv":
+        parsed_requirements = get_requirements(here / "requirements-wheels.txt")
+        if not parsed_requirements:
+            return
+        for requirement in parsed_requirements:
+            import_or_install(requirement, dry=dry)
 
 
 if __name__ == "__main__":
@@ -252,10 +271,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # Install dependencies from requirements.txt
-    if args.requirements:
+    if args.requirements or mode == "venv":
         install_dependencies(dry=args.dry)
-
-    mode = detect_mode()
 
     if not args.wheels and mode not in ["colab", "embeded"]:
         print_formatted(

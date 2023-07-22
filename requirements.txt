@@ -2,9 +2,6 @@ onnxruntime-gpu==1.15.1
 imageio===2.28.1
 qrcode[pil]
 numpy==1.23.5
-insightface==0.7.3
-mmcv==2.0.0
-mmdet==3.0.0
 rembg==2.0.37
 facexlib==0.3.0
 basicsr==1.4.2
