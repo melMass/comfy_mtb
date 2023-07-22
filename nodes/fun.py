@@ -72,7 +72,7 @@ class QrCode:
                 "error_correct": (("L", "M", "Q", "H"), {"default": "L"}),
                 "box_size": ("INT", {"default": 10, "max": 8096, "min": 0, "step": 1}),
                 "border": ("INT", {"default": 4, "max": 8096, "min": 0, "step": 1}),
-                "invert": (("True", "False"), {"default": "False"}),
+                "invert": (("BOOL",), {"default": False}),
             }
         }
 
@@ -99,8 +99,8 @@ class QrCode:
         qr.add_data(url)
         qr.make(fit=True)
 
-        back_color = (255, 255, 255) if invert == "True" else (0, 0, 0)
-        fill_color = (0, 0, 0) if invert == "True" else (255, 255, 255)
+        back_color = (255, 255, 255) if invert else (0, 0, 0)
+        fill_color = (0, 0, 0) if invert else (255, 255, 255)
 
         code = img = qr.make_image(back_color=back_color, fill_color=fill_color)
 

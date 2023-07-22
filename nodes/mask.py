@@ -16,8 +16,8 @@ class ImageRemoveBackgroundRembg:
             "required": {
                 "image": ("IMAGE",),
                 "alpha_matting": (
-                    ["True", "False"],
-                    {"default": "False"},
+                    "BOOL",
+                    {"default": False},
                 ),
                 "alpha_matting_foreground_threshold": (
                     "INT",
@@ -32,8 +32,8 @@ class ImageRemoveBackgroundRembg:
                     {"default": 10, "min": 0, "max": 255},
                 ),
                 "post_process_mask": (
-                    ["True", "False"],
-                    {"default": "False"},
+                    "BOOL",
+                    {"default": False},
                 ),
                 "bgcolor": (
                     "COLOR",
@@ -76,13 +76,13 @@ class ImageRemoveBackgroundRembg:
         for img in images:
             img_rm = remove(
                 data=img,
-                alpha_matting=alpha_matting == "True",
+                alpha_matting=alpha_matting,
                 alpha_matting_foreground_threshold=alpha_matting_foreground_threshold,
                 alpha_matting_background_threshold=alpha_matting_background_threshold,
                 alpha_matting_erode_size=alpha_matting_erode_size,
                 session=None,
                 only_mask=False,
-                post_process_mask=post_process_mask == "True",
+                post_process_mask=post_process_mask,
                 bgcolor=None,
             )
 

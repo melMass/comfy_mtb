@@ -82,8 +82,9 @@ class FaceSwap:
                 "reference": ("IMAGE",),
                 "faces_index": ("STRING", {"default": "0"}),
                 "faceswap_model": ("FACESWAP_MODEL", {"default": "None"}),
+                "debug": ("BOOL", {"default": False}),
             },
-            "optional": {"debug": (["true", "false"], {"default": "false"})},
+            "optional": {},
         }
 
     RETURN_TYPES = ("IMAGE",)
@@ -96,7 +97,7 @@ class FaceSwap:
         reference: torch.Tensor,
         faces_index: str,
         faceswap_model,
-        debug="false",
+        debug=False,
     ):
         def do_swap(img):
             model_management.throw_exception_if_processing_interrupted()

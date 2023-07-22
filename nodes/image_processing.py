@@ -392,7 +392,7 @@ class ImagePremultiply:
             "required": {
                 "image": ("IMAGE",),
                 "mask": ("MASK",),
-                "invert": (["True", "False"], {"default": "False"}),
+                "invert": ("BOOL", {"default": False}),
             }
         }
 
@@ -401,8 +401,6 @@ class ImagePremultiply:
     FUNCTION = "premultiply"
 
     def premultiply(self, image, mask, invert):
-        invert = invert == "True"
-
         images = tensor2pil(image)
         if invert:
             masks = tensor2pil(mask)  # .convert("L")
@@ -445,7 +443,7 @@ class ImageResizeFactor:
                     "FLOAT",
                     {"default": 2, "min": 0.01, "max": 16.0, "step": 0.01},
                 ),
-                "supersample": (["true", "false"], {"default": "true"}),
+                "supersample": ("BOOL", {"default": True}),
                 "resampling": (
                     ["lanczos", "nearest", "bilinear", "bicubic"],
                     {"default": "lanczos"},
@@ -510,7 +508,7 @@ class ImageResizeFactor:
         resample_filters = {"nearest": 0, "bilinear": 2, "bicubic": 3, "lanczos": 1}
 
         # Apply supersample
-        if supersample == "true":
+        if supersample:
             super_size = (new_width * 8, new_height * 8)
             log.debug(f"Applying supersample: {super_size}")
             img = img.resize(
@@ -529,12 +527,12 @@ class ImageResizeFactor:
         self,
         image: torch.Tensor,
         factor: float,
-        supersample: str,
+        supersample: bool,
         resampling: str,
         mask=None,
     ):
         log.debug(f"Resizing image with factor {factor} and resampling {resampling}")
-        supersample = supersample == "true"
+
         batch_count = image.size(0)
         log.debug(f"Batch count: {batch_count}")
         if batch_count == 1:
@@ -566,7 +564,7 @@ class SaveImageGrid:
             "required": {
                 "images": ("IMAGE",),
                 "filename_prefix": ("STRING", {"default": "ComfyUI"}),
-                "save_intermediate": (["true", "false"], {"default": "false"}),
+                "save_intermediate": ("BOOL", {"default": False}),
             },
             "hidden": {"prompt": "PROMPT", "extra_pnginfo": "EXTRA_PNGINFO"},
         }
@@ -607,11 +605,10 @@ class SaveImageGrid:
         self,
         images,
         filename_prefix="Grid",
-        save_intermediate="false",
+        save_intermediate=False,
         prompt=None,
         extra_pnginfo=None,
     ):
-        save_intermediate = save_intermediate == "true"
         (
             full_output_folder,
             filename,

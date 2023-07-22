@@ -136,12 +136,12 @@ class RestoreFace:
                 "image": ("IMAGE",),
                 "model": ("FACEENHANCE_MODEL",),
                 # Input are aligned faces
-                "aligned": (["true", "false"], {"default": "false"}),
+                "aligned": ("BOOL", {"default": False}),
                 # Only restore the center face
-                "only_center_face": (["true", "false"], {"default": "false"}),
+                "only_center_face": ("BOOL", {"default": False}),
                 # Adjustable weights
                 "weight": ("FLOAT", {"default": 0.5}),
-                "save_tmp_steps": (["true", "false"], {"default": "true"}),
+                "save_tmp_steps": ("BOOL", {"default": True}),
             }
         }
 
@@ -183,15 +183,11 @@ class RestoreFace:
         self,
         image: torch.Tensor,
         model: GFPGANer,
-        aligned="false",
-        only_center_face="false",
+        aligned=False,
+        only_center_face=False,
         weight=0.5,
-        save_tmp_steps="true",
+        save_tmp_steps=True,
     ) -> Tuple[torch.Tensor]:
-        save_tmp_steps = save_tmp_steps == "true"
-        aligned = aligned == "true"
-        only_center_face = only_center_face == "true"
-
         out = [
             self.do_restore(
                 image[i], model, aligned, only_center_face, weight, save_tmp_steps
