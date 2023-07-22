@@ -11,6 +11,7 @@ from pathlib import Path
 import sys
 import zipfile
 import shutil
+import stat
 
 
 here = Path(__file__).parent
@@ -136,6 +137,19 @@ pip_map = {
 }
 
 
+def is_pipe():
+    try:
+        mode = os.fstat(0).st_mode
+        return (
+            stat.S_ISFIFO(mode)
+            or stat.S_ISREG(mode)
+            or stat.S_ISBLK(mode)
+            or stat.S_ISSOCK(mode)
+        )
+    except OSError:
+        return False
+
+
 # Get the version from __init__.py
 def get_local_version():
     init_file = os.path.join(os.path.dirname(__file__), "__init__.py")
@@ -248,6 +262,10 @@ def install_dependencies(dry=False):
 
 
 if __name__ == "__main__":
+    if is_pipe():
+        print("Pipe detected, full install...")
+        sys.exit()
+
     # Parse command-line arguments
     parser = argparse.ArgumentParser()
     parser.add_argument(
