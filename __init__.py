@@ -94,9 +94,28 @@ web_mtb = web_extensions_root / "mtb"
 
 if web_mtb.exists():
     log.debug(f"Web extensions folder found at {web_mtb}")
+    if not os.path.islink(web_mtb.as_posix()):
+        log.warn(
+            f"Web extensions folder at {web_mtb} is not a symlink, if updating please delete it before"
+        )
+
+
 elif web_extensions_root.exists():
+    web_tgt = here / "web"
     try:
-        os.symlink((here / "web"), web_mtb.as_posix())
+        os.symlink(web_tgt.as_posix(), web_mtb.as_posix())
+    except OSError:
+        log.warn(f"Failed to create symlink to {web_mtb}, trying to copy it")
+        try:
+            import shutil
+
+            shutil.copytree(web_tgt, web_mtb)
+            log.info(f"Successfully copied {web_tgt} to {web_mtb}")
+        except Exception:
+            log.warn(
+                f"Failed to symlink and copy {web_tgt} to {web_mtb}. Please copy the folder manually."
+            )
+
     except Exception:  # OSError
         log.warn(
             f"Failed to create symlink to {web_mtb}. Please copy the folder manually."
