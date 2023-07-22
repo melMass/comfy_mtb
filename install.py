@@ -271,8 +271,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # Install dependencies from requirements.txt
-    if args.requirements or mode == "venv":
-        install_dependencies(dry=args.dry)
+    # if args.requirements or mode == "venv":
+    install_dependencies(dry=args.dry)
 
     if not args.wheels and mode not in ["colab", "embeded"]:
         print_formatted(
@@ -289,16 +289,17 @@ if __name__ == "__main__":
     # Fetch the JSON data from the GitHub API URL
     owner = "melmass"
     repo = "comfy_mtb"
-    version = args.version
+    # version = args.version
     current_platform = platform.system().lower()
 
     # Get the tag version from the GitHub API
-    tag_url = f"https://api.github.com/repos/{owner}/{repo}/releases/tags/v{version}"
+    tag_url = f"https://api.github.com/repos/{owner}/{repo}/releases/latest"
     response = requests.get(tag_url)
     if response.status_code == 404:
-        print_formatted(
-            f"Tag version '{apply_color(version,'cyan')}' not found for {owner}/{repo} repository."
-        )
+        # print_formatted(
+        #     f"Tag version '{apply_color(version,'cyan')}' not found for {owner}/{repo} repository."
+        # )
+        print_formatted("Error retrieving the release assets.", color="red")
         sys.exit()
 
     tag_data = response.json()
