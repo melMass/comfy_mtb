@@ -102,7 +102,11 @@ def print_formatted(text, *formats, color=None, background=None, **kwargs):
     formatted_text = apply_format(text, *formats)
     formatted_text = apply_color(formatted_text, color, background)
     file = kwargs.get("file", sys.stdout)
-    print(formatted_text, file=file)
+    print(
+        apply_color(apply_format("[mtb install] ", "bold"), color="yellow"),
+        formatted_text,
+        file=file,
+    )
 
 
 # endregion
@@ -201,9 +205,10 @@ def get_requirements(path: Path):
     return parsed_requirements
 
 
-def import_or_install(requirement, dry=False):
+def try_import(requirement):
     dependency = requirement.name.strip()
     import_name = pip_map.get(dependency, dependency)
+    installed = False
 
     pip_name = dependency
     if specs := requirement.specs:
@@ -216,7 +221,17 @@ def import_or_install(requirement, dry=False):
             "bold",
             color="green",
         )
+        installed = True
     except ImportError:
+        pass
+
+    return (installed, pip_name, import_name)
+
+
+def import_or_install(requirement, dry=False):
+    installed, pip_name, import_name = try_import(requirement)
+
+    if not installed:
         print_formatted(f"Installing package {pip_name}...", "italic", color="yellow")
         if dry:
             print_formatted(
@@ -277,6 +292,15 @@ if __name__ == "__main__":
         here = clone_dir
         full = True
 
+    if len(sys.argv) == 1:
+        print_formatted(
+            "No arguments provided, doing a full install/update...",
+            "italic",
+            color="yellow",
+        )
+
+        full = True
+
     # Parse command-line arguments
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -298,14 +322,15 @@ if __name__ == "__main__":
     # )
 
     args = parser.parse_args()
+
     wheels_directory = here / "wheels"
-    print(f"Detected environment: {apply_color(mode,'cyan')}")
+    print_formatted(f"Detected environment: {apply_color(mode,'cyan')}")
 
     # Install dependencies from requirements.txt
     # if args.requirements or mode == "venv":
     install_dependencies(dry=args.dry)
 
-    if (not args.wheels and mode not in ["colab", "embeded"]) or not full:
+    if (not args.wheels and mode not in ["colab", "embeded"]) and not full:
         print_formatted(
             "Skipping wheel installation. Use --wheels to install wheel dependencies. (only needed for Comfy embed)",
             "italic",
@@ -314,9 +339,29 @@ if __name__ == "__main__":
         sys.exit()
 
     if mode in ["colab", "embeded"]:
-        print(
+        print_formatted(
             f"Downloading and installing release wheels since we are in a Comfy {apply_color(mode,'cyan')} environment",
         )
+    if full:
+        print_formatted(
+            f"Downloading and installing release wheels since no arguments where provided"
+        )
+
+    # - Check the env before proceeding.
+    missing_wheels = False
+    parsed_requirements = get_requirements(here / "requirements-wheels.txt")
+    if parsed_requirements:
+        for requirement in parsed_requirements:
+            installed, pip_name, import_name = try_import(requirement)
+            if not installed:
+                missing_wheels = True
+                break
+
+    if not missing_wheels:
+        print_formatted(
+            f"All required wheels are already installed.", "italic", color="green"
+        )
+        sys.exit()
 
     # Fetch the JSON data from the GitHub API URL
     owner = "melmass"
@@ -358,7 +403,9 @@ if __name__ == "__main__":
         asset for asset in tag_data["assets"] if current_platform in asset["name"]
     ]
     if not matching_assets:
-        print(f"Unsupported operating system: {current_platform}")
+        print_formatted(
+            f"Unsupported operating system: {current_platform}", color="yellow"
+        )
 
     wheels_directory.mkdir(exist_ok=True)
 
