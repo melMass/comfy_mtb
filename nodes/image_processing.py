@@ -17,10 +17,10 @@ import os
 import comfy.model_management as model_management
 
 
-try:
-    from cv2.ximgproc import guidedFilter
-except ImportError:
-    log.warning("cv2.ximgproc.guidedFilter not found, use opencv-contrib-python")
+# try:
+#     from cv2.ximgproc import guidedFilter
+# except ImportError:
+#     log.warning("cv2.ximgproc.guidedFilter not found, use opencv-contrib-python")
 
 
 class ColorCorrect:
