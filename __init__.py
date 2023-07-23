@@ -185,7 +185,7 @@ async def set_debug(request):
     if enabled:
         os.environ["MTB_DEBUG"] = "true"
         log.setLevel(logging.DEBUG)
-        log.debug("Debug mode set")
+        log.debug("Debug mode set from API (/mtb/debug POST route)")
 
     else:
         if "MTB_DEBUG" in os.environ:

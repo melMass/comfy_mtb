@@ -1,5 +1,5 @@
 from ..utils import pil2tensor
-from ..utils import here
+from ..utils import here, comfy_dir
 from ..log import log
 import folder_paths
 from pathlib import Path
@@ -61,25 +61,26 @@ class StylesLoader:
 
     @classmethod
     def INPUT_TYPES(cls):
-        input_dir = Path(folder_paths.base_path) / "styles"
-        if not input_dir.exists():
-            install_default_styles()
+        if not cls.options:
+            input_dir = Path(folder_paths.base_path) / "styles"
+            if not input_dir.exists():
+                install_default_styles()
 
-        if not (files := [f for f in input_dir.iterdir() if f.suffix == ".csv"]):
-            log.error(
-                "No styles found in the styles folder, place at least one csv file in the styles folder"
-            )
-            return {
-                "required": {
-                    "style_name": (["error"],),
-                }
-            }
-        for file in files:
-            with open(file, "r", encoding="utf8") as f:
-                parsed = csv.reader(f)
-                for row in parsed:
-                    log.debug(f"Adding style {row[0]}")
-                    cls.options[row[0]] = (row[1], row[2])
+            if not (files := [f for f in input_dir.iterdir() if f.suffix == ".csv"]):
+                log.warn(
+                    "No styles found in the styles folder, place at least one csv file in the styles folder at the root of ComfyUI (for instance ComfyUI/styles/mystyle.csv)"
+                )
+
+            for file in files:
+                with open(file, "r", encoding="utf8") as f:
+                    parsed = csv.reader(f)
+                    for row in parsed:
+                        log.debug(f"Adding style {row[0]}")
+                        cls.options[row[0]] = (row[1], row[2])
+
+        else:
+            log.debug(f"Using cached styles (count: {len(cls.options)})")
+
         return {
             "required": {
                 "style_name": (list(cls.options.keys()),),
@@ -106,24 +107,34 @@ class TextToImage:
     fonts = {}
 
     def __init__(self):
+        # - This is executed when the graph is executed, we could conditionaly reload fonts there
         pass
 
     @classmethod
-    def INPUT_TYPES(cls):
-        fonts = list(Path(folder_paths.base_path).glob("**/*.ttf"))
+    def CACHE_FONTS(cls):
+        font_extensions = ["*.ttf", "*.otf", "*.woff", "*.woff2", "*.eot"]
+        fonts = []
+
+        for extension in font_extensions:
+            fonts.extend(comfy_dir.glob(f"**/{extension}"))
+
         if not fonts:
-            log.error(
-                "No fonts found in the fonts folder, place at least one ttf file in the fonts folder"
+            log.warn(
+                "> No fonts found in the comfy folder, place at least one font file somewhere in ComfyUI's hierarchy"
             )
-            return {
-                "required": {
-                    "font": (["error"],),
-                }
-            }
+        else:
+            log.debug(f"> Found {len(fonts)} fonts")
+
         for font in fonts:
             log.debug(f"Adding font {font}")
             cls.fonts[font.stem] = font.as_posix()
 
+    @classmethod
+    def INPUT_TYPES(cls):
+        if not cls.fonts:
+            cls.CACHE_FONTS()
+        else:
+            log.debug(f"Using cached fonts (count: {len(cls.fonts)})")
         return {
             "required": {
                 "text": (
@@ -137,11 +148,11 @@ class TextToImage:
                 ),
                 "font_size": (
                     "INT",
-                    {"default": 12, "min": 1, "max": 100, "step": 1},
+                    {"default": 12, "min": 1, "max": 2500, "step": 1},
                 ),
                 "width": (
                     "INT",
-                    {"default": 512, "min": 1, "max": 1000, "step": 1},
+                    {"default": 512, "min": 1, "max": 8096, "step": 1},
                 ),
                 "height": (
                     "INT",
