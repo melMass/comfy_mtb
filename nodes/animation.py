@@ -4,9 +4,6 @@ from ..log import log
 class AnimationBuilder:
     """Convenient way to manage basic animation maths at the core of many of my workflows"""
 
-    def __init__(self):
-        pass
-
     @classmethod
     def INPUT_TYPES(cls):
         return {

@@ -149,9 +149,6 @@ class LoadFilmModel:
 class FilmInterpolation:
     """Google Research FILM frame interpolation for large motion"""
 
-    def __init__(self):
-        pass
-
     @classmethod
     def INPUT_TYPES(cls):
         return {
@@ -213,9 +210,6 @@ class FilmInterpolation:
 
 class ConcatImages:
     """Add images to batch"""
-
-    def __init__(self):
-        pass
 
     RETURN_TYPES = ("IMAGE",)
     FUNCTION = "concat_images"

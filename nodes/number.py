@@ -25,9 +25,6 @@ class IntToBool:
 class IntToNumber:
     """Node addon for the WAS Suite. Converts a "comfy" INT to a NUMBER."""
 
-    def __init__(self):
-        pass
-
     @classmethod
     def INPUT_TYPES(cls):
         return {
@@ -56,9 +53,6 @@ class IntToNumber:
 class FloatToNumber:
     """Node addon for the WAS Suite. Converts a "comfy" FLOAT to a NUMBER."""
 
-    def __init__(self):
-        pass
-
     @classmethod
     def INPUT_TYPES(cls):
         return {
@@ -83,13 +77,11 @@ class FloatToNumber:
     def float_to_number(self, float):
         return (float,)
 
-
-
         return (int,)
+
 
 __nodes__ = [
     FloatToNumber,
     IntToBool,
     IntToNumber,
-
 ]

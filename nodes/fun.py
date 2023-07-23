@@ -105,9 +105,6 @@ class UnsplashImage:
 class QrCode:
     """Basic QR Code generator"""
 
-    def __init__(self):
-        pass
-
     @classmethod
     def INPUT_TYPES(cls):
         return {

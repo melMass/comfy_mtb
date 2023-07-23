@@ -241,9 +241,6 @@ def normals_to_height(normals_img, seamless, progress_callback):
 class DeepBump:
     """Normal & height maps generation from single pictures"""
 
-    def __init__(self):
-        pass
-
     @classmethod
     def INPUT_TYPES(cls):
         return {

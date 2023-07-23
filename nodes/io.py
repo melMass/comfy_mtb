@@ -12,9 +12,6 @@ import numpy as np
 class ExportToProres:
     """Export to ProRes 4444 (Experimental)"""
 
-    def __init__(self):
-        pass
-
     @classmethod
     def INPUT_TYPES(cls):
         return {

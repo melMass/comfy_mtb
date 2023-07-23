@@ -10,9 +10,6 @@ import csv
 class SmartStep:
     """Utils to control the steps start/stop of the KAdvancedSampler in percentage"""
 
-    def __init__(self):
-        pass
-
     @classmethod
     def INPUT_TYPES(cls):
         return {
@@ -61,9 +58,6 @@ class StylesLoader:
     """Load csv files and populate a dropdown from the rows (à la A111)"""
 
     options = {}
-
-    def __init__(self):
-        pass
 
     @classmethod
     def INPUT_TYPES(cls):

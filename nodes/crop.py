@@ -9,9 +9,6 @@ from ..log import log
 class Bbox:
     """The bounding box (BBOX) custom type used by other nodes"""
 
-    def __init__(self):
-        pass
-
     @classmethod
     def INPUT_TYPES(cls):
         return {
@@ -41,9 +38,6 @@ class Bbox:
 
 class BboxFromMask:
     """From a mask extract the bounding box"""
-
-    def __init__(self):
-        pass
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -115,9 +109,6 @@ class Crop:
     The bounding box can be given as a tuple of (x, y, width, height) or as a BBOX type
     The BBOX input takes precedence over the tuple input
     """
-
-    def __init__(self):
-        pass
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -204,9 +195,6 @@ class Uncrop:
 
     The bounding box can be given as a tuple of (x, y, width, height) or as a BBOX type
     The BBOX input takes precedence over the tuple input"""
-
-    def __init__(self):
-        pass
 
     @classmethod
     def INPUT_TYPES(cls):

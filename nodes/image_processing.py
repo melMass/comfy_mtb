@@ -26,9 +26,6 @@ import comfy.model_management as model_management
 class ColorCorrect:
     """Various color correction methods"""
 
-    def __init__(self):
-        pass
-
     @classmethod
     def INPUT_TYPES(cls):
         return {
@@ -187,9 +184,6 @@ class ColorCorrect:
 class ImageCompare:
     """Compare two images and return a difference image"""
 
-    def __init__(self):
-        pass
-
     @classmethod
     def INPUT_TYPES(cls):
         return {
@@ -252,9 +246,6 @@ class LoadImageFromUrl:
 class Blur:
     """Blur an image using a Gaussian filter."""
 
-    def __init__(self):
-        pass
-
     @classmethod
     def INPUT_TYPES(cls):
         return {
@@ -311,9 +302,6 @@ class Blur:
 
 class MaskToImage:
     """Converts a mask (alpha) to an RGB image with a color and background"""
-
-    def __init__(self):
-        pass
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -383,9 +371,6 @@ class ColoredImage:
 class ImagePremultiply:
     """Premultiply image with mask"""
 
-    def __init__(self):
-        pass
-
     @classmethod
     def INPUT_TYPES(cls):
         return {
@@ -430,9 +415,6 @@ class ImagePremultiply:
 
 class ImageResizeFactor:
     """Extracted mostly from WAS Node Suite, with a few edits (most notably multiple image support) and less features."""
-
-    def __init__(self):
-        pass
 
     @classmethod
     def INPUT_TYPES(cls):
