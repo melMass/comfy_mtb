@@ -1,6 +1,7 @@
 import qrcode
 from ..utils import pil2tensor
 from PIL import Image
+from ..log import log
 
 # class MtbExamples:
 #     """MTB Example Images"""
@@ -48,6 +49,57 @@ from PIL import Image
 #         with open(image_path, "rb") as f:
 #             m.update(f.read())
 #         return m.digest().hex()
+
+
+class UnsplashImage:
+    """Unsplash Image given a keyword and a size"""
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "width": ("INT", {"default": 512, "max": 8096, "min": 0, "step": 1}),
+                "height": ("INT", {"default": 512, "max": 8096, "min": 0, "step": 1}),
+                "random_seed": ("INT", {"default": 0, "max": 1e5, "min": 0, "step": 1}),
+            },
+            "optional": {
+                "keyword": ("STRING", {"default": "nature"}),
+            },
+        }
+
+    RETURN_TYPES = ("IMAGE",)
+    FUNCTION = "do_unsplash_image"
+    CATEGORY = "mtb/generate"
+
+    def do_unsplash_image(self, width, height, random_seed, keyword=None):
+        import requests
+        import io
+
+        base_url = "https://source.unsplash.com/random/"
+
+        if width and height:
+            base_url += f"/{width}x{height}"
+
+        if keyword:
+            keyword = keyword.replace(" ", "%20")
+            base_url += f"?{keyword}&{random_seed}"
+        else:
+            base_url += f"?&{random_seed}"
+        try:
+            log.debug(f"Getting unsplash image from {base_url}")
+            response = requests.get(base_url)
+            response.raise_for_status()
+
+            image = Image.open(io.BytesIO(response.content))
+            return (
+                pil2tensor(
+                    image,
+                ),
+            )
+
+        except requests.exceptions.RequestException as e:
+            print("Error retrieving image:", e)
+            return (None,)
 
 
 class QrCode:
@@ -112,5 +164,6 @@ class QrCode:
 
 __nodes__ = [
     QrCode,
+    UnsplashImage
     #  MtbExamples,
 ]
