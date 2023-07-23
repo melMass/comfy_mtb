@@ -1,6 +1,34 @@
 from .utils import here
 
 
+def render_table(table_dict, sort=True, title=None):
+    table_rows = ""
+    table_dict = sorted(
+        table_dict.items(), key=lambda item: item[0]
+    )  # Sort the dictionary by keys
+
+    for name, description in table_dict:
+        table_rows += f"<tr><td>{name}</td><td>{description}</td></tr>"
+
+    html_response = f"""
+        <div class="table-container">
+        {"" if title is None else f"<h1>{title}</h1>"}
+        <table>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Description</th>
+                </tr>
+            </thead>
+            <tbody>
+                {table_rows}
+            </tbody>
+        </table>      
+        </div>
+        """
+    return html_response
+
+
 def render_base_template(title, content):
     css_content = ""
     css_path = here / "html" / "style.css"
@@ -20,8 +48,10 @@ def render_base_template(title, content):
     </head>
     <body>
         <header>
+        <a href="/">Back to Comfy</a>
+        <div class="mtb_logo">
             <img src="https://repository-images.githubusercontent.com/649047066/a3eef9a7-20dd-4ef9-b839-884502d4e873" alt="Comfy MTB Logo" height="70" width="128">
-            <span class="title">Comfy MTB</span>
+            <span class="title">Comfy MTB</span></div>
             <a style="width:128px;text-align:center" href="https://www.github.com/melmass/comfy_mtb">
                 {github_icon_svg}
             </a>

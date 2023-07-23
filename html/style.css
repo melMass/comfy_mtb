@@ -6,6 +6,87 @@ html {
     color: whitesmoke;
 }
 
+a {
+    color: whitesmoke;
+
+}
+
+.table-container {
+    width: 70%;
+    height: 100%;
+    overflow: auto;
+}
+
+table {
+
+    border-collapse: collapse;
+}
+
+th,
+td {
+    padding: 10px;
+    text-align: left;
+}
+
+th {
+    background-color: rgb(45, 45, 45);
+    /* Light gray background for header row */
+    font-weight: bold;
+}
+
+tr:nth-child(even) {
+    background-color: rgb(45, 45, 45);
+    /* Alternate row background color */
+}
+
+tr:hover {
+    background-color: #797979;
+    /* Highlight color on hover */
+}
+
+td:nth-child(2) {
+    /* Applies to the second column (Description) */
+    width: 80%;
+    /* Adjust the width as needed */
+    word-wrap: break-word;
+    /* Allow long words to be broken and wrapped to the next line */
+}
+
+.mtb_logo {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+/* Styling for WebKit-based browsers (Chrome, Edge) */
+.table-container::-webkit-scrollbar {
+    width: 10px;
+    /* Set the width of the scrollbar */
+}
+
+.table-container::-webkit-scrollbar-thumb {
+    background-color: #797979;
+    /* Color of the scrollbar thumb */
+}
+
+/* Styling for Firefox */
+.table-container {
+    scrollbar-width: thin;
+    /* Set the width of the scrollbar */
+}
+
+.table-container::-webkit-scrollbar-thumb {
+    background-color: #797979;
+    /* Color of the scrollbar thumb */
+}
+
+/* Optionally, you can also style the scrollbar track (background) */
+.table-container::-webkit-scrollbar-track {
+    background-color: #f2f2f2;
+}
+
+
+
 body {
     margin: 0;
     padding: 0;
@@ -18,7 +99,7 @@ body {
 .title {
     font-size: 2.5em;
     font-weight: 700;
-    margin: 1em;
+
 }
 
 header {

@@ -163,13 +163,31 @@ from aiohttp import web
 from importlib import reload
 import logging
 
-endlog = mklog("endpoint")
+endlog = mklog("mtb endpoint")
 
 
 @PromptServer.instance.routes.get("/mtb/status")
 async def get_full_library(request):
-    files = []
-    endlog.debug("Getting status")
+    from . import endpoint
+
+    reload(endpoint)
+
+    endlog.debug("Getting node registration status")
+    # Check if the request prefers HTML content
+    if "text/html" in request.headers.get("Accept", ""):
+        # # Return an HTML page
+        html_response = endpoint.render_table(
+            NODE_CLASS_MAPPINGS_DEBUG, title="Registered"
+        )
+        html_response += endpoint.render_table(
+            {k: "-" for k in failed}, title="Failed to load"
+        )
+
+        return web.Response(
+            text=endpoint.render_base_template("MTB", html_response),
+            content_type="text/html",
+        )
+
     return web.json_response(
         {
             "registered": NODE_CLASS_MAPPINGS_DEBUG,
