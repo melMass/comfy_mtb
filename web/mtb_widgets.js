@@ -796,8 +796,14 @@ const mtb_widgets = {
           const run_button = this.addWidget('button', `Queue`, 'queue', () => {
             onReset() // this could maybe be a setting or checkbox
             app.queuePrompt(0, total_frames.value * loop_count.value)
+            window.MTB?.notify?.(
+              `Started a queue of ${total_frames.value} frames (for ${
+                loop_count.value
+              } loop, so ${total_frames.value * loop_count.value})`,
+              5000
+            )
           })
-          
+
           this.onRemoved = () => {
             for (const w of this.widgets) {
               if (w.canvas) {
@@ -880,11 +886,17 @@ const mtb_widgets = {
                 const style = await getStyle(this)
                 if (style && style.length >= 1) {
                   if (style[0]) {
+                    window.MTB?.notify?.(
+                      `Extracted positive from ${this.widgets[0].value}`
+                    )
                     const tn = LiteGraph.createNode('Text box')
                     app.graph.add(tn)
                     tn.title = `${this.widgets[0].value} (Positive)`
                     tn.widgets[0].value = style[0]
                   } else {
+                    window.MTB?.notify?.(
+                      `No positive to extract for ${this.widgets[0].value}`
+                    )
                   }
                 }
               },
@@ -895,11 +907,17 @@ const mtb_widgets = {
                 const style = await getStyle(this)
                 if (style && style.length >= 2) {
                   if (style[1]) {
+                    window.MTB?.notify?.(
+                      `Extracted negative from ${this.widgets[0].value}`
+                    )
                     const tn = LiteGraph.createNode('Text box')
                     app.graph.add(tn)
                     tn.title = `${this.widgets[0].value} (Negative)`
                     tn.widgets[0].value = style[1]
                   } else {
+                    window.MTB.notify(
+                      `No negative to extract for ${this.widgets[0].value}`
+                    )
                   }
                 }
               },
