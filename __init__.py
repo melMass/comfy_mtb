@@ -1,3 +1,12 @@
+#!/usr/bin/env python3
+# -*- coding:utf-8 -*-
+###
+# File: __init__.py
+# Project: comfy_mtb
+# Author: Mel Massadian
+# Copyright (c) 2023 Mel Massadian
+# 
+###
 import os
 
 os.environ["TF_FORCE_GPU_ALLOW_GROWTH"] = "true"
@@ -5,6 +14,7 @@ os.environ["TF_FORCE_GPU_ALLOW_GROWTH"] = "true"
 import traceback
 from .log import log, blue_text, cyan_text, get_summary, get_label
 from .utils import here
+from .utils import comfy_dir
 import importlib
 import os
 import ast
@@ -89,7 +99,7 @@ def load_nodes():
 
 
 # - REGISTER WEB EXTENSIONS
-web_extensions_root = utils.comfy_dir / "web" / "extensions"
+web_extensions_root = comfy_dir / "web" / "extensions"
 web_mtb = web_extensions_root / "mtb"
 
 if web_mtb.exists():
@@ -158,12 +168,11 @@ log.info(
 
 # - ENDPOINT
 from server import PromptServer
-from .log import mklog, log
+from .log import log
 from aiohttp import web
 from importlib import reload
 import logging
-
-endlog = mklog("mtb endpoint")
+from .endpoint import endlog
 
 
 @PromptServer.instance.routes.get("/mtb/status")
