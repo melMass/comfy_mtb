@@ -1,6 +1,58 @@
 from .utils import here
+from aiohttp import web
+from .log import mklog
+import os
+
+endlog = mklog("mtb endpoint")
+
+#- ACTIONS
+
+def ACTIONS_getStyles(style_name=None):
+    from .nodes.conditions import StylesLoader
+
+    styles = StylesLoader.options
+    match_list = ["name"]
+    if styles:
+        filtered_styles = {
+            key: value
+            for key, value in styles.items()
+            if not key.startswith("__") and key not in match_list
+        }
+        if style_name:
+            if style_name in filtered_styles:
+                return filtered_styles[style_name]
+            else:
+                return {"error": "Style not found"}
+        return filtered_styles
+    return {"error": "No styles found"}
 
 
+async def do_action(request) -> web.Response:
+    endlog.debug("Init action request")
+    request_data = await request.json()
+    name = request_data.get("name")
+    args = request_data.get("args")
+
+    endlog.debug(f"Received action request: {name} {args}")
+
+    method_name = "ACTIONS_" + name
+    method = globals().get(method_name)
+
+    if callable(method):
+        result = method(args) if args else method()
+        endlog.debug(f"Action result: {result}")
+        return web.json_response({"result": result})
+
+    available_methods = [
+        attr[len("ACTIONS_") :] for attr in globals() if attr.startswith("ACTIONS_")
+    ]
+
+    return web.json_response(
+        {"error": "Invalid method name.", "available_methods": available_methods}
+    )
+
+
+# - HTML UTILS
 def render_table(table_dict, sort=True, title=None):
     table_rows = ""
     table_dict = sorted(

@@ -1,0 +1,1230 @@
+{
+  "last_node_id": 79,
+  "last_link_id": 162,
+  "nodes": [
+    {
+      "id": 59,
+      "type": "Reroute",
+      "pos": [
+        -150.35178124999982,
+        644.4360633544919
+      ],
+      "size": [
+        75,
+        26
+      ],
+      "flags": {},
+      "order": 13,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "",
+          "type": "*",
+          "link": 124
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "VAE",
+          "links": [
+            139
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "showOutputText": false,
+        "horizontal": false
+      }
+    },
+    {
+      "id": 56,
+      "type": "Reroute",
+      "pos": [
+        -1580.8297949218763,
+        644.7740239257807
+      ],
+      "size": [
+        75,
+        26
+      ],
+      "flags": {},
+      "order": 7,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "",
+          "type": "*",
+          "link": 117
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "VAE",
+          "links": [
+            124
+          ]
+        }
+      ],
+      "properties": {
+        "showOutputText": false,
+        "horizontal": false
+      }
+    },
+    {
+      "id": 57,
+      "type": "Reroute",
+      "pos": [
+        -673.8297949218747,
+        -185.22597607421872
+      ],
+      "size": [
+        75,
+        26
+      ],
+      "flags": {},
+      "order": 10,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "",
+          "type": "*",
+          "link": 135
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "MODEL",
+          "links": [
+            120
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "showOutputText": false,
+        "horizontal": false
+      }
+    },
+    {
+      "id": 65,
+      "type": "Reroute",
+      "pos": [
+        -1512.8297949218763,
+        -181.22597607421872
+      ],
+      "size": [
+        75,
+        26
+      ],
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "",
+          "type": "*",
+          "link": 134
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "MODEL",
+          "links": [
+            135
+          ]
+        }
+      ],
+      "properties": {
+        "showOutputText": false,
+        "horizontal": false
+      }
+    },
+    {
+      "id": 16,
+      "type": "CheckpointLoaderSimple",
+      "pos": [
+        -2000.8297949218756,
+        192.77402392578128
+      ],
+      "size": [
+        315,
+        98
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "outputs": [
+        {
+          "name": "MODEL",
+          "type": "MODEL",
+          "links": [
+            134
+          ],
+          "slot_index": 0
+        },
+        {
+          "name": "CLIP",
+          "type": "CLIP",
+          "links": [
+            116
+          ],
+          "slot_index": 1
+        },
+        {
+          "name": "VAE",
+          "type": "VAE",
+          "links": [
+            117
+          ],
+          "slot_index": 2
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CheckpointLoaderSimple"
+      },
+      "widgets_values": [
+        "revAnimated_v122.safetensors"
+      ]
+    },
+    {
+      "id": 3,
+      "type": "KSampler",
+      "pos": [
+        -482.82979492187513,
+        -21.22597607421874
+      ],
+      "size": [
+        315,
+        474
+      ],
+      "flags": {},
+      "order": 19,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "link": 120
+        },
+        {
+          "name": "positive",
+          "type": "CONDITIONING",
+          "link": 153
+        },
+        {
+          "name": "negative",
+          "type": "CONDITIONING",
+          "link": 6
+        },
+        {
+          "name": "latent_image",
+          "type": "LATENT",
+          "link": 2
+        }
+      ],
+      "outputs": [
+        {
+          "name": "LATENT",
+          "type": "LATENT",
+          "links": [
+            138
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "KSampler"
+      },
+      "widgets_values": [
+        5428233522,
+        "fixed",
+        45,
+        8,
+        "euler_ancestral",
+        "simple",
+        1
+      ]
+    },
+    {
+      "id": 19,
+      "type": "CLIPSetLastLayer",
+      "pos": [
+        -1597,
+        209
+      ],
+      "size": [
+        315,
+        58
+      ],
+      "flags": {},
+      "order": 6,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "link": 116
+        }
+      ],
+      "outputs": [
+        {
+          "name": "CLIP",
+          "type": "CLIP",
+          "links": [
+            28,
+            29,
+            149
+          ],
+          "shape": 3,
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CLIPSetLastLayer"
+      },
+      "widgets_values": [
+        -2
+      ]
+    },
+    {
+      "id": 20,
+      "type": "Styles Loader (mtb)",
+      "pos": [
+        -1615,
+        404
+      ],
+      "size": [
+        315,
+        78
+      ],
+      "flags": {
+        "collapsed": false
+      },
+      "order": 1,
+      "mode": 0,
+      "outputs": [
+        {
+          "name": "positive",
+          "type": "STRING",
+          "links": [],
+          "shape": 3
+        },
+        {
+          "name": "negative",
+          "type": "STRING",
+          "links": [
+            87
+          ],
+          "shape": 3,
+          "slot_index": 1
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "Styles Loader (mtb)"
+      },
+      "widgets_values": [
+        "❌Mel Negatives (general)"
+      ]
+    },
+    {
+      "id": 7,
+      "type": "CLIPTextEncode",
+      "pos": [
+        -839,
+        335
+      ],
+      "size": [
+        210,
+        54
+      ],
+      "flags": {},
+      "order": 11,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "link": 29
+        },
+        {
+          "name": "text",
+          "type": "STRING",
+          "link": 87,
+          "widget": {
+            "name": "text",
+            "config": [
+              "STRING",
+              {
+                "multiline": true
+              }
+            ]
+          },
+          "slot_index": 1
+        }
+      ],
+      "outputs": [
+        {
+          "name": "CONDITIONING",
+          "type": "CONDITIONING",
+          "links": [
+            6
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CLIPTextEncode"
+      },
+      "widgets_values": [
+        "worst quality, hands, embedding:EasyNegative,"
+      ]
+    },
+    {
+      "id": 6,
+      "type": "CLIPTextEncode",
+      "pos": [
+        -1263,
+        -42
+      ],
+      "size": [
+        210,
+        54
+      ],
+      "flags": {},
+      "order": 15,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "link": 28
+        },
+        {
+          "name": "text",
+          "type": "STRING",
+          "link": 145,
+          "widget": {
+            "name": "text",
+            "config": [
+              "STRING",
+              {
+                "multiline": true
+              }
+            ]
+          },
+          "slot_index": 1
+        }
+      ],
+      "outputs": [
+        {
+          "name": "CONDITIONING",
+          "type": "CONDITIONING",
+          "links": [
+            151
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CLIPTextEncode"
+      },
+      "widgets_values": [
+        "A majestic Lion, fur in the wind, (smirk smile)"
+      ]
+    },
+    {
+      "id": 72,
+      "type": "ConditioningAverage ",
+      "pos": [
+        -988,
+        -13
+      ],
+      "size": [
+        380.4000244140625,
+        78
+      ],
+      "flags": {},
+      "order": 18,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "conditioning_to",
+          "type": "CONDITIONING",
+          "link": 151
+        },
+        {
+          "name": "conditioning_from",
+          "type": "CONDITIONING",
+          "link": 152,
+          "slot_index": 1
+        },
+        {
+          "name": "conditioning_to_strength",
+          "type": "FLOAT",
+          "link": 154,
+          "widget": {
+            "name": "conditioning_to_strength",
+            "config": [
+              "FLOAT",
+              {
+                "default": 1,
+                "min": 0,
+                "max": 1,
+                "step": 0.01
+              }
+            ]
+          },
+          "slot_index": 2
+        }
+      ],
+      "outputs": [
+        {
+          "name": "CONDITIONING",
+          "type": "CONDITIONING",
+          "links": [
+            153
+          ],
+          "shape": 3,
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ConditioningAverage "
+      },
+      "widgets_values": [
+        1
+      ]
+    },
+    {
+      "id": 66,
+      "type": "VAEDecodeTiled",
+      "pos": [
+        197,
+        -20
+      ],
+      "size": [
+        210,
+        46
+      ],
+      "flags": {
+        "collapsed": false
+      },
+      "order": 20,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "samples",
+          "type": "LATENT",
+          "link": 138
+        },
+        {
+          "name": "vae",
+          "type": "VAE",
+          "link": 139,
+          "slot_index": 1
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            161
+          ],
+          "shape": 3,
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "VAEDecodeTiled"
+      }
+    },
+    {
+      "id": 78,
+      "type": "SaveImage",
+      "pos": [
+        566.1508954260959,
+        5.399725291354571
+      ],
+      "size": [
+        315,
+        270
+      ],
+      "flags": {},
+      "order": 21,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 161
+        }
+      ],
+      "properties": {},
+      "widgets_values": [
+        "mtb_demo-conditional_blend"
+      ]
+    },
+    {
+      "id": 5,
+      "type": "EmptyLatentImage",
+      "pos": [
+        -969,
+        484
+      ],
+      "size": [
+        315,
+        106
+      ],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "outputs": [
+        {
+          "name": "LATENT",
+          "type": "LATENT",
+          "links": [
+            2
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "EmptyLatentImage"
+      },
+      "widgets_values": [
+        768,
+        512,
+        1
+      ]
+    },
+    {
+      "id": 75,
+      "type": "PrimitiveNode",
+      "pos": [
+        -1626,
+        1228
+      ],
+      "size": [
+        210,
+        82
+      ],
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "outputs": [
+        {
+          "name": "INT",
+          "type": "INT",
+          "links": [
+            156,
+            159
+          ],
+          "slot_index": 0,
+          "widget": {
+            "name": "total_frames",
+            "config": [
+              "INT",
+              {
+                "default": 100,
+                "min": 0
+              }
+            ]
+          }
+        }
+      ],
+      "properties": {},
+      "widgets_values": [
+        24,
+        "fixed"
+      ]
+    },
+    {
+      "id": 74,
+      "type": "Get Batch From History (mtb)",
+      "pos": [
+        -594,
+        914
+      ],
+      "size": [
+        315,
+        102
+      ],
+      "flags": {},
+      "order": 14,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "enable",
+          "type": "BOOL",
+          "link": 155
+        },
+        {
+          "name": "count",
+          "type": "INT",
+          "link": 159,
+          "widget": {
+            "name": "count",
+            "config": [
+              "INT",
+              {
+                "default": 1,
+                "min": 0
+              }
+            ]
+          },
+          "slot_index": 1
+        }
+      ],
+      "outputs": [
+        {
+          "name": "i",
+          "type": "IMAGE",
+          "links": [
+            160,
+            162
+          ],
+          "shape": 3,
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "Get Batch From History (mtb)"
+      },
+      "widgets_values": [
+        24,
+        0,
+        false
+      ]
+    },
+    {
+      "id": 77,
+      "type": "Export To Prores (mtb)",
+      "pos": [
+        -57,
+        911
+      ],
+      "size": [
+        315,
+        82
+      ],
+      "flags": {},
+      "order": 16,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 160,
+          "slot_index": 0
+        }
+      ],
+      "outputs": [
+        {
+          "name": "VIDEO",
+          "type": "VIDEO",
+          "links": null,
+          "shape": 3
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "Export To Prores (mtb)"
+      },
+      "widgets_values": [
+        12,
+        "export"
+      ]
+    },
+    {
+      "id": 70,
+      "type": "CLIPTextEncode",
+      "pos": [
+        -1246,
+        72
+      ],
+      "size": [
+        210,
+        54
+      ],
+      "flags": {},
+      "order": 12,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "link": 149,
+          "slot_index": 0
+        },
+        {
+          "name": "text",
+          "type": "STRING",
+          "link": 150,
+          "widget": {
+            "name": "text",
+            "config": [
+              "STRING",
+              {
+                "multiline": true
+              }
+            ]
+          },
+          "slot_index": 1
+        }
+      ],
+      "outputs": [
+        {
+          "name": "CONDITIONING",
+          "type": "CONDITIONING",
+          "links": [
+            152
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CLIPTextEncode"
+      },
+      "widgets_values": [
+        "A majestic Lion, fur in the wind, (smirk smile)"
+      ]
+    },
+    {
+      "id": 68,
+      "type": "Text box",
+      "pos": [
+        -1871,
+        9
+      ],
+      "size": [
+        217.2119140625,
+        122.18632507324219
+      ],
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            141,
+            150
+          ],
+          "shape": 3,
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "Text box"
+      },
+      "widgets_values": [
+        "A cinematic shot of a blue car, high speed, blood trail"
+      ]
+    },
+    {
+      "id": 69,
+      "type": "String Replace (mtb)",
+      "pos": [
+        -1566,
+        -58
+      ],
+      "size": [
+        210,
+        82
+      ],
+      "flags": {},
+      "order": 9,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "string",
+          "type": "STRING",
+          "link": 141
+        }
+      ],
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            145
+          ],
+          "shape": 3,
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "String Replace (mtb)"
+      },
+      "widgets_values": [
+        "blue",
+        "yellow"
+      ]
+    },
+    {
+      "id": 73,
+      "type": "Animation Builder (mtb)",
+      "pos": [
+        -1260,
+        850
+      ],
+      "size": [
+        211.60000610351562,
+        306
+      ],
+      "flags": {},
+      "order": 8,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "total_frames",
+          "type": "INT",
+          "link": 156,
+          "widget": {
+            "name": "total_frames",
+            "config": [
+              "INT",
+              {
+                "default": 100,
+                "min": 0
+              }
+            ]
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "frame",
+          "type": "INT",
+          "links": null,
+          "shape": 3,
+          "slot_index": 0
+        },
+        {
+          "name": "0-1 (scaled)",
+          "type": "FLOAT",
+          "links": [
+            154
+          ],
+          "shape": 3,
+          "slot_index": 1
+        },
+        {
+          "name": "count",
+          "type": "INT",
+          "links": null,
+          "shape": 3
+        },
+        {
+          "name": "loop_ended",
+          "type": "BOOL",
+          "links": [
+            155
+          ],
+          "shape": 3,
+          "slot_index": 3
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "Animation Builder (mtb)"
+      },
+      "widgets_values": [
+        24,
+        1,
+        1,
+        24,
+        1,
+        "raw: 24\nframe: 0",
+        "Done 😎!",
+        "reset",
+        "queue"
+      ]
+    },
+    {
+      "id": 79,
+      "type": "Save Gif (mtb)",
+      "pos": [
+        -33,
+        1041
+      ],
+      "size": [
+        210,
+        338.00006103515625
+      ],
+      "flags": {},
+      "order": 17,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "link": 162
+        },
+        {
+          "name": "pingpong",
+          "type": "BOOL",
+          "link": null
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "Save Gif (mtb)"
+      },
+      "widgets_values": [
+        12,
+        1,
+        true
+      ]
+    }
+  ],
+  "links": [
+    [
+      2,
+      5,
+      0,
+      3,
+      3,
+      "LATENT"
+    ],
+    [
+      6,
+      7,
+      0,
+      3,
+      2,
+      "CONDITIONING"
+    ],
+    [
+      28,
+      19,
+      0,
+      6,
+      0,
+      "CLIP"
+    ],
+    [
+      29,
+      19,
+      0,
+      7,
+      0,
+      "CLIP"
+    ],
+    [
+      87,
+      20,
+      1,
+      7,
+      1,
+      "STRING"
+    ],
+    [
+      116,
+      16,
+      1,
+      19,
+      0,
+      "CLIP"
+    ],
+    [
+      117,
+      16,
+      2,
+      56,
+      0,
+      "*"
+    ],
+    [
+      120,
+      57,
+      0,
+      3,
+      0,
+      "MODEL"
+    ],
+    [
+      124,
+      56,
+      0,
+      59,
+      0,
+      "*"
+    ],
+    [
+      134,
+      16,
+      0,
+      65,
+      0,
+      "*"
+    ],
+    [
+      135,
+      65,
+      0,
+      57,
+      0,
+      "*"
+    ],
+    [
+      138,
+      3,
+      0,
+      66,
+      0,
+      "LATENT"
+    ],
+    [
+      139,
+      59,
+      0,
+      66,
+      1,
+      "VAE"
+    ],
+    [
+      141,
+      68,
+      0,
+      69,
+      0,
+      "STRING"
+    ],
+    [
+      145,
+      69,
+      0,
+      6,
+      1,
+      "STRING"
+    ],
+    [
+      149,
+      19,
+      0,
+      70,
+      0,
+      "CLIP"
+    ],
+    [
+      150,
+      68,
+      0,
+      70,
+      1,
+      "STRING"
+    ],
+    [
+      151,
+      6,
+      0,
+      72,
+      0,
+      "CONDITIONING"
+    ],
+    [
+      152,
+      70,
+      0,
+      72,
+      1,
+      "CONDITIONING"
+    ],
+    [
+      153,
+      72,
+      0,
+      3,
+      1,
+      "CONDITIONING"
+    ],
+    [
+      154,
+      73,
+      1,
+      72,
+      2,
+      "FLOAT"
+    ],
+    [
+      155,
+      73,
+      3,
+      74,
+      0,
+      "BOOL"
+    ],
+    [
+      156,
+      75,
+      0,
+      73,
+      0,
+      "INT"
+    ],
+    [
+      159,
+      75,
+      0,
+      74,
+      1,
+      "INT"
+    ],
+    [
+      160,
+      74,
+      0,
+      77,
+      0,
+      "IMAGE"
+    ],
+    [
+      161,
+      66,
+      0,
+      78,
+      0,
+      "IMAGE"
+    ],
+    [
+      162,
+      74,
+      0,
+      79,
+      0,
+      "IMAGE"
+    ]
+  ],
+  "groups": [
+    {
+      "title": "Txt2Img",
+      "bounding": [
+        -2061,
+        -234,
+        1932,
+        973
+      ],
+      "color": "#a1309b",
+      "locked": false
+    },
+    {
+      "title": "Save Intermediate Image",
+      "bounding": [
+        150,
+        -116,
+        303,
+        213
+      ],
+      "color": "#3f789e",
+      "locked": false
+    }
+  ],
+  "config": {},
+  "extra": {},
+  "version": 0.4
+}
