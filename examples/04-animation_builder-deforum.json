@@ -1,5 +1,5 @@
 {
-  "last_node_id": 39,
+  "last_node_id": 42,
   "last_link_id": 69,
   "nodes": [
     {
@@ -93,7 +93,7 @@
       ],
       "size": [
         210,
-        36.36605696244669
+        36.366058349609375
       ],
       "flags": {},
       "order": 8,
@@ -347,7 +347,7 @@
         114
       ],
       "size": [
-        301.23302978515596,
+        301.2330322265625,
         98
       ],
       "flags": {},
@@ -469,7 +469,7 @@
         "Node name for S&R": "CLIPTextEncode"
       },
       "widgets_values": [
-        "A blonde doll with a pink dress sleeping, draping, wrinkles"
+        "A plastic Barbie doll with a pink dress sleeping, draping, wrinkles, shiny"
       ]
     },
     {
@@ -481,7 +481,7 @@
       ],
       "size": [
         294,
-        95.12843764123829
+        95.1284408569336
       ],
       "flags": {},
       "order": 3,
@@ -502,7 +502,7 @@
         "Node name for S&R": "Text box"
       },
       "widgets_values": [
-        "embedding:EasyNegative, embedding:EasyNegativeV2, watermark, text, deformed"
+        "embedding:EasyNegative, embedding:EasyNegativeV2, watermark, text, deformed, NSFW, Cleavage, Pubic Hair, Nudity, Naked, censored"
       ]
     },
     {
@@ -690,8 +690,8 @@
         259
       ],
       "size": [
-        330.11123461913985,
-        378.1239961059566
+        330.1112365722656,
+        378.1239929199219
       ],
       "flags": {},
       "order": 19,
@@ -716,8 +716,8 @@
         1256
       ],
       "size": [
-        356.17758847656205,
-        471.87858076171824
+        356.1775817871094,
+        471.8785705566406
       ],
       "flags": {},
       "order": 14,
@@ -735,8 +735,7 @@
       "widgets_values": [
         12,
         1,
-        true,
-        "/view?filename=7964e7cc8b.gif&subfolder=&type=output"
+        true
       ]
     },
     {
@@ -833,7 +832,7 @@
         882
       ],
       "size": [
-        232.28509687500036,
+        232.28509521484375,
         166
       ],
       "flags": {},
@@ -873,12 +872,12 @@
       "id": 17,
       "type": "Animation Builder (mtb)",
       "pos": [
-        -1309,
+        -1310,
         883
       ],
       "size": [
         211.60000610351562,
-        294
+        318
       ],
       "flags": {},
       "order": 7,
@@ -1175,8 +1174,8 @@
     {
       "title": "START THE QUEUE BY CLICKLING HERE 👆",
       "bounding": [
-        -1611,
-        1196,
+        -1612,
+        1219,
         521,
         80
       ],
