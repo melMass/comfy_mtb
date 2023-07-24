@@ -1,5 +1,11 @@
 ## MTB Nodes
 
+**Translated Readme (using DeepTranslate, PRs are welcome)**:  
+![image](https://github.com/melMass/comfy_mtb/assets/7041726/f8429c14-3521-4e28-82a3-863d781976c0)
+[日本語による説明](./README-JP.md)  
+![image](https://github.com/melMass/comfy_mtb/assets/7041726/d5cc1fdd-2820-4a5c-b2d7-482f1c222063)
+[中文说明](./README-CN.md)
+
 <a href="https://www.buymeacoffee.com/melmass" target="_blank"><img src="https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png" alt="Buy Me A Coffee" style="height: 32px !important;width: 140px !important;box-shadow: 0px 3px 2px 0px rgba(190, 190, 190, 0.5) !important;-webkit-box-shadow: 0px 3px 2px 0px rgba(190, 190, 190, 0.5) !important;" ></a>
 
 Welcome to the MTB Nodes project! This codebase is open for you to explore and utilize as you wish. Its primary purpose is to build proof-of-concepts (POCs) for implementation in [MLOPs](https://github.com/Bismuth-Consultancy-BV/MLOPs). Many nodes in this project are inspired by existing community contributions or built-in functionalities.
