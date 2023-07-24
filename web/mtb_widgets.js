@@ -847,6 +847,69 @@ const mtb_widgets = {
         }
         break
       }
+      case 'Styles Loader (mtb)': {
+        const origGetExtraMenuOptions = nodeType.prototype.getExtraMenuOptions
+        nodeType.prototype.getExtraMenuOptions = function (_, options) {
+          const r = origGetExtraMenuOptions
+            ? origGetExtraMenuOptions.apply(this, arguments)
+            : undefined
+
+          const getStyle = async (node) => {
+            try {
+              const getStyles = await api.fetchApi('/mtb/actions', {
+                method: 'POST',
+                body: JSON.stringify({
+                  name: 'getStyles',
+                  args:
+                    node.widgets && node.widgets[0].value
+                      ? node.widgets[0].value
+                      : '',
+                }),
+              })
+
+              const output = await getStyles.json()
+              return output?.result
+            } catch (e) {
+              console.error(e)
+            }
+          }
+          const extracters = [
+            {
+              content: 'Extract Positive to Text node',
+              callback: async () => {
+                const style = await getStyle(this)
+                if (style && style.length >= 1) {
+                  if (style[0]) {
+                    const tn = LiteGraph.createNode('Text box')
+                    app.graph.add(tn)
+                    tn.title = `${this.widgets[0].value} (Positive)`
+                    tn.widgets[0].value = style[0]
+                  } else {
+                  }
+                }
+              },
+            },
+            {
+              content: 'Extract Negative to Text node',
+              callback: async () => {
+                const style = await getStyle(this)
+                if (style && style.length >= 2) {
+                  if (style[1]) {
+                    const tn = LiteGraph.createNode('Text box')
+                    app.graph.add(tn)
+                    tn.title = `${this.widgets[0].value} (Negative)`
+                    tn.widgets[0].value = style[1]
+                  } else {
+                  }
+                }
+              },
+            },
+          ]
+          options.push(...extracters)
+        }
+
+        break
+      }
       case 'Save Tensors (mtb)': {
         const onDrawBackground = nodeType.prototype.onDrawBackground
         nodeType.prototype.onDrawBackground = function (ctx, canvas) {

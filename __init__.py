@@ -269,6 +269,30 @@ async def get_debug(request):
     return web.json_response({"enabled": enabled})
 
 
+@PromptServer.instance.routes.get("/mtb/actions")
+async def no_route(request):
+    from . import endpoint
+
+    if "text/html" in request.headers.get("Accept", ""):
+        html_response = f"""
+         <h1>Actions has no get for now...</h1>
+        """
+        return web.Response(
+            text=endpoint.render_base_template("Actions", html_response),
+            content_type="text/html",
+        )
+    return web.json_response({"message": "actions has no get for now"})
+
+
+@PromptServer.instance.routes.post("/mtb/actions")
+async def do_action(request):
+    from . import endpoint
+
+    reload(endpoint)
+
+    return await endpoint.do_action(request)
+
+
 # - WAS Dictionary
 MANIFEST = {
     "name": "MTB Nodes",  # The title that will be displayed on Node Class menu,. and Node Class view
