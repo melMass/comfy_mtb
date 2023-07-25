@@ -34,7 +34,7 @@ const styles = {
     zIndex: 9999999,
     fontSize: '30px',
     cursor: 'pointer',
-    pointerEvents: 'bounding-box',
+    pointerEvents: 'auto',
     ...extra,
   }),
   img_list: {
