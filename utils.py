@@ -55,7 +55,8 @@ def tensor2pil(image: torch.Tensor) -> List[Image.Image]:
 
     if batch_count > 1:
         out = []
-        out.extend([tensor2pil(image[i]) for i in range(batch_count)])
+        for i in range(batch_count):
+            out.extend(tensor2pil(image[i]))
         return out
 
     return [
@@ -79,13 +80,14 @@ def np2tensor(img_np: np.ndarray | List[np.ndarray]) -> torch.Tensor:
     return torch.from_numpy(img_np.astype(np.float32) / 255.0).unsqueeze(0)
 
 
-def tensor2np(tensor: torch.Tensor) -> Union[np.ndarray, List[np.ndarray]]:
+def tensor2np(tensor: torch.Tensor) -> List[np.ndarray]:
     batch_count = 1
     if len(tensor.shape) > 3:
         batch_count = tensor.size(0)
     if batch_count > 1:
         out = []
-        out.extend([tensor2np(tensor[i]) for i in range(batch_count)])
+        for i in range(batch_count):
+            out.extend(tensor2np(tensor[i]))
         return out
 
     return [np.clip(255.0 * tensor.cpu().numpy().squeeze(), 0, 255).astype(np.uint8)]

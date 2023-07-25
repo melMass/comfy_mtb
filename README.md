@@ -1,11 +1,20 @@
-## MTB Nodes
+# MTB Nodes
+<!-- omit in toc -->
+
+**Translated Readme (using DeepTranslate, PRs are welcome)**:  
+![image](https://github.com/melMass/comfy_mtb/assets/7041726/f8429c14-3521-4e28-82a3-863d781976c0)
+[日本語による説明](./README-JP.md)  
+![image](https://github.com/melMass/comfy_mtb/assets/7041726/d5cc1fdd-2820-4a5c-b2d7-482f1c222063)
+[中文说明](./README-CN.md)
+
+<a href="https://www.buymeacoffee.com/melmass" target="_blank"><img src="https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png" alt="Buy Me A Coffee" style="height: 32px !important;width: 140px !important;box-shadow: 0px 3px 2px 0px rgba(190, 190, 190, 0.5) !important;-webkit-box-shadow: 0px 3px 2px 0px rgba(190, 190, 190, 0.5) !important;" ></a>
+
+[**Install Guide**](./INSTALL.md) | [**Examples**](https://github.com/melMass/comfy_mtb/wiki/Examples)
 
 Welcome to the MTB Nodes project! This codebase is open for you to explore and utilize as you wish. Its primary purpose is to build proof-of-concepts (POCs) for implementation in [MLOPs](https://github.com/Bismuth-Consultancy-BV/MLOPs). Many nodes in this project are inspired by existing community contributions or built-in functionalities.
 
 Before proceeding, please be aware of the licenses associated with certain libraries used in this project. For example, the `deepbump` library is licensed under [GPLv3](https://github.com/HugoTini/DeepBump/blob/master/LICENSE).
 
-- [MTB Nodes](#mtb-nodes)
-- [Installation](#installation)
 - [Node List](#node-list)
   - [bbox](#bbox)
   - [colors](#colors)
@@ -18,27 +27,22 @@ Before proceeding, please be aware of the licenses associated with certain libra
 - [Comfy Resources](#comfy-resources)
 
 
-## Installation
+# Node List
 
-- Moved to [INSTALL.md](./INSTALL.md)
-
-
-## Node List
-
-### bbox
+## bbox
 - `Bounding Box`: BBox constructor (custom type),
 - `BBox From Mask`: From a mask extract the bounding box
 - `Crop`: Crop image from BBox
 - `Uncrop`: Uncrop image from BBox
 
-### colors
+## colors
 - `Colored Image`: Constant color image of given size
 - `RGB to HSV`: -,
 - `HSV to RGB`: -,
 - `Color Correct`: Basic color correction tools  
   <img src="https://github.com/melMass/comfy_mtb/assets/7041726/7c20ac83-31ff-40ea-a1a0-06c2acefb2ef" width=345/>
 
-### face detection / swapping
+## face detection / swapping
 - `Face Swap`: Face swap using deepinsight/insightface models (this node used to be called `Roop` in early versions, it does the same, roop is *just* an app that uses those model)
   > **Note**
   > The face index allow you to choose which face to replace as you can see here:  
@@ -46,13 +50,13 @@ Before proceeding, please be aware of the licenses associated with certain libra
 - `Load Face Swap Model`: Load an insightface model for face swapping
 - `Restore Face`: Using [GFPGan](https://github.com/TencentARC/GFPGAN) to restore faces, works great in conjunction with `Face Swap` and supports Comfy native upscalers for the `bg_upscaler`
   
-### image interpolation (animation)
+## image interpolation (animation)
 - `Load Film Model`: Loads a [FILM](https://github.com/google-research/frame-interpolation) model
 - `Film Interpolation`: Process input frames using [FILM](https://github.com/google-research/frame-interpolation)  
   <img src="https://github.com/melMass/comfy_mtb/assets/7041726/3afd1647-6634-4b92-a34b-51432e6a9834" width=400/>
 - `Export to Prores (experimental)`: Exports the input frames to a ProRes 4444 mov file. This is using ffmpeg stdin to send raw numpy arrays, used with `Film Interpolation` and very simple for now but could be expanded upon.
 
-### image ops
+## image ops
 - `Blur`: Blur an image using a Gaussian filter.
 - `Deglaze Image`: taken from [FN16](https://github.com/Fannovel16/FN16-ComfyUI-nodes/blob/main/DeglazeImage.py),
 - `Denoise`: Denoise the input image,
@@ -64,11 +68,11 @@ Before proceeding, please be aware of the licenses associated with certain libra
 - `Mask To Image`: Converts a mask (alpha) to an RGB image with a color and background
 - `Save Image Grid`: Save all the images in the input batch as a grid of images.
 
-### latent utils
+## latent utils
 - `Latent Lerp`: Linear interpolation (blend) between two latent 
 
 
-### misc utils
+## misc utils
 - `Concat Images`: Takes two image stream and merge them as a batch of images supported by other Comfy pipelines.
 - `Image Resize Factor`: **Deprecated**, I since discovered the builtin image resize.
 - `Text To Image`: Utils to convert text to image using a font
@@ -80,11 +84,11 @@ Before proceeding, please be aware of the licenses associated with certain libra
 - `Int to Number`: Supplement for WASSuite number nodes
 - `Smart Step`: A very basic tool to control the steps (start/stop) of the `KAdvancedSampler` using percentage
 
-### textures
+## textures
 
 - `DeepBump`: Normal & height maps generation from single pictures
 
-## Comfy Resources
+# Comfy Resources
 
 **Guides**:
 - [Official Examples (eng)](https://comfyanonymous.github.io/ComfyUI_examples/)

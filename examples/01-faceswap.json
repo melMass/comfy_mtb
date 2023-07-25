@@ -1,0 +1,1049 @@
+{
+  "last_node_id": 86,
+  "last_link_id": 178,
+  "nodes": [
+    {
+      "id": 59,
+      "type": "Reroute",
+      "pos": [
+        -150.35178124999982,
+        644.4360633544919
+      ],
+      "size": [
+        75,
+        26
+      ],
+      "flags": {},
+      "order": 13,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "",
+          "type": "*",
+          "link": 124
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "VAE",
+          "links": [
+            139
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "showOutputText": false,
+        "horizontal": false
+      }
+    },
+    {
+      "id": 56,
+      "type": "Reroute",
+      "pos": [
+        -1580.8297949218763,
+        644.7740239257807
+      ],
+      "size": [
+        75,
+        26
+      ],
+      "flags": {},
+      "order": 9,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "",
+          "type": "*",
+          "link": 117
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "VAE",
+          "links": [
+            124
+          ]
+        }
+      ],
+      "properties": {
+        "showOutputText": false,
+        "horizontal": false
+      }
+    },
+    {
+      "id": 57,
+      "type": "Reroute",
+      "pos": [
+        -673.8297949218747,
+        -185.22597607421872
+      ],
+      "size": [
+        75,
+        26
+      ],
+      "flags": {},
+      "order": 12,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "",
+          "type": "*",
+          "link": 135
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "MODEL",
+          "links": [
+            120
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "showOutputText": false,
+        "horizontal": false
+      }
+    },
+    {
+      "id": 65,
+      "type": "Reroute",
+      "pos": [
+        -1512.8297949218763,
+        -181.22597607421872
+      ],
+      "size": [
+        75,
+        26
+      ],
+      "flags": {},
+      "order": 7,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "",
+          "type": "*",
+          "link": 134
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "MODEL",
+          "links": [
+            135
+          ]
+        }
+      ],
+      "properties": {
+        "showOutputText": false,
+        "horizontal": false
+      }
+    },
+    {
+      "id": 7,
+      "type": "CLIPTextEncode",
+      "pos": [
+        -834.8297949218747,
+        206.77402392578134
+      ],
+      "size": [
+        210,
+        54
+      ],
+      "flags": {},
+      "order": 10,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "link": 142
+        },
+        {
+          "name": "text",
+          "type": "STRING",
+          "link": 164,
+          "widget": {
+            "name": "text",
+            "config": [
+              "STRING",
+              {
+                "multiline": true
+              }
+            ]
+          },
+          "slot_index": 1
+        }
+      ],
+      "outputs": [
+        {
+          "name": "CONDITIONING",
+          "type": "CONDITIONING",
+          "links": [
+            6
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CLIPTextEncode"
+      },
+      "widgets_values": [
+        "worst quality, hands, embedding:EasyNegative,"
+      ]
+    },
+    {
+      "id": 5,
+      "type": "EmptyLatentImage",
+      "pos": [
+        -913.8297949218747,
+        326.77402392578125
+      ],
+      "size": [
+        315,
+        106
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "outputs": [
+        {
+          "name": "LATENT",
+          "type": "LATENT",
+          "links": [
+            2
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "EmptyLatentImage"
+      },
+      "widgets_values": [
+        768,
+        512,
+        1
+      ]
+    },
+    {
+      "id": 6,
+      "type": "CLIPTextEncode",
+      "pos": [
+        -1040,
+        -2
+      ],
+      "size": [
+        422.84503173828125,
+        164.31304931640625
+      ],
+      "flags": {},
+      "order": 8,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "link": 141
+        }
+      ],
+      "outputs": [
+        {
+          "name": "CONDITIONING",
+          "type": "CONDITIONING",
+          "links": [
+            4
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CLIPTextEncode"
+      },
+      "widgets_values": [
+        "Closeup portrait of an old bearded Caucasian man smiling, (NYC 1995), trench coat, golden ring, brown eyes"
+      ]
+    },
+    {
+      "id": 16,
+      "type": "CheckpointLoaderSimple",
+      "pos": [
+        -2001,
+        193
+      ],
+      "size": [
+        315,
+        98
+      ],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "outputs": [
+        {
+          "name": "MODEL",
+          "type": "MODEL",
+          "links": [
+            134
+          ],
+          "slot_index": 0
+        },
+        {
+          "name": "CLIP",
+          "type": "CLIP",
+          "links": [
+            141,
+            142
+          ],
+          "slot_index": 1
+        },
+        {
+          "name": "VAE",
+          "type": "VAE",
+          "links": [
+            117
+          ],
+          "slot_index": 2
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CheckpointLoaderSimple"
+      },
+      "widgets_values": [
+        "revAnimated_v122.safetensors"
+      ]
+    },
+    {
+      "id": 25,
+      "type": "PreviewImage",
+      "pos": [
+        2338.9229387812507,
+        -632.8275743593749
+      ],
+      "size": [
+        726.28564453125,
+        475.3432312011719
+      ],
+      "flags": {},
+      "order": 20,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 150
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "PreviewImage"
+      }
+    },
+    {
+      "id": 75,
+      "type": "PreviewImage",
+      "pos": [
+        1573.5946044921875,
+        -629.80322265625
+      ],
+      "size": [
+        691.7459716796875,
+        479.6098327636719
+      ],
+      "flags": {},
+      "order": 19,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 169
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "PreviewImage"
+      }
+    },
+    {
+      "id": 73,
+      "type": "PreviewImage",
+      "pos": [
+        760,
+        -630
+      ],
+      "size": [
+        671.1859741210938,
+        483.1548156738281
+      ],
+      "flags": {},
+      "order": 16,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 153
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "PreviewImage"
+      }
+    },
+    {
+      "id": 79,
+      "type": "Text box",
+      "pos": [
+        -1400,
+        276
+      ],
+      "size": [
+        400,
+        200
+      ],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "outputs": [
+        {
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            164
+          ],
+          "shape": 3,
+          "slot_index": 0
+        }
+      ],
+      "title": "❌Mel Negatives (general) (Negative)",
+      "properties": {
+        "Node name for S&R": "Text box"
+      },
+      "widgets_values": [
+        "embedding:EasyNegative, embedding:EasyNegativeV2, watermark, text, deformed, disfigured, blurry"
+      ]
+    },
+    {
+      "id": 3,
+      "type": "KSampler",
+      "pos": [
+        -483,
+        -21
+      ],
+      "size": [
+        315,
+        474
+      ],
+      "flags": {},
+      "order": 14,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "link": 120
+        },
+        {
+          "name": "positive",
+          "type": "CONDITIONING",
+          "link": 4
+        },
+        {
+          "name": "negative",
+          "type": "CONDITIONING",
+          "link": 6
+        },
+        {
+          "name": "latent_image",
+          "type": "LATENT",
+          "link": 2
+        }
+      ],
+      "outputs": [
+        {
+          "name": "LATENT",
+          "type": "LATENT",
+          "links": [
+            138
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "KSampler"
+      },
+      "widgets_values": [
+        542821171533322,
+        "fixed",
+        45,
+        8,
+        "dpmpp_sde",
+        "simple",
+        1
+      ]
+    },
+    {
+      "id": 66,
+      "type": "VAEDecodeTiled",
+      "pos": [
+        205,
+        -28
+      ],
+      "size": [
+        210,
+        46
+      ],
+      "flags": {
+        "collapsed": false
+      },
+      "order": 15,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "samples",
+          "type": "LATENT",
+          "link": 138
+        },
+        {
+          "name": "vae",
+          "type": "VAE",
+          "link": 139,
+          "slot_index": 1
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            153,
+            167
+          ],
+          "shape": 3,
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "VAEDecodeTiled"
+      }
+    },
+    {
+      "id": 70,
+      "type": "Restore Face (mtb)",
+      "pos": [
+        2320,
+        -50
+      ],
+      "size": [
+        315,
+        186
+      ],
+      "flags": {},
+      "order": 18,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "link": 168
+        },
+        {
+          "name": "model",
+          "type": "FACEENHANCE_MODEL",
+          "link": 151,
+          "slot_index": 1
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            150
+          ],
+          "shape": 3,
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "Restore Face (mtb)"
+      },
+      "widgets_values": [
+        false,
+        false,
+        0.5,
+        true
+      ]
+    },
+    {
+      "id": 72,
+      "type": "UpscaleModelLoader",
+      "pos": [
+        1715,
+        52
+      ],
+      "size": [
+        260.3902351585391,
+        58
+      ],
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "outputs": [
+        {
+          "name": "UPSCALE_MODEL",
+          "type": "UPSCALE_MODEL",
+          "links": [
+            152
+          ],
+          "shape": 3
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "UpscaleModelLoader"
+      },
+      "widgets_values": [
+        "4x-UltraSharp.pth"
+      ]
+    },
+    {
+      "id": 71,
+      "type": "Load Face Enhance Model (mtb)",
+      "pos": [
+        2005,
+        40
+      ],
+      "size": [
+        265.97600515853924,
+        87.31192548828142
+      ],
+      "flags": {},
+      "order": 11,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "bg_upsampler",
+          "type": "UPSCALE_MODEL",
+          "link": 152,
+          "slot_index": 0
+        }
+      ],
+      "outputs": [
+        {
+          "name": "model",
+          "type": "FACEENHANCE_MODEL",
+          "links": [
+            151
+          ],
+          "shape": 3
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "Load Face Enhance Model (mtb)"
+      },
+      "widgets_values": [
+        "GFPGANv1.4.pth",
+        2
+      ]
+    },
+    {
+      "id": 76,
+      "type": "Load Image From Url (mtb)",
+      "pos": [
+        624,
+        39
+      ],
+      "size": [
+        315,
+        58
+      ],
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            166
+          ],
+          "shape": 3,
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "Load Image From Url (mtb)"
+      },
+      "widgets_values": [
+        "https://lucasmuseum.org/assets/general/Lucas_Headshot_Color_web.jpg"
+      ]
+    },
+    {
+      "id": 69,
+      "type": "Load Face Swap Model (mtb)",
+      "pos": [
+        621,
+        252
+      ],
+      "size": [
+        315,
+        58
+      ],
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "outputs": [
+        {
+          "name": "FACESWAP_MODEL",
+          "type": "FACESWAP_MODEL",
+          "links": [
+            165
+          ],
+          "shape": 3
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "Load Face Swap Model (mtb)"
+      },
+      "widgets_values": [
+        "inswapper_128.onnx"
+      ]
+    },
+    {
+      "id": 81,
+      "type": "Load Face Analysis Model (mtb)",
+      "pos": [
+        624,
+        144
+      ],
+      "size": [
+        315,
+        58
+      ],
+      "flags": {},
+      "order": 6,
+      "mode": 0,
+      "outputs": [
+        {
+          "name": "FACE_ANALYSIS_MODEL",
+          "type": "FACE_ANALYSIS_MODEL",
+          "links": [
+            170
+          ],
+          "shape": 3
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "Load Face Analysis Model (mtb)"
+      },
+      "widgets_values": [
+        "buffalo_l"
+      ]
+    },
+    {
+      "id": 80,
+      "type": "Face Swap (mtb)",
+      "pos": [
+        1255,
+        -32
+      ],
+      "size": [
+        210,
+        154
+      ],
+      "flags": {},
+      "order": 17,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "link": 167
+        },
+        {
+          "name": "reference",
+          "type": "IMAGE",
+          "link": 166
+        },
+        {
+          "name": "faceanalysis_model",
+          "type": "FACE_ANALYSIS_MODEL",
+          "link": 170,
+          "slot_index": 2
+        },
+        {
+          "name": "faceswap_model",
+          "type": "FACESWAP_MODEL",
+          "link": 165,
+          "slot_index": 3
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            168,
+            169
+          ],
+          "shape": 3,
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "Face Swap (mtb)"
+      },
+      "widgets_values": [
+        "0",
+        false
+      ]
+    }
+  ],
+  "links": [
+    [
+      2,
+      5,
+      0,
+      3,
+      3,
+      "LATENT"
+    ],
+    [
+      4,
+      6,
+      0,
+      3,
+      1,
+      "CONDITIONING"
+    ],
+    [
+      6,
+      7,
+      0,
+      3,
+      2,
+      "CONDITIONING"
+    ],
+    [
+      117,
+      16,
+      2,
+      56,
+      0,
+      "*"
+    ],
+    [
+      120,
+      57,
+      0,
+      3,
+      0,
+      "MODEL"
+    ],
+    [
+      124,
+      56,
+      0,
+      59,
+      0,
+      "*"
+    ],
+    [
+      134,
+      16,
+      0,
+      65,
+      0,
+      "*"
+    ],
+    [
+      135,
+      65,
+      0,
+      57,
+      0,
+      "*"
+    ],
+    [
+      138,
+      3,
+      0,
+      66,
+      0,
+      "LATENT"
+    ],
+    [
+      139,
+      59,
+      0,
+      66,
+      1,
+      "VAE"
+    ],
+    [
+      141,
+      16,
+      1,
+      6,
+      0,
+      "CLIP"
+    ],
+    [
+      142,
+      16,
+      1,
+      7,
+      0,
+      "CLIP"
+    ],
+    [
+      150,
+      70,
+      0,
+      25,
+      0,
+      "IMAGE"
+    ],
+    [
+      151,
+      71,
+      0,
+      70,
+      1,
+      "FACEENHANCE_MODEL"
+    ],
+    [
+      152,
+      72,
+      0,
+      71,
+      0,
+      "UPSCALE_MODEL"
+    ],
+    [
+      153,
+      66,
+      0,
+      73,
+      0,
+      "IMAGE"
+    ],
+    [
+      164,
+      79,
+      0,
+      7,
+      1,
+      "STRING"
+    ],
+    [
+      165,
+      69,
+      0,
+      80,
+      3,
+      "FACESWAP_MODEL"
+    ],
+    [
+      166,
+      76,
+      0,
+      80,
+      1,
+      "IMAGE"
+    ],
+    [
+      167,
+      66,
+      0,
+      80,
+      0,
+      "IMAGE"
+    ],
+    [
+      168,
+      80,
+      0,
+      70,
+      0,
+      "IMAGE"
+    ],
+    [
+      169,
+      80,
+      0,
+      75,
+      0,
+      "IMAGE"
+    ],
+    [
+      170,
+      81,
+      0,
+      80,
+      2,
+      "FACE_ANALYSIS_MODEL"
+    ]
+  ],
+  "groups": [
+    {
+      "title": "Txt2Img",
+      "bounding": [
+        -2061,
+        -234,
+        1932,
+        973
+      ],
+      "color": "#a1309b",
+      "locked": false
+    },
+    {
+      "title": "Save Intermediate Image",
+      "bounding": [
+        147,
+        -152,
+        303,
+        213
+      ],
+      "color": "#3f789e",
+      "locked": false
+    },
+    {
+      "title": "SWAP & RESTORED",
+      "bounding": [
+        2305,
+        -741,
+        789,
+        638
+      ],
+      "color": "#3f789e",
+      "locked": false
+    },
+    {
+      "title": "SWAP",
+      "bounding": [
+        1520,
+        -743,
+        774,
+        642
+      ],
+      "color": "#3f789e",
+      "locked": false
+    },
+    {
+      "title": "SD OUTPUT",
+      "bounding": [
+        655,
+        -745,
+        854,
+        648
+      ],
+      "color": "#3f789e",
+      "locked": false
+    }
+  ],
+  "config": {},
+  "extra": {},
+  "version": 0.4
+}

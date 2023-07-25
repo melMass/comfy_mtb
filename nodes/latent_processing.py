@@ -1,9 +1,8 @@
 import torch
 
+
 class LatentLerp:
     """Linear interpolation (blend) between two latent vectors"""
-    def __init__(self):
-        pass
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -18,7 +17,7 @@ class LatentLerp:
     RETURN_TYPES = ("LATENT",)
     FUNCTION = "lerp_latent"
 
-    CATEGORY = "latent"
+    CATEGORY = "mtb/latent"
 
     def lerp_latent(self, A, B, t):
         a = A.copy()
@@ -27,6 +26,7 @@ class LatentLerp:
         torch.lerp(a["samples"], b["samples"], t, out=a["samples"])
 
         return (a,)
+
 
 __nodes__ = [
     LatentLerp,

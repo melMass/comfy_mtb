@@ -241,9 +241,6 @@ def normals_to_height(normals_img, seamless, progress_callback):
 class DeepBump:
     """Normal & height maps generation from single pictures"""
 
-    def __init__(self):
-        pass
-
     @classmethod
     def INPUT_TYPES(cls):
         return {
@@ -264,14 +261,14 @@ class DeepBump:
                         "LARGEST",
                     ],
                 ),
-                "normals_to_height_seamless": (["TRUE", "FALSE"],),
+                "normals_to_height_seamless": ("BOOL", {"default": False}),
             },
         }
 
     RETURN_TYPES = ("IMAGE",)
     FUNCTION = "apply"
 
-    CATEGORY = "image processing"
+    CATEGORY = "mtb/textures"
 
     def apply(
         self,
@@ -279,7 +276,7 @@ class DeepBump:
         mode="Color to Normals",
         color_to_normals_overlap="SMALL",
         normals_to_curvature_blur_radius="SMALL",
-        normals_to_height_seamless="TRUE",
+        normals_to_height_seamless=True,
     ):
         image = utils_inference.tensor2pil(image)
 
@@ -295,9 +292,7 @@ class DeepBump:
                 in_img, normals_to_curvature_blur_radius, None
             )
         if mode == "Normals to Height":
-            out_img = normals_to_height(
-                in_img, normals_to_height_seamless == "TRUE", None
-            )
+            out_img = normals_to_height(in_img, normals_to_height_seamless, None)
 
         out_img = (np.transpose(out_img, (1, 2, 0)) * 255).astype(np.uint8)
 

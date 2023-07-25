@@ -1,26 +1,87 @@
-class IntToNumber:
-    """Node addon for the WAS Suite. Converts a "comfy" INT to a NUMBER."""
-
-    def __init__(self):
-        pass
+class IntToBool:
+    """Basic int to bool conversion"""
 
     @classmethod
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "int": ("INT", {"default": 0, "min": 0, "max": 1e9, "step": 1}),
+                "int": (
+                    "INT",
+                    {
+                        "default": 0,
+                    },
+                ),
+            }
+        }
+
+    RETURN_TYPES = ("BOOL",)
+    FUNCTION = "int_to_bool"
+    CATEGORY = "mtb/number"
+
+    def int_to_bool(self, int):
+        return (bool(int),)
+
+
+class IntToNumber:
+    """Node addon for the WAS Suite. Converts a "comfy" INT to a NUMBER."""
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "int": (
+                    "INT",
+                    {
+                        "default": 0,
+                        "min": -1e9,
+                        "max": 1e9,
+                        "step": 1,
+                        "forceInput": True,
+                    },
+                ),
             }
         }
 
     RETURN_TYPES = ("NUMBER",)
     FUNCTION = "int_to_number"
-    CATEGORY = "number"
+    CATEGORY = "mtb/number"
 
     def int_to_number(self, int):
+        return (int,)
+
+
+class FloatToNumber:
+    """Node addon for the WAS Suite. Converts a "comfy" FLOAT to a NUMBER."""
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "float": (
+                    "FLOAT",
+                    {
+                        "default": 0,
+                        "min": -1e9,
+                        "max": 1e9,
+                        "step": 1,
+                        "forceInput": True,
+                    },
+                ),
+            }
+        }
+
+    RETURN_TYPES = ("NUMBER",)
+    FUNCTION = "float_to_number"
+    CATEGORY = "mtb/number"
+
+    def float_to_number(self, float):
+        return (float,)
 
         return (int,)
 
-__nodes__ = [
-    IntToNumber,
 
+__nodes__ = [
+    FloatToNumber,
+    IntToBool,
+    IntToNumber,
 ]

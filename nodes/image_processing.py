@@ -17,17 +17,14 @@ import os
 import comfy.model_management as model_management
 
 
-try:
-    from cv2.ximgproc import guidedFilter
-except ImportError:
-    log.warning("cv2.ximgproc.guidedFilter not found, use opencv-contrib-python")
+# try:
+#     from cv2.ximgproc import guidedFilter
+# except ImportError:
+#     log.warning("cv2.ximgproc.guidedFilter not found, use opencv-contrib-python")
 
 
 class ColorCorrect:
     """Various color correction methods"""
-
-    def __init__(self):
-        pass
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -68,7 +65,7 @@ class ColorCorrect:
 
     RETURN_TYPES = ("IMAGE",)
     FUNCTION = "correct"
-    CATEGORY = "image/postprocessing"
+    CATEGORY = "mtb/image processing"
 
     @staticmethod
     def gamma_correction_tensor(image, gamma):
@@ -90,19 +87,21 @@ class ColorCorrect:
 
     @staticmethod
     def hsv_adjustment(image: torch.Tensor, hue, saturation, value):
-        image = tensor2pil(image)
-        hsv_image = image.convert("HSV")
+        images = tensor2pil(image)
+        out = []
+        for img in images:
+            hsv_image = img.convert("HSV")
 
-        h, s, v = hsv_image.split()
+            h, s, v = hsv_image.split()
 
-        h = h.point(lambda x: (x + hue * 255) % 256)
-        s = s.point(lambda x: int(x * saturation))
-        v = v.point(lambda x: int(x * value))
+            h = h.point(lambda x: (x + hue * 255) % 256)
+            s = s.point(lambda x: int(x * saturation))
+            v = v.point(lambda x: int(x * value))
 
-        hsv_image = Image.merge("HSV", (h, s, v))
-        rgb_image = hsv_image.convert("RGB")
-
-        return pil2tensor(rgb_image)
+            hsv_image = Image.merge("HSV", (h, s, v))
+            rgb_image = hsv_image.convert("RGB")
+            out.append(rgb_image)
+        return pil2tensor(out)
 
     @staticmethod
     def hsv_adjustment_tensor_not_working(image: torch.Tensor, hue, saturation, value):
@@ -182,69 +181,8 @@ class ColorCorrect:
         return (image,)
 
 
-class HsvToRgb:
-    """Convert HSV image to RGB"""
-
-    def __init__(self):
-        pass
-
-    @classmethod
-    def INPUT_TYPES(cls):
-        return {
-            "required": {
-                "image": ("IMAGE",),
-            }
-        }
-
-    RETURN_TYPES = ("IMAGE",)
-    FUNCTION = "convert"
-    CATEGORY = "image/postprocessing"
-
-    def convert(self, image):
-        image = image.numpy()
-
-        image = image.squeeze()
-        # image = image.transpose(1,2,3,0)
-        image = hsv2rgb(image)
-        image = np.expand_dims(image, axis=0)
-
-        # image = image.transpose(3,0,1,2)
-        return (torch.from_numpy(image),)
-
-
-class RgbToHsv:
-    """Convert RGB image to HSV"""
-
-    def __init__(self):
-        pass
-
-    @classmethod
-    def INPUT_TYPES(cls):
-        return {
-            "required": {
-                "image": ("IMAGE",),
-            }
-        }
-
-    RETURN_TYPES = ("IMAGE",)
-    FUNCTION = "convert"
-    CATEGORY = "image/postprocessing"
-
-    def convert(self, image):
-        image = image.numpy()
-
-        image = np.squeeze(image)
-        image = rgb2hsv(image)
-        image = np.expand_dims(image, axis=0)
-
-        return (torch.from_numpy(image),)
-
-
 class ImageCompare:
     """Compare two images and return a difference image"""
-
-    def __init__(self):
-        pass
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -261,7 +199,7 @@ class ImageCompare:
 
     RETURN_TYPES = ("IMAGE",)
     FUNCTION = "compare"
-    CATEGORY = "image"
+    CATEGORY = "mtb/image"
 
     def compare(self, imageA: torch.Tensor, imageB: torch.Tensor, mode):
         imageA = imageA.numpy()
@@ -276,42 +214,37 @@ class ImageCompare:
         return (torch.from_numpy(image),)
 
 
-class Denoise:
-    """Denoise an image using total variation minimization."""
+import requests
 
-    def __init__(self):
-        pass
+
+class LoadImageFromUrl:
+    """Load an image from the given URL"""
 
     @classmethod
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "image": ("IMAGE",),
-                "weight": (
-                    "FLOAT",
-                    {"default": 0.5, "min": 0.0, "max": 1.0, "step": 0.01},
+                "url": (
+                    "STRING",
+                    {
+                        "default": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a7/Example.jpg/800px-Example.jpg"
+                    },
                 ),
             }
         }
 
     RETURN_TYPES = ("IMAGE",)
-    FUNCTION = "denoise"
-    CATEGORY = "image/postprocessing"
+    FUNCTION = "load"
+    CATEGORY = "mtb/IO"
 
-    def denoise(self, image: torch.Tensor, weight):
-        image = image.numpy()
-        image = image.squeeze()
-        image = denoise_tv_chambolle(image, weight=weight)
-
-        image = np.expand_dims(image, axis=0)
-        return (torch.from_numpy(image),)
+    def load(self, url):
+        # get the image from the url
+        image = Image.open(requests.get(url, stream=True).raw)
+        return (pil2tensor(image),)
 
 
 class Blur:
     """Blur an image using a Gaussian filter."""
-
-    def __init__(self):
-        pass
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -331,7 +264,7 @@ class Blur:
 
     RETURN_TYPES = ("IMAGE",)
     FUNCTION = "blur"
-    CATEGORY = "image/postprocessing"
+    CATEGORY = "mtb/image processing"
 
     def blur(self, image: torch.Tensor, sigmaX, sigmaY):
         image = image.numpy()
@@ -342,36 +275,33 @@ class Blur:
 
 
 # https://github.com/lllyasviel/AdverseCleaner/blob/main/clean.py
-def deglaze_np_img(np_img):
-    y = np_img.copy()
-    for _ in range(64):
-        y = cv2.bilateralFilter(y, 5, 8, 8)
-    for _ in range(4):
-        y = guidedFilter(np_img, y, 4, 16)
-    return y
+# def deglaze_np_img(np_img):
+#     y = np_img.copy()
+#     for _ in range(64):
+#         y = cv2.bilateralFilter(y, 5, 8, 8)
+#     for _ in range(4):
+#         y = guidedFilter(np_img, y, 4, 16)
+#     return y
 
 
-class DeglazeImage:
-    """Remove adversarial noise from images"""
+# class DeglazeImage:
+#     """Remove adversarial noise from images"""
 
-    @classmethod
-    def INPUT_TYPES(cls):
-        return {"required": {"image": ("IMAGE",)}}
+#     @classmethod
+#     def INPUT_TYPES(cls):
+#         return {"required": {"image": ("IMAGE",)}}
 
-    CATEGORY = "image"
+#     CATEGORY = "mtb/image processing"
 
-    RETURN_TYPES = ("IMAGE",)
-    FUNCTION = "deglaze_image"
+#     RETURN_TYPES = ("IMAGE",)
+#     FUNCTION = "deglaze_image"
 
-    def deglaze_image(self, image):
-        return (np2tensor(deglaze_np_img(tensor2np(image))),)
+#     def deglaze_image(self, image):
+#         return (np2tensor(deglaze_np_img(tensor2np(image))),)
 
 
 class MaskToImage:
     """Converts a mask (alpha) to an RGB image with a color and background"""
-
-    def __init__(self):
-        pass
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -383,7 +313,7 @@ class MaskToImage:
             }
         }
 
-    CATEGORY = "image/mask"
+    CATEGORY = "mtb/generate"
 
     RETURN_TYPES = ("IMAGE",)
 
@@ -424,7 +354,7 @@ class ColoredImage:
             }
         }
 
-    CATEGORY = "image"
+    CATEGORY = "mtb/generate"
 
     RETURN_TYPES = ("IMAGE",)
 
@@ -441,48 +371,50 @@ class ColoredImage:
 class ImagePremultiply:
     """Premultiply image with mask"""
 
-    def __init__(self):
-        pass
-
     @classmethod
     def INPUT_TYPES(cls):
         return {
             "required": {
                 "image": ("IMAGE",),
                 "mask": ("MASK",),
-                "invert": (["True", "False"], {"default": "False"}),
+                "invert": ("BOOL", {"default": False}),
             }
         }
 
-    CATEGORY = "image"
+    CATEGORY = "mtb/image"
     RETURN_TYPES = ("IMAGE",)
     FUNCTION = "premultiply"
 
     def premultiply(self, image, mask, invert):
-        invert = invert == "True"
-        image = tensor2pil(image)
-        mask = tensor2pil(mask).convert("L")
-
+        images = tensor2pil(image)
         if invert:
-            mask = ImageChops.invert(mask)
+            masks = tensor2pil(mask)  # .convert("L")
+        else:
+            masks = tensor2pil(1.0 - mask)
 
-        image.putalpha(mask)
+        single = False
+        if len(mask) == 1:
+            single = True
+
+        masks = [x.convert("L") for x in masks]
+
+        out = []
+        for i, img in enumerate(images):
+            cur_mask = masks[0] if single else masks[i]
+
+            img.putalpha(cur_mask)
+            out.append(img)
 
         # if invert:
         #     image = Image.composite(image,Image.new("RGBA", image.size, color=(0,0,0,0)), mask)
         # else:
         #     image = Image.composite(Image.new("RGBA", image.size, color=(0,0,0,0)), image, mask)
 
-        return (pil2tensor(image),)
+        return (pil2tensor(out),)
 
 
 class ImageResizeFactor:
-    """
-    Extracted mostly from WAS Node Suite, with a few edits (most notably multiple image support) and less features.
-    """
-
-    def __init__(self):
-        pass
+    """Extracted mostly from WAS Node Suite, with a few edits (most notably multiple image support) and less features."""
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -493,7 +425,7 @@ class ImageResizeFactor:
                     "FLOAT",
                     {"default": 2, "min": 0.01, "max": 16.0, "step": 0.01},
                 ),
-                "supersample": (["true", "false"], {"default": "true"}),
+                "supersample": ("BOOL", {"default": True}),
                 "resampling": (
                     ["lanczos", "nearest", "bilinear", "bicubic"],
                     {"default": "lanczos"},
@@ -504,7 +436,7 @@ class ImageResizeFactor:
             },
         }
 
-    CATEGORY = "image"
+    CATEGORY = "mtb/image"
     RETURN_TYPES = ("IMAGE", "MASK")
     FUNCTION = "resize"
 
@@ -558,7 +490,7 @@ class ImageResizeFactor:
         resample_filters = {"nearest": 0, "bilinear": 2, "bicubic": 3, "lanczos": 1}
 
         # Apply supersample
-        if supersample == "true":
+        if supersample:
             super_size = (new_width * 8, new_height * 8)
             log.debug(f"Applying supersample: {super_size}")
             img = img.resize(
@@ -577,12 +509,12 @@ class ImageResizeFactor:
         self,
         image: torch.Tensor,
         factor: float,
-        supersample: str,
+        supersample: bool,
         resampling: str,
         mask=None,
     ):
         log.debug(f"Resizing image with factor {factor} and resampling {resampling}")
-        supersample = supersample == "true"
+
         batch_count = image.size(0)
         log.debug(f"Batch count: {batch_count}")
         if batch_count == 1:
@@ -614,7 +546,7 @@ class SaveImageGrid:
             "required": {
                 "images": ("IMAGE",),
                 "filename_prefix": ("STRING", {"default": "ComfyUI"}),
-                "save_intermediate": (["true", "false"], {"default": "false"}),
+                "save_intermediate": ("BOOL", {"default": False}),
             },
             "hidden": {"prompt": "PROMPT", "extra_pnginfo": "EXTRA_PNGINFO"},
         }
@@ -624,7 +556,7 @@ class SaveImageGrid:
 
     OUTPUT_NODE = True
 
-    CATEGORY = "image"
+    CATEGORY = "mtb/IO"
 
     def create_image_grid(self, image_list):
         total_images = len(image_list)
@@ -655,11 +587,10 @@ class SaveImageGrid:
         self,
         images,
         filename_prefix="Grid",
-        save_intermediate="false",
+        save_intermediate=False,
         prompt=None,
         extra_pnginfo=None,
     ):
-        save_intermediate = save_intermediate == "true"
         (
             full_output_folder,
             filename,
@@ -706,15 +637,13 @@ class SaveImageGrid:
 
 __nodes__ = [
     ColorCorrect,
-    HsvToRgb,
-    RgbToHsv,
     ImageCompare,
-    Denoise,
     Blur,
-    DeglazeImage,
+    # DeglazeImage,
     MaskToImage,
     ColoredImage,
     ImagePremultiply,
     ImageResizeFactor,
     SaveImageGrid,
+    LoadImageFromUrl,
 ]

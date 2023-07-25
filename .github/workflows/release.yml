@@ -29,6 +29,34 @@ jobs:
         with:
           submodules: "recursive"
           path: ${{ env.repo_name }}
+          
+      # - name: 📝 Prepare file with paths to remove
+      #   run: |
+      #     find ${{ env.repo_name }} -type f -size +10M > .release_ignore
+      #     find ${{ env.repo_name }} -type d -empty >> .release_ignore
+      #   shell: bash
+
+      - name: 🗑️ Remove files and directories listed in .release_ignore
+        shell: bash
+        run: |
+          release_ignore="${{ env.repo_name }}/.release_ignore"
+          if [ -f "$release_ignore" ]; then
+            while IFS= read -r entry || [ -n "$entry" ]; do
+              target="${{ env.repo_name }}/$entry"
+              if [ -e "$target" ]; then
+                if [ -f "$target" ]; then
+                  rm "$target"
+                elif [ -d "$target" ]; then
+                  rm -r "$target"
+                fi
+              else
+                echo "Warning: $entry does not exist in the repository. Skipping removal."
+              fi
+            done < "$release_ignore"
+          else
+            echo "No .release_ignore file found. Skipping removal of files and directories."
+          fi
+          
       - name: 📦 Building custom comfy nodes
         shell: bash
         run: |
