@@ -4,9 +4,10 @@ import torch
 from pathlib import Path
 import sys
 
-from typing import Union, List
+from typing import List, Optional
 from pytoshop.user import nested_layers
 from pytoshop import enums
+# from pytoshop.layers import LayerMask, LayerRecord
 from .log import log
 
 
@@ -106,6 +107,7 @@ def tensor2pytolayer(
     metadata: dict = {},
     layer_color=0,
     color_mode=None,
+    mask: Optional[torch.Tensor] = None,  # Add the mask parameter with default value as None
 ) -> nested_layers.Image:
     batch_count = 1
     if len(tensor.shape) > 3:
@@ -115,13 +117,19 @@ def tensor2pytolayer(
         raise Exception(
             f"Only one image is supported (batch size is currently {batch_count})"
         )
-    out_channels = tensor2pil(tensor)
+    out_channels = tensor2pil(tensor)[0]
     arr = np.array(out_channels)
+    
+     # If a mask is provided, convert it to numpy array
+    if mask is not None:
+        mask_arr = np.array(tensor2pil(mask)[0])
+    else:
+        mask_arr = np.full_like(arr, 255, dtype=np.uint8)
 
-    # the array is currently H, W, C but we want C, H, W
-    # out_channels = np.transpose(out_channels, (2, 0, 1))
-    channels = [arr[:, :, 0], arr[:, :, 1], arr[:, :, 2]]
-    return nested_layers.Image(
+    channels = [arr[:, :, 0], arr[:, :, 1], arr[:, :, 2], mask_arr[:, :, 0]]
+    
+    
+    image =  nested_layers.Image(
         name=name,
         visible=visible,
         opacity=opacity,
@@ -134,3 +142,6 @@ def tensor2pytolayer(
         layer_color=layer_color,
         color_mode=color_mode,
     )
+
+
+    return image

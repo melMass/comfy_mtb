@@ -39,7 +39,7 @@ class PsdSave:
 
         for group, layers in groups.items():
             current_group = nested_layers.Group(
-                group, visible=True, opacity=255, layers=layers
+                group, visible=True, opacity=255, layers=layers, closed=False
             )
             out_layers.append(current_group)
 
@@ -81,9 +81,9 @@ class PsdLayer:
             # layer_name = sepname.pop() # todo: support nesting?
             group = sepname[0]
             layer_name = sepname[1]
-
-        log.warning("Mask is currently ignored for PSD Layers...")
-        return ({group: utils.tensor2pytolayer(image, layer_name)},)
+        psd = utils.tensor2pytolayer(image, layer_name, mask=mask)
+        # log.warning("Mask is currently ignored for PSD Layers...")
+        return ({group: psd},)
 
 
 __nodes__ = [PsdLayer, PsdSave]
