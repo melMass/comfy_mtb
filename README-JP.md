@@ -2,7 +2,7 @@
 
 <a href="https://www.buymeacoffee.com/melmass" target="_blank"><img src="https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png" alt="Buy Me A Coffee" style="height: 32px !important;width: 140px !important;box-shadow: 0px 3px 2px 0px rgba(190, 190, 190, 0.5) !important;-webkit-box-shadow: 0px 3px 2px 0px rgba(190, 190, 190, 0.5) !important;" ></a>
 
-[**インストールガイド**](./INSTALL.md) | [**サンプル**](https://github.com/melMass/comfy_mtb/wiki/Examples)
+[**インストールガイド**](./INSTALL-JP.md) | [**サンプル**](https://github.com/melMass/comfy_mtb/wiki/Examples)
 
 MTB Nodesプロジェクトへようこそ！このコードベースは、自由に探索し、利用することができます。主な目的は、[MLOPs](https://github.com/Bismuth-Consultancy-BV/MLOPs)の実装のための概念実証（POC）を構築することです。このプロジェクトの多くのノードは、既存のコミュニティの貢献や組み込みの機能に触発されています。
 

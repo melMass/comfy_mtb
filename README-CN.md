@@ -2,7 +2,7 @@
 
 <a href="https://www.buymeacoffee.com/melmass" target="_blank"><img src="https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png" alt="Buy Me A Coffee" style="height: 32px !important;width: 140px !important;box-shadow: 0px 3px 2px 0px rgba(190, 190, 190, 0.5) !important;-webkit-box-shadow: 0px 3px 2px 0px rgba(190, 190, 190, 0.5) !important;" ></a>
 
-[** 安装指南**](./INSTALL.md) | [** 示例**](https://github.com/melMass/comfy_mtb/wiki/Examples)
+[** 安装指南**](./INSTALL-CN.md) | [** 示例**](https://github.com/melMass/comfy_mtb/wiki/Examples)
 
 欢迎使用 MTB Nodes 项目！这个代码库是开放的，您可以自由地探索和利用。它的主要目的是构建用于 [MLOPs](https://github.com/Bismuth-Consultancy-BV/MLOPs) 中的概念验证（POCs）。该项目中的许多节点都是受到现有社区贡献或内置功能的启发而创建的。
 
