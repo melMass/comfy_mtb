@@ -27,10 +27,10 @@ jobs:
     steps:
       - name: ♻️ Checking out the repository
         uses: actions/checkout@v3
-      - name: "🐍 Setting up Python"
+      - name: '🐍 Setting up Python'
         uses: actions/setup-python@v4
         with:
-          python-version: "3.10.9"
+          python-version: '3.10.9'
 
       - name: 📦 Building and Bundling wheels
         shell: bash
@@ -42,6 +42,13 @@ jobs:
           packages=$(echo "$packages" | tr -d '[:space:]')
 
           IFS=', ' read -r -a package_array <<< "$packages"
+
+          # Save reversed package_array to wheel_order.txt
+          reversed_array=()
+          for ((idx=${#package_array[@]}-1; idx>=0; idx--)); do
+            reversed_array+=("${package_array[idx]}")
+          done
+          printf '%s\n' "${reversed_array[@]}" > ./wheels/wheel_order.txt
 
           printf "Autodetect this source package: \e[32m%s\e[0m\n" "${package_array[@]}"
 
