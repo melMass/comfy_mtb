@@ -26,7 +26,7 @@ NODE_CLASS_MAPPINGS = {}
 NODE_DISPLAY_NAME_MAPPINGS = {}
 NODE_CLASS_MAPPINGS_DEBUG = {}
 
-__version__ = "0.1.1"
+__version__ = "0.1.2"
 
 
 def extract_nodes_from_source(filename):
