@@ -418,6 +418,7 @@ if __name__ == "__main__":
 
         # - Unzip to wheels dir
         whl_files = []
+        whl_order = None
         with zipfile.ZipFile(asset_dest, "r") as zip_ref:
             for item in tqdm(zip_ref.namelist(), desc="Extracting", unit="file"):
                 if item.endswith(".whl"):
@@ -428,6 +429,14 @@ if __name__ == "__main__":
                     ) as target:
                         whl_files.append(target_path)
                         shutil.copyfileobj(source, target)
+                elif item.endswith("order.txt"):
+                    item_basename = os.path.basename(item)
+                    target_path = wheels_directory / item_basename
+                    with zip_ref.open(item) as source, open(
+                        target_path, "wb"
+                    ) as target:
+                        whl_order = target_path
+                        shutil.copyfileobj(source, target)
 
         print_formatted(
             f"Wheels extracted for {current_platform} to the '{wheels_directory}' directory.",
@@ -436,6 +445,14 @@ if __name__ == "__main__":
         )
 
         if whl_files:
+            if whl_order:
+                with open(whl_order, "r") as order:
+                    wheel_order_lines = [line.strip() for line in order]
+                whl_files = sorted(
+                    whl_files,
+                    key=lambda x: wheel_order_lines.index(x.split("-")[0]),
+                )
+
             for whl_file in tqdm(whl_files, desc="Installing", unit="package"):
                 whl_path = wheels_directory / whl_file
 
