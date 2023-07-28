@@ -227,7 +227,7 @@ app.registerExtension({
       Object.assign(img.style, {
         width: '100%',
         height: '100%',
-        objectFit: 'scale-down',
+        objectFit: 'cover',
       })
 
       img.src = `/view?filename=${encodeURIComponent(src.filename)}&type=${
@@ -237,6 +237,10 @@ app.registerExtension({
       imageUrls.push(img.src)
 
       console.debug(img.src)
+
+      img.onload = () => {
+        but.style.width = `${120 * (img.naturalWidth / img.naturalHeight)}px`
+      }
 
       but.onclick = () => {
         lightboxContainer.style.display = 'flex'
@@ -284,9 +288,11 @@ app.registerExtension({
         if (history.outputs) {
           for (const key of Object.keys(history.outputs)) {
             console.debug(key)
-            for (const im of history.outputs[key].images) {
-              console.debug(im)
-              createImageBtn(im)
+            if (history.outputs[key].images) {
+              for (const im of history.outputs[key].images) {
+                console.debug(im)
+                createImageBtn(im)
+              }
             }
           }
           // for (const src of outputs.outputs.images) {
