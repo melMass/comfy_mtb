@@ -8,7 +8,7 @@ tensorflow<2.11.0; platform_system == "Windows"
 tb-nightly==2.12.0a20230126; platform_system == "Windows"
 tensorflow; platform_system != "Windows"
 # the old tf version on windows comes with a breaking protobuf version
-protobuf==3.19.6; platform_system != "Windows"
+protobuf==3.20.2; platform_system == "Windows"
 gdown @ git+https://github.com/melMass/gdown@main
 mmdet==3.0.0
 facexlib==0.3.0
