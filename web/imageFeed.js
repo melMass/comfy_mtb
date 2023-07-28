@@ -53,10 +53,21 @@ let currentImageIndex = 0
 const imageUrls = []
 
 let image_menu = null
+let activated = true
 
 app.registerExtension({
   name: 'mtb.ImageFeed',
-  setup: async () => {
+  init: async () => {
+    const pythongossFeed = app.extensions.find(
+      (e) => e.name == 'pysssss.ImageFeed'
+    )
+    if (pythongossFeed) {
+      console.warn(
+        "[mtb] - Aborting the loading of mtb's imageFeed in favor of pysssss.ImageFeed"
+      )
+      activated = false // just in case other methods are added later on
+      return
+    }
     // - HTML & CSS
     //- lightbox
     const lightboxContainer = document.createElement('div')
@@ -209,6 +220,9 @@ app.registerExtension({
       Object.assign(but.style, {
         height: '120px',
         width: '120px',
+        border: 'none',
+        padding: 0,
+        margin: 0,
       })
       Object.assign(img.style, {
         width: '100%',

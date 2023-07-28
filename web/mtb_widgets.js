@@ -688,7 +688,34 @@ const mtb_widgets = {
         }
         break
       }
-      case 'Save Gif (mtb)': {
+      //TODO: remove this non sense
+      case 'Get Batch From History (mtb)': {
+        const onNodeCreated = nodeType.prototype.onNodeCreated
+        nodeType.prototype.onNodeCreated = function () {
+          const r = onNodeCreated
+            ? onNodeCreated.apply(this, arguments)
+            : undefined
+          const internal_count = this.widgets.find(
+            (w) => w.name === 'internal_count'
+          )
+          shared.hideWidgetForGood(this, internal_count)
+          internal_count.afterQueued = function () {
+            this.value++
+          }
+
+          return r
+        }
+
+        const onExecuted = nodeType.prototype.onExecuted
+        nodeType.prototype.onExecuted = function (message) {
+          const r = onExecuted ? onExecuted.apply(this, message) : undefined
+          return r
+        }
+
+        break
+      }
+      case 'Save Gif (mtb)':
+      case 'Save Animated Image (mtb)': {
         const onExecuted = nodeType.prototype.onExecuted
         nodeType.prototype.onExecuted = function (message) {
           const prefix = 'anything_'
@@ -704,15 +731,25 @@ const mtb_widgets = {
             }
 
             let imgURLs = []
-            if (message && message.gif) {
-              imgURLs = imgURLs.concat(
-                message.gif.map((params) => {
-                  return api.apiURL(
-                    '/view?' + new URLSearchParams(params).toString()
-                  )
-                })
-              )
-
+            if (message) {
+              if (message.gif) {
+                imgURLs = imgURLs.concat(
+                  message.gif.map((params) => {
+                    return api.apiURL(
+                      '/view?' + new URLSearchParams(params).toString()
+                    )
+                  })
+                )
+              }
+              if (message.apng) {
+                imgURLs = imgURLs.concat(
+                  message.apng.map((params) => {
+                    return api.apiURL(
+                      '/view?' + new URLSearchParams(params).toString()
+                    )
+                  })
+                )
+              }
               let i = 0
               for (const img of imgURLs) {
                 const w = this.addCustomWidget(

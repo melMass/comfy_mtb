@@ -28,6 +28,10 @@ class LoadFaceEnhanceModel:
     @classmethod
     def get_models(cls):
         models_path = cls.get_models_root()
+        
+        if not models_path.exists():
+            log.warning(f"No models found at {models_path}")
+            return []
 
         return [
             x
