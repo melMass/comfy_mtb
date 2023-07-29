@@ -99,9 +99,15 @@ jobs:
         with:
           path: ${{ env.archive_name }}.zip
           key: ${{ env.archive_name }}
+      - name: 📦 Unzip wheels
+        shell: bash
+        run: |
+          mkdir -p wheels
+          unzip -j ${{ env.archive_name }}.zip "**/*.whl" -d wheels
+        if: success()
       - name: ✅ Add wheels to release
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ inputs.name }}
           files: |
-            ${{ env.archive_name }}.zip
+            wheels/*.whl
