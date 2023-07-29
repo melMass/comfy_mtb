@@ -35,7 +35,7 @@ jobs:
       - name: 📦 Building and Bundling wheels
         shell: bash
         run: |
-          python -m pip wheel --no-cache-dir -r requirements-wheels.txt -w ./wheels 2>&1 | tee build.log
+          python -m pip wheel --no-cache-dir -r reqs.txt -w ./wheels 2>&1 | tee build.log
 
           # find source wheels
           packages=$(cat build.log | awk -F 'Building wheels for collected packages: ' '{print $2}')
