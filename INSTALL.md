@@ -48,7 +48,7 @@ On first run the script [tries to symlink](https://github.com/melMass/comfy_mtb/
 1. Make sure you are in the Python environment you use for ComfyUI.
 2. Install the required dependencies by running the following command:
   ```bash
-  pip install -r comfy_mtb/requirements.txt
+  pip install -r comfy_mtb/reqs.txt
   ```
 
 </details>
@@ -76,7 +76,7 @@ Add a new code cell just after the **Run ComfyUI with localtunnel (Recommended W
 !python custom_nodes/comfy_mtb/scripts/download_models.py -y
 
 # install the dependencies
-!pip install -r custom_nodes/comfy_mtb/requirements.txt -f https://download.openmmlab.com/mmcv/dist/cu118/torch2.0/index.html
+!pip install -r custom_nodes/comfy_mtb/reqs.txt -f https://download.openmmlab.com/mmcv/dist/cu118/torch2.0/index.html
 ```
 If after running this, colab complains about needing to restart runtime, do it, and then do not rerun earlier cells, just the one to run the localtunnel. (you might have to add a cell with `%cd ComfyUI` first...)
 
