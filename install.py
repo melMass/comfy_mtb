@@ -258,22 +258,15 @@ def import_or_install(requirement, dry=False):
 
 # Install dependencies from requirements.txt
 def install_dependencies(dry=False):
-    parsed_requirements = get_requirements(here / "requirements.txt")
+    parsed_requirements = get_requirements(here / "reqs.txt")
     if not parsed_requirements:
         return
     print_formatted(
-        "Installing dependencies from requirements.txt...", "italic", color="yellow"
+        "Installing dependencies from reqs.txt...", "italic", color="yellow"
     )
 
     for requirement in parsed_requirements:
         import_or_install(requirement, dry=dry)
-
-    if mode == "venv":
-        parsed_requirements = get_requirements(here / "requirements-wheels.txt")
-        if not parsed_requirements:
-            return
-        for requirement in parsed_requirements:
-            import_or_install(requirement, dry=dry)
 
 
 if __name__ == "__main__":
@@ -328,7 +321,6 @@ if __name__ == "__main__":
 
     # Install dependencies from requirements.txt
     # if args.requirements or mode == "venv":
-    install_dependencies(dry=args.dry)
 
     if (not args.wheels and mode not in ["colab", "embeded"]) and not full:
         print_formatted(
@@ -336,6 +328,8 @@ if __name__ == "__main__":
             "italic",
             color="yellow",
         )
+
+        install_dependencies(dry=args.dry)
         sys.exit()
 
     if mode in ["colab", "embeded"]:
@@ -349,7 +343,7 @@ if __name__ == "__main__":
 
     # - Check the env before proceeding.
     missing_wheels = False
-    parsed_requirements = get_requirements(here / "requirements-wheels.txt")
+    parsed_requirements = get_requirements(here / "reqs.txt")
     if parsed_requirements:
         for requirement in parsed_requirements:
             installed, pip_name, import_name = try_import(requirement)
@@ -359,7 +353,7 @@ if __name__ == "__main__":
 
     if not missing_wheels:
         print_formatted(
-            f"All required wheels are already installed.", "italic", color="green"
+            f"All requirements are already installed.", "italic", color="green"
         )
         sys.exit()
 
@@ -408,7 +402,7 @@ if __name__ == "__main__":
         )
 
     wheels_directory.mkdir(exist_ok=True)
-
+    # - Install the wheels
     for asset in matching_assets:
         asset_name = asset["name"]
         asset_download_url = asset["browser_download_url"]
@@ -487,3 +481,6 @@ if __name__ == "__main__":
             print_formatted("Wheels installation completed.", color="green")
         else:
             print_formatted("No .whl files found. Nothing to install.", color="yellow")
+
+    # - Install all remainings
+    install_dependencies(dry=args.dry)
