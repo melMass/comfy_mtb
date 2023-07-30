@@ -3,11 +3,10 @@ import numpy as np
 import torch
 from pathlib import Path
 import sys
-
-from typing import Union, List
-from .log import log
+from typing import List
 
 
+# region MISC Utilities
 def add_path(path, prepend=False):
     if isinstance(path, list):
         for p in path:
@@ -24,6 +23,33 @@ def add_path(path, prepend=False):
             sys.path.append(path)
 
 
+# todo use the requirements library
+reqs_map = {
+    "onnxruntime": "onnxruntime-gpu==1.15.1",
+    "basicsr": "basicsr==1.4.2",
+    "rembg": "rembg==2.0.50",
+    "qrcode": "qrcode[pil]",
+}
+
+
+def import_install(package_name):
+    from pip._internal import main as pip_main
+
+    try:
+        __import__(package_name)
+    except ImportError:
+        package_spec = reqs_map.get(package_name)
+        if package_spec is None:
+            print(f"Installing {package_name}")
+            package_spec = package_name
+
+        pip_main(["install", package_spec])
+        __import__(package_name)
+
+
+# endregion
+
+# region GLOBAL VARIABLES
 # Get the absolute path of the parent directory of the current script
 here = Path(__file__).parent.resolve()
 
@@ -44,8 +70,10 @@ for pth in extern_root.iterdir():
 # Add the ComfyUI directory and custom nodes path to the sys.path list
 add_path(comfy_dir)
 add_path((comfy_dir / "custom_nodes"))
+# endregion
 
 
+# region TENSOR UTILITIES
 def tensor2pil(image: torch.Tensor) -> List[Image.Image]:
     batch_count = 1
     if len(image.shape) > 3:
@@ -89,3 +117,6 @@ def tensor2np(tensor: torch.Tensor) -> List[np.ndarray]:
         return out
 
     return [np.clip(255.0 * tensor.cpu().numpy().squeeze(), 0, 255).astype(np.uint8)]
+
+
+# endregion

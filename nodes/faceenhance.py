@@ -4,9 +4,13 @@ import numpy as np
 import os
 from pathlib import Path
 import folder_paths
+from ..utils import pil2tensor, np2tensor, tensor2np, import_install
+
+import_install("basicsr")
 from basicsr.utils import imwrite
+
+
 from PIL import Image
-from ..utils import pil2tensor, tensor2pil, np2tensor, tensor2np
 import torch
 from ..log import NullWriter, log
 from comfy import model_management
@@ -28,7 +32,7 @@ class LoadFaceEnhanceModel:
     @classmethod
     def get_models(cls):
         models_path = cls.get_models_root()
-        
+
         if not models_path.exists():
             log.warning(f"No models found at {models_path}")
             return []
