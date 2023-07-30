@@ -131,15 +131,17 @@ elif web_extensions_root.exists():
 
             shutil.copytree(web_tgt, web_mtb)
             log.info(f"Successfully copied {web_tgt} to {web_mtb}")
-        except Exception:
+        except Exception as e:
             log.warn(
                 f"Failed to symlink and copy {web_tgt} to {web_mtb}. Please copy the folder manually."
             )
+            log.warn(e)
 
-    except Exception:  # OSError
+    except Exception as e:
         log.warn(
             f"Failed to create symlink to {web_mtb}. Please copy the folder manually."
         )
+        log.warn(e)
 else:
     log.warn(
         f"Comfy root probably not found automatically, please copy the folder {web_mtb} manually in the web/extensions folder of ComfyUI"
