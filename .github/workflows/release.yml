@@ -103,7 +103,8 @@ jobs:
         shell: bash
         run: |
           mkdir -p wheels
-          unzip -j ${{ env.archive_name }}.zip "**/*.{whl,txt}" -d wheels
+          unzip -j ${{ env.archive_name }}.zip "**/*.whl" -d wheels
+          unzip -j ${{ env.archive_name }}.zip "**/*.txt" -d wheels
         if: success()
       - name: ✅ Add wheels to release
         uses: softprops/action-gh-release@v1
