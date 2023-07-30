@@ -111,3 +111,4 @@ jobs:
           tag_name: ${{ inputs.name }}
           files: |
             wheels/*.whl
+            wheels/wheel_order.txt
