@@ -444,7 +444,7 @@ if __name__ == "__main__":
                     wheel_order_lines = [line.strip() for line in order]
                 whl_files = sorted(
                     whl_files,
-                    key=lambda x: wheel_order_lines.index(x.split("-")[0]),
+                    key=lambda x: wheel_order_lines.index(x.name.split("-")[0]),
                 )
 
             for whl_file in tqdm(whl_files, desc="Installing", unit="package"):
