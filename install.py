@@ -394,7 +394,9 @@ if __name__ == "__main__":
 
     # Download the assets for the given version
     matching_assets = [
-        asset for asset in tag_data["assets"] if current_platform in asset["name"]
+        asset
+        for asset in tag_data["assets"]
+        if current_platform in asset["name"] and asset["name"].endswith("zip")
     ]
     if not matching_assets:
         print_formatted(
@@ -474,7 +476,7 @@ if __name__ == "__main__":
                             "-m",
                             "pip",
                             "install",
-                            whl_path.resolve().as_posix(),
+                            whl_path.as_posix(),
                         ]
                     )
 
