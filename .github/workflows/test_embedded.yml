@@ -1,0 +1,63 @@
+name: 🧪 Test Comfy Portable
+
+on:
+  workflow_dispatch:
+    inputs:
+      commit_sha:
+        description: 'The SHA of the commit to checkout'
+        required: false
+        default: ${{ github.sha }}
+      invalidate_cache:
+        description: 'Whether to invalidate the cache or not'
+        required: false
+        default: 'false'
+jobs:
+  install-comfy:
+    runs-on: windows-latest
+    env:
+      repo_name: ${{ github.event.repository.name }}
+    steps:
+      - name: ⚠️ Invalidate Cache if Needed
+        if: ${{ github.event.inputs.invalidate_cache == 'true' }}
+        run: |
+          echo "Invalidating Cache..."
+          rmdir /s /q C:\Users\runner\AppData\Local\Temp\caches
+
+      - name: 🚡 Download and Extract Comfy
+        run: |
+          mkdir comfy_temp
+          curl -L -o comfy_temp/comfyui.7z https://github.com/comfyanonymous/ComfyUI/releases/download/latest/ComfyUI_windows_portable_nvidia_cu118_or_cpu.7z
+          7z x comfy_temp/comfyui.7z -o./comfy_temp
+
+
+          # mv comfy_temp/ComfyUI_windows_portable/python_embeded .
+          # mv comfy_temp/ComfyUI_windows_portable/ComfyUI .
+          # mv comfy_temp/ComfyUI_windows_portable/update .
+
+          mv comfy_temp/ComfyUI_windows_portable .
+
+      - name: 📦 Cache Comfy Environment
+        id: cache-comfy
+        uses: actions/cache@v2
+        with:
+          path: ComfyUI_windows_portable
+          key: ${{ runner.os }}-comfy-env
+
+      - name: ♻️ Checking out comfy_mtb to custom_nodes
+        uses: actions/checkout@v3
+        with:
+          submodules: 'recursive'
+          path: ComfyUI_windows_portable/ComfyUI/custom_nodes/${{ env.repo_name }}
+          ref: ${{ github.event.inputs.commit_sha }}
+
+      - name: 📦 Install mtb nodes
+        shell: bash
+        run: |
+          # run install
+          export COMFY_PYTHON="ComfyUI_windows_portable/python_embeded/python.exe"
+
+          $COMFY_PYTHON ComfyUI_windows_portable/ComfyUI/custom_nodes/${{ env.repo_name }}/install.py -w
+
+          # check node loading state
+          cd ComfyUI_windows_portable/ComfyUI/custom_nodes
+          $COMFY_PYTHON -c "import ${{ env.repo_name }}"
