@@ -3,10 +3,7 @@ name: 🧪 Test Comfy Portable
 on:
   workflow_dispatch:
     inputs:
-      commit_sha:
-        description: 'The SHA of the commit to checkout'
-        required: false
-        default: ${{ github.sha }}
+
       invalidate_cache:
         description: 'Whether to invalidate the cache or not'
         required: false
@@ -48,16 +45,15 @@ jobs:
         with:
           submodules: 'recursive'
           path: ComfyUI_windows_portable/ComfyUI/custom_nodes/${{ env.repo_name }}
-          ref: ${{ github.event.inputs.commit_sha }}
 
       - name: 📦 Install mtb nodes
         shell: bash
         run: |
           # run install
           export COMFY_PYTHON="ComfyUI_windows_portable/python_embeded/python.exe"
-
-          $COMFY_PYTHON ComfyUI_windows_portable/ComfyUI/custom_nodes/${{ env.repo_name }}/install.py -w
+          cd ComfyUI_windows_portable/ComfyUI/
+          $COMFY_PYTHON custom_nodes/${{ env.repo_name }}/install.py -w
 
           # check node loading state
-          cd ComfyUI_windows_portable/ComfyUI/custom_nodes
+          cd custom_nodes
           $COMFY_PYTHON -c "import ${{ env.repo_name }}"
