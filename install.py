@@ -1,7 +1,6 @@
 import requests
 import os
 import ast
-import re
 import argparse
 import sys
 import subprocess
@@ -9,10 +8,12 @@ from importlib import import_module
 import platform
 from pathlib import Path
 import sys
-import zipfile
-import shutil
 import stat
-
+import threading
+import signal
+from contextlib import suppress
+from queue import Queue, Empty
+from contextlib import contextmanager
 
 here = Path(__file__).parent
 executable = sys.executable
@@ -27,7 +28,7 @@ elif ".venv" in executable:
     mode = "venv"
 
 
-if mode == None:
+if mode is None:
     mode = "unknown"
 
 # region ansi
@@ -102,11 +103,89 @@ def print_formatted(text, *formats, color=None, background=None, **kwargs):
     formatted_text = apply_format(text, *formats)
     formatted_text = apply_color(formatted_text, color, background)
     file = kwargs.get("file", sys.stdout)
+    header = "[mtb install] "
     print(
-        apply_color(apply_format("[mtb install] ", "bold"), color="yellow"),
+        " " * len(header)
+        if kwargs.get("no_header")
+        else apply_color(apply_format(header, "bold"), color="yellow"),
         formatted_text,
         file=file,
     )
+
+
+# endregion
+
+
+# region utils
+def enqueue_output(out, queue):
+    for line in iter(out.readline, b""):
+        queue.put(line)
+    out.close()
+
+
+def run_command(cmd):
+    if isinstance(cmd, str):
+        shell_cmd = cmd
+        shell = True
+    elif isinstance(cmd, list):
+        shell_cmd = " ".join(cmd)
+        shell = False
+    else:
+        raise ValueError(
+            "Invalid 'cmd' argument. It must be a string or a list of arguments."
+        )
+
+    process = subprocess.Popen(
+        shell_cmd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        universal_newlines=True,
+        shell=shell,
+    )
+
+    # Create separate threads to read standard output and standard error streams
+    stdout_queue = Queue()
+    stderr_queue = Queue()
+    stdout_thread = threading.Thread(
+        target=enqueue_output, args=(process.stdout, stdout_queue)
+    )
+    stderr_thread = threading.Thread(
+        target=enqueue_output, args=(process.stderr, stderr_queue)
+    )
+    stdout_thread.daemon = True
+    stderr_thread.daemon = True
+    stdout_thread.start()
+    stderr_thread.start()
+
+    interrupted = False
+
+    def signal_handler(signum, frame):
+        nonlocal interrupted
+        interrupted = True
+        print("Command execution interrupted.")
+
+    # Register the signal handler for keyboard interrupts (SIGINT)
+    signal.signal(signal.SIGINT, signal_handler)
+
+    # Process output from both streams until the process completes or interrupted
+    while not interrupted and (
+        process.poll() is None or not stdout_queue.empty() or not stderr_queue.empty()
+    ):
+        with suppress(Empty):
+            stdout_line = stdout_queue.get_nowait()
+            if stdout_line.strip() != "":
+                print(stdout_line.strip())
+        with suppress(Empty):
+            stderr_line = stderr_queue.get_nowait()
+            if stderr_line.strip() != "":
+                print(stderr_line.strip())
+    return_code = process.returncode
+
+    if return_code == 0 and not interrupted:
+        print("Command executed successfully!")
+    else:
+        if not interrupted:
+            print(f"Command failed with return code: {return_code}")
 
 
 # endregion
@@ -115,9 +194,7 @@ try:
     import requirements
 except ImportError:
     print_formatted("Installing requirements-parser...", "italic", color="yellow")
-    subprocess.check_call(
-        [sys.executable, "-m", "pip", "install", "requirements-parser"]
-    )
+    run_command([sys.executable, "-m", "pip", "install", "requirements-parser"])
     import requirements
 
     print_formatted("Done.", "italic", color="green")
@@ -126,7 +203,7 @@ try:
     from tqdm import tqdm
 except ImportError:
     print_formatted("Installing tqdm...", "italic", color="yellow")
-    subprocess.check_call([sys.executable, "-m", "pip", "install", "--upgrade", "tqdm"])
+    run_command([sys.executable, "-m", "pip", "install", "--upgrade", "tqdm"])
     from tqdm import tqdm
 import importlib
 
@@ -151,6 +228,21 @@ def is_pipe():
         )
     except OSError:
         return False
+
+
+@contextmanager
+def suppress_std():
+    with open(os.devnull, "w") as devnull:
+        old_stdout = sys.stdout
+        old_stderr = sys.stderr
+        sys.stdout = devnull
+        sys.stderr = devnull
+
+        try:
+            yield
+        finally:
+            sys.stdout = old_stdout
+            sys.stderr = old_stderr
 
 
 # Get the version from __init__.py
@@ -211,46 +303,51 @@ def try_import(requirement):
     installed = False
 
     pip_name = dependency
-    if specs := requirement.specs:
-        pip_name += "".join(specs[0])
-
+    pip_spec = "".join(specs[0]) if (specs := requirement.specs) else ""
     try:
-        import_module(import_name)
+        with suppress_std():
+            import_module(import_name)
         print_formatted(
-            f"Package {pip_name} already installed (import name: '{import_name}').",
+            f"\t✅ Package {pip_name} already installed (import name: '{import_name}').",
             "bold",
             color="green",
+            no_header=True,
         )
         installed = True
     except ImportError:
-        pass
+        print_formatted(
+            f"\t⛔ Package {pip_name} is missing (import name: '{import_name}').",
+            "bold",
+            color="red",
+            no_header=True,
+        )
 
-    return (installed, pip_name, import_name)
+    return (installed, pip_name, pip_spec, import_name)
 
 
 def import_or_install(requirement, dry=False):
-    installed, pip_name, import_name = try_import(requirement)
+    installed, pip_name, pip_spec, import_name = try_import(requirement)
+
+    pip_install_name = pip_name + pip_spec
 
     if not installed:
         print_formatted(f"Installing package {pip_name}...", "italic", color="yellow")
         if dry:
             print_formatted(
-                f"Dry-run: Package {pip_name} would be installed (import name: '{import_name}').",
+                f"Dry-run: Package {pip_install_name} would be installed (import name: '{import_name}').",
                 color="yellow",
             )
         else:
             try:
-                subprocess.check_call(
-                    [sys.executable, "-m", "pip", "install", pip_name]
-                )
+                run_command([sys.executable, "-m", "pip", "install", pip_install_name])
                 print_formatted(
-                    f"Package {pip_name} installed successfully using pip package name  (import name: '{import_name}')",
+                    f"Package {pip_install_name} installed successfully using pip package name  (import name: '{import_name}')",
                     "bold",
                     color="green",
                 )
             except subprocess.CalledProcessError as e:
                 print_formatted(
-                    f"Failed to install package {pip_name} using pip package name  (import name: '{import_name}'). Error: {str(e)}",
+                    f"Failed to install package {pip_install_name} using pip package name  (import name: '{import_name}'). Error: {str(e)}",
                     "bold",
                     color="red",
                 )
@@ -279,7 +376,7 @@ if __name__ == "__main__":
         if not clone_dir.exists():
             clone_dir.parent.mkdir(parents=True, exist_ok=True)
             print_formatted(f"Cloning {url} to {clone_dir}", "italic", color="yellow")
-            subprocess.check_call(["git", "clone", "--recursive", url, clone_dir])
+            run_command(["git", "clone", "--recursive", url, clone_dir.as_posix()])
 
         # os.chdir(clone_dir)
         here = clone_dir
@@ -316,7 +413,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    wheels_directory = here / "wheels"
+    # wheels_directory = here / "wheels"
     print_formatted(f"Detected environment: {apply_color(mode,'cyan')}")
 
     # Install dependencies from requirements.txt
@@ -335,23 +432,26 @@ if __name__ == "__main__":
     if mode in ["colab", "embeded"]:
         print_formatted(
             f"Downloading and installing release wheels since we are in a Comfy {apply_color(mode,'cyan')} environment",
+            "italic",
+            color="yellow",
         )
     if full:
         print_formatted(
-            f"Downloading and installing release wheels since no arguments where provided"
+            f"Downloading and installing release wheels since no arguments where provided",
+            "italic",
+            color="yellow",
         )
 
     # - Check the env before proceeding.
-    missing_wheels = False
+    missing_deps = []
     parsed_requirements = get_requirements(here / "reqs.txt")
     if parsed_requirements:
         for requirement in parsed_requirements:
-            installed, pip_name, import_name = try_import(requirement)
+            installed, pip_name, pip_spec, import_name = try_import(requirement)
             if not installed:
-                missing_wheels = True
-                break
+                missing_deps.append(pip_name.split("-")[0])
 
-    if not missing_wheels:
+    if len(missing_deps) == 0:
         print_formatted(
             f"All requirements are already installed.", "italic", color="green"
         )
@@ -392,97 +492,121 @@ if __name__ == "__main__":
     #             )
     #             sys.exit()
 
-    # Download the assets for the given version
+    short_platform = {
+        "windows": "win_amd64",
+        "linux": "linux_x86_64",
+    }
     matching_assets = [
         asset
         for asset in tag_data["assets"]
-        if current_platform in asset["name"] and asset["name"].endswith("zip")
+        if asset["name"].endswith(".whl")
+        and (
+            "any" in asset["name"] or short_platform[current_platform] in asset["name"]
+        )
     ]
     if not matching_assets:
         print_formatted(
             f"Unsupported operating system: {current_platform}", color="yellow"
         )
-
-    wheels_directory.mkdir(exist_ok=True)
-    # - Install the wheels
-    for asset in matching_assets:
-        asset_name = asset["name"]
-        asset_download_url = asset["browser_download_url"]
-        print_formatted(f"Downloading asset: {asset_name}", color="yellow")
-        asset_dest = wheels_directory / asset_name
-        download_file(asset_download_url, asset_dest)
-
-        # - Unzip to wheels dir
-        whl_files = []
-        whl_order = None
-        with zipfile.ZipFile(asset_dest, "r") as zip_ref:
-            for item in tqdm(zip_ref.namelist(), desc="Extracting", unit="file"):
-                if item.endswith(".whl"):
-                    item_basename = os.path.basename(item)
-                    target_path = wheels_directory / item_basename
-                    with zip_ref.open(item) as source, open(
-                        target_path, "wb"
-                    ) as target:
-                        whl_files.append(target_path)
-                        shutil.copyfileobj(source, target)
-                elif item.endswith("order.txt"):
-                    item_basename = os.path.basename(item)
-                    target_path = wheels_directory / item_basename
-                    with zip_ref.open(item) as source, open(
-                        target_path, "wb"
-                    ) as target:
-                        whl_order = target_path
-                        shutil.copyfileobj(source, target)
-
+    wheel_order_asset = next(
+        (asset for asset in tag_data["assets"] if asset["name"] == "wheel_order.txt"),
+        None,
+    )
+    if wheel_order_asset is not None:
         print_formatted(
-            f"Wheels extracted for {current_platform} to the '{wheels_directory}' directory.",
-            "bold",
-            color="green",
+            "⚙️ Sorting the release wheels using wheels order", "italic", color="yellow"
         )
+        response = requests.get(wheel_order_asset["browser_download_url"])
+        if response.status_code == 200:
+            wheel_order = [line.strip() for line in response.text.splitlines()]
 
-        if whl_files:
-            if whl_order:
-                with open(whl_order, "r") as order:
-                    wheel_order_lines = [line.strip() for line in order]
-                whl_files = sorted(
-                    whl_files,
-                    key=lambda x: wheel_order_lines.index(x.name.split("-")[0]),
-                )
-
-            for whl_file in tqdm(whl_files, desc="Installing", unit="package"):
-                whl_path = wheels_directory / whl_file
-
-                # check if installed
+            def get_order_index(val):
                 try:
-                    whl_dep = whl_path.name.split("-")[0]
-                    import_name = pip_map.get(whl_dep, whl_dep)
-                    import_module(import_name)
-                    tqdm.write(
-                        f"Package {import_name} already installed, skipping wheel installation.",
-                    )
-                    continue
-                except ImportError:
-                    if args.dry:
-                        tqdm.write(
-                            f"Dry-run: Package {whl_path.name} would be installed.",
-                        )
-                        continue
+                    return wheel_order.index(val)
+                except ValueError:
+                    return len(wheel_order)
 
-                    tqdm.write("Installing wheel: " + whl_path.name)
-
-                    subprocess.check_call(
-                        [
-                            sys.executable,
-                            "-m",
-                            "pip",
-                            "install",
-                            whl_path.as_posix(),
-                        ]
-                    )
-
-            print_formatted("Wheels installation completed.", color="green")
+            matching_assets = sorted(
+                matching_assets,
+                key=lambda x: get_order_index(x["name"].split("-")[0]),
+            )
         else:
-            print_formatted("No .whl files found. Nothing to install.", color="yellow")
+            print("Failed to fetch wheel_order.txt. Status code:", response.status_code)
 
-    # - Install all remainings
-    install_dependencies(dry=args.dry)
+    missing_deps_urls = []
+    for whl_file in matching_assets:
+        # check if installed
+        whl_dep = whl_file["name"].split("-")[0]
+        if whl_dep in missing_deps:
+            missing_deps_urls.append(whl_file["browser_download_url"])
+
+            # run_command(
+            #     [
+            #         sys.executable,
+            #         "-m",
+            #         "pip",
+            #         "install",
+            #         whl_path.as_posix(),
+            #     ]
+            # )
+        # # - Install the wheels
+        # for asset in matching_assets:
+        #     asset_name = asset["name"]
+        #     asset_download_url = asset["browser_download_url"]
+        #     print_formatted(f"Downloading asset: {asset_name}", color="yellow")
+        #     asset_dest = wheels_directory / asset_name
+        #     download_file(asset_download_url, asset_dest)
+
+        #     # - Unzip to wheels dir
+        #     whl_files = []
+        #     whl_order = None
+        #     with zipfile.ZipFile(asset_dest, "r") as zip_ref:
+        #         for item in tqdm(zip_ref.namelist(), desc="Extracting", unit="file"):
+        #             if item.endswith(".whl"):
+        #                 item_basename = os.path.basename(item)
+        #                 target_path = wheels_directory / item_basename
+        #                 with zip_ref.open(item) as source, open(
+        #                     target_path, "wb"
+        #                 ) as target:
+        #                     whl_files.append(target_path)
+        #                     shutil.copyfileobj(source, target)
+        #             elif item.endswith("order.txt"):
+        #                 item_basename = os.path.basename(item)
+        #                 target_path = wheels_directory / item_basename
+        #                 with zip_ref.open(item) as source, open(
+        #                     target_path, "wb"
+        #                 ) as target:
+        #                     whl_order = target_path
+        #                     shutil.copyfileobj(source, target)
+
+        #     print_formatted(
+        #         f"Wheels extracted for {current_platform} to the '{wheels_directory}' directory.",
+        #         "bold",
+        #         color="green",
+        #     )
+
+    # print_formatted(
+    #     "\tFound those missing wheels from the release:\n\t\t -"
+    #     + "\n\t\t - ".join(missing_deps_urls),
+    #     "italic",
+    #     color="yellow",
+    #     no_header=True,
+    # )
+
+    install_cmd = [sys.executable, "-m", "pip", "install"]
+
+    install_cmd.extend(missing_deps_urls)
+    install_cmd.extend(["-r", (here / "reqs.txt").as_posix()])
+
+    # - Install all deps
+    if not args.dry:
+        run_command(install_cmd)
+        print_formatted(
+            "Successfully installed all dependencies.", "italic", color="green"
+        )
+    else:
+        print_formatted(
+            f"Would have run the following command:\n\t{apply_color(' '.join(install_cmd),'cyan')}",
+            "italic",
+            color="yellow",
+        )
