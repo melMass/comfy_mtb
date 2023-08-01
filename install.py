@@ -104,11 +104,16 @@ def print_formatted(text, *formats, color=None, background=None, **kwargs):
     formatted_text = apply_color(formatted_text, color, background)
     file = kwargs.get("file", sys.stdout)
     header = "[mtb install] "
+
+    # Handle console encoding for Unicode characters (utf-8)
+    encoded_header = header.encode("utf-8", errors="replace").decode("utf-8")
+    encoded_text = formatted_text.encode("utf-8", errors="replace").decode("utf-8")
+
     print(
-        " " * len(header)
+        " " * len(encoded_header)
         if kwargs.get("no_header")
-        else apply_color(apply_format(header, "bold"), color="yellow"),
-        formatted_text,
+        else apply_color(apply_format(encoded_header, "bold"), color="yellow"),
+        encoded_text,
         file=file,
     )
 
@@ -218,16 +223,26 @@ pip_map = {
 
 
 def is_pipe():
-    try:
-        mode = os.fstat(0).st_mode
-        return (
-            stat.S_ISFIFO(mode)
-            or stat.S_ISREG(mode)
-            or stat.S_ISBLK(mode)
-            or stat.S_ISSOCK(mode)
-        )
-    except OSError:
+    if not sys.stdin.isatty():
         return False
+    if sys.platform == "win32":
+        try:
+            import msvcrt
+
+            return msvcrt.get_osfhandle(0) != -1
+        except ImportError:
+            return False
+    else:
+        try:
+            mode = os.fstat(0).st_mode
+            return (
+                stat.S_ISFIFO(mode)
+                or stat.S_ISREG(mode)
+                or stat.S_ISBLK(mode)
+                or stat.S_ISSOCK(mode)
+            )
+        except OSError:
+            return False
 
 
 @contextmanager
@@ -537,18 +552,17 @@ if __name__ == "__main__":
     for whl_file in matching_assets:
         # check if installed
         whl_dep = whl_file["name"].split("-")[0]
-        if whl_dep in missing_deps:
-            missing_deps_urls.append(whl_file["browser_download_url"])
+        missing_deps_urls.append(whl_file["browser_download_url"])
 
-            # run_command(
-            #     [
-            #         sys.executable,
-            #         "-m",
-            #         "pip",
-            #         "install",
-            #         whl_path.as_posix(),
-            #     ]
-            # )
+        # run_command(
+        #     [
+        #         sys.executable,
+        #         "-m",
+        #         "pip",
+        #         "install",
+        #         whl_path.as_posix(),
+        #     ]
+        # )
         # # - Install the wheels
         # for asset in matching_assets:
         #     asset_name = asset["name"]
@@ -595,12 +609,12 @@ if __name__ == "__main__":
 
     install_cmd = [sys.executable, "-m", "pip", "install"]
 
-    install_cmd.extend(missing_deps_urls)
-    install_cmd.extend(["-r", (here / "reqs.txt").as_posix()])
+    wheel_cmd = install_cmd + missing_deps_urls
 
     # - Install all deps
     if not args.dry:
-        run_command(install_cmd)
+        run_command(wheel_cmd)
+        run_command(install_cmd + ["-r", (here / "reqs.txt").as_posix()])
         print_formatted(
             "Successfully installed all dependencies.", "italic", color="green"
         )
