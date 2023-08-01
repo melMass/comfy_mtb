@@ -64,3 +64,5 @@ jobs:
           export COMFY_PYTHON="${GITHUB_WORKSPACE}/ComfyUI_windows_portable/python_embeded/python.exe"
           cd "${GITHUB_WORKSPACE}/ComfyUI_windows_portable/ComfyUI"
           $COMFY_PYTHON -s main.py --quick-test-for-ci --cpu
+
+          $COMFY_PYTHON -m pip freeze
