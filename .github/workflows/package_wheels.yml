@@ -76,4 +76,4 @@ jobs:
         uses: actions/cache/save@v3
         with:
           path: ${{ env.archive_name }}.zip
-          key: ${{ env.archive_name }}
+          key: ${{ env.archive_name }}-${{ hashFiles('reqs.txt') }}

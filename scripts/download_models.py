@@ -2,6 +2,8 @@ import os
 import requests
 from rich.console import Console
 from tqdm import tqdm
+import subprocess
+import sys
 
 try:
     import folder_paths
@@ -30,13 +32,13 @@ models_to_download = {
         "size": 332,
         "download_url": [
             "https://github.com/TencentARC/GFPGAN/releases/download/v1.3.0/GFPGANv1.3.pth",
+            "https://github.com/TencentARC/GFPGAN/releases/download/v1.3.0/GFPGANv1.4.pth"
             # TODO: provide a way to selectively download models from "packs"
             # https://github.com/TencentARC/GFPGAN/releases/download/v0.1.0/GFPGANv1.pth
             # https://github.com/TencentARC/GFPGAN/releases/download/v0.2.0/GFPGANCleanv1-NoCE-C2.pth
-            # https://github.com/TencentARC/GFPGAN/releases/download/v1.3.0/GFPGANv1.4.pth
             # https://github.com/TencentARC/GFPGAN/releases/download/v1.3.4/RestoreFormer.pth
         ],
-        "destination": "upscale_models",
+        "destination": "face_restore",
     },
     "FILM: Frame Interpolation for Large Motion": {
         "size": 402,
@@ -51,7 +53,6 @@ console = Console()
 
 from urllib.parse import urlparse
 from pathlib import Path
-import gdown
 
 
 def download_model(download_url, destination):
@@ -63,6 +64,21 @@ def download_model(download_url, destination):
     filename = os.path.basename(urlparse(download_url).path)
     response = None
     if "drive.google.com" in download_url:
+        try:
+            import gdown
+        except ImportError:
+            print("Installing gdown")
+            subprocess.check_call(
+                [
+                    sys.executable,
+                    "-m",
+                    "pip",
+                    "install",
+                    "git+https://github.com/melMass/gdown@main",
+                ]
+            )
+            import gdown
+
         if "/folders/" in download_url:
             # download folder
             try:
