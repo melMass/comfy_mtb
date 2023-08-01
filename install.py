@@ -109,13 +109,22 @@ def print_formatted(text, *formats, color=None, background=None, **kwargs):
     encoded_header = header.encode("utf-8", errors="replace").decode("utf-8")
     encoded_text = formatted_text.encode("utf-8", errors="replace").decode("utf-8")
 
-    print(
-        " " * len(encoded_header)
-        if kwargs.get("no_header")
-        else apply_color(apply_format(encoded_header, "bold"), color="yellow"),
-        encoded_text,
-        file=file,
-    )
+    if sys.platform == "win32":
+        output_text = (
+            " " * len(encoded_header)
+            if kwargs.get("no_header")
+            else apply_color(apply_format(encoded_header, "bold"), color="yellow")
+        )
+        output_text += encoded_text + "\n"
+        sys.stdout.buffer.write(output_text.encode("utf-8"))
+    else:
+        print(
+            " " * len(encoded_header)
+            if kwargs.get("no_header")
+            else apply_color(apply_format(encoded_header, "bold"), color="yellow"),
+            encoded_text,
+            file=file,
+        )
 
 
 # endregion
