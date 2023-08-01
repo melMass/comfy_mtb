@@ -4,9 +4,8 @@ import numpy as np
 import os
 from pathlib import Path
 import folder_paths
-from ..utils import pil2tensor, np2tensor, tensor2np, import_install
+from ..utils import pil2tensor, np2tensor, tensor2np
 
-import_install("basicsr")
 from basicsr.utils import imwrite
 
 

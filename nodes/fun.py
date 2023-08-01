@@ -1,6 +1,3 @@
-from ..utils import import_install
-
-import_install("qrcode")
 import qrcode
 from ..utils import pil2tensor
 from PIL import Image

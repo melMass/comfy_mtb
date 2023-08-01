@@ -58,7 +58,7 @@ jobs:
           cd "${GITHUB_WORKSPACE}/ComfyUI_windows_portable/ComfyUI/"
           $COMFY_PYTHON custom_nodes/${{ env.repo_name }}/install.py -w
 
-      - name: Import mtb_nodes
+      - name: ⏬ Import mtb_nodes
         shell: bash
         run: |
           export COMFY_PYTHON="${GITHUB_WORKSPACE}/ComfyUI_windows_portable/python_embeded/python.exe"

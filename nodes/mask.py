@@ -1,6 +1,3 @@
-from ..utils import import_install
-
-import_install("rembg")
 from rembg import remove
 from ..utils import pil2tensor, tensor2pil
 from PIL import Image

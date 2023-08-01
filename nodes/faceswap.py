@@ -1,7 +1,4 @@
 # region imports
-from ..utils import import_install
-
-import_install("onnxruntime")
 import onnxruntime
 from pathlib import Path
 from PIL import Image
