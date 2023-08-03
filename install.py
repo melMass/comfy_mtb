@@ -31,6 +31,16 @@ elif ".venv" in executable:
 if mode is None:
     mode = "unknown"
 
+# - Constants
+repo_url = "https://github.com/melmass/comfy_mtb.git"
+repo_owner = "melmass"
+repo_name = "comfy_mtb"
+short_platform = {
+    "windows": "win_amd64",
+    "linux": "linux_x86_64",
+}
+current_platform = platform.system().lower()
+
 # region ansi
 # ANSI escape sequences for text styling
 ANSI_FORMATS = {
@@ -142,7 +152,11 @@ def run_command(cmd):
         shell_cmd = cmd
         shell = True
     elif isinstance(cmd, list):
-        shell_cmd = " ".join(cmd)
+        shell_cmd = ""
+        for arg in cmd:
+            if isinstance(arg, Path):
+                arg = arg.as_posix()
+            shell_cmd += f"{arg} "
         shell = False
     else:
         raise ValueError(
@@ -377,6 +391,29 @@ def import_or_install(requirement, dry=False):
                 )
 
 
+def get_github_assets(tag=None):
+    if tag:
+        tag_url = (
+            f"https://api.github.com/repos/{repo_owner}/{repo_name}/releases/tags/{tag}"
+        )
+    else:
+        tag_url = (
+            f"https://api.github.com/repos/{repo_owner}/{repo_name}/releases/latest"
+        )
+    response = requests.get(tag_url)
+    if response.status_code == 404:
+        # print_formatted(
+        #     f"Tag version '{apply_color(version,'cyan')}' not found for {owner}/{repo} repository."
+        # )
+        print_formatted("Error retrieving the release assets.", color="red")
+        sys.exit()
+
+    tag_data = response.json()
+    tag_name = tag_data["name"]
+
+    return tag_data, tag_name
+
+
 # Install dependencies from requirements.txt
 def install_dependencies(dry=False):
     parsed_requirements = get_requirements(here / "reqs.txt")
@@ -392,20 +429,6 @@ def install_dependencies(dry=False):
 
 if __name__ == "__main__":
     full = False
-    if is_pipe():
-        print_formatted("Pipe detected, full install...", color="green")
-        # we clone our repo
-        url = "https://github.com/melmass/comfy_mtb.git"
-        clone_dir = here / "custom_nodes" / "comfy_mtb"
-        if not clone_dir.exists():
-            clone_dir.parent.mkdir(parents=True, exist_ok=True)
-            print_formatted(f"Cloning {url} to {clone_dir}", "italic", color="yellow")
-            run_command(["git", "clone", "--recursive", url, clone_dir.as_posix()])
-
-        # os.chdir(clone_dir)
-        here = clone_dir
-        full = True
-
     if len(sys.argv) == 1:
         print_formatted(
             "No arguments provided, doing a full install/update...",
@@ -416,7 +439,13 @@ if __name__ == "__main__":
         full = True
 
     # Parse command-line arguments
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(description="Comfy_mtb install script")
+    parser.add_argument(
+        "--path",
+        "-p",
+        type=str,
+        help="Path to clone the repository to (i.e the absolute path to ComfyUI/custom_nodes)",
+    )
     parser.add_argument(
         "--wheels", "-w", action="store_true", help="Install wheel dependencies"
     )
@@ -429,6 +458,7 @@ if __name__ == "__main__":
         help="Print what will happen without doing it (still making requests to the GH Api)",
     )
 
+    # - keep
     # parser.add_argument(
     #     "--version",
     #     default=get_local_version(),
@@ -439,6 +469,28 @@ if __name__ == "__main__":
 
     # wheels_directory = here / "wheels"
     print_formatted(f"Detected environment: {apply_color(mode,'cyan')}")
+
+    if args.path:
+        clone_dir = Path(args.path)
+        if not clone_dir.exists():
+            print_formatted(
+                f"The path provided does not exist on disk... It must be pointing to ComfyUI's custom_nodes directory"
+            )
+            sys.exit()
+
+        else:
+            repo_dir = clone_dir / repo_name
+            if not repo_dir.exists():
+                print_formatted(f"Cloning to {repo_dir}...", "italic", color="yellow")
+                run_command(["git", "clone", "--recursive", repo_url, repo_dir])
+            else:
+                print_formatted(
+                    f"Directory {repo_dir} already exists, we will update it..."
+                )
+                run_command(["git", "pull", "-C", repo_dir])
+        # os.chdir(clone_dir)
+        here = clone_dir
+        full = True
 
     # Install dependencies from requirements.txt
     # if args.requirements or mode == "venv":
@@ -477,29 +529,15 @@ if __name__ == "__main__":
 
     if len(missing_deps) == 0:
         print_formatted(
-            f"All requirements are already installed.", "italic", color="green"
+            f"All requirements are already installed. Enjoy 🚀", "italic", color="green"
         )
         sys.exit()
 
-    # Fetch the JSON data from the GitHub API URL
-    owner = "melmass"
-    repo = "comfy_mtb"
+    # - Get the tag version from the GitHub API
+    tag_data, tag_name = get_github_assets(tag=None)
+
+    # - keep
     # version = args.version
-    current_platform = platform.system().lower()
-
-    # Get the tag version from the GitHub API
-    tag_url = f"https://api.github.com/repos/{owner}/{repo}/releases/latest"
-    response = requests.get(tag_url)
-    if response.status_code == 404:
-        # print_formatted(
-        #     f"Tag version '{apply_color(version,'cyan')}' not found for {owner}/{repo} repository."
-        # )
-        print_formatted("Error retrieving the release assets.", color="red")
-        sys.exit()
-
-    tag_data = response.json()
-    tag_name = tag_data["name"]
-
     # # Compare the local and tag versions
     # if version and tag_name:
     #     if re.match(r"v?(\d+(\.\d+)+)", version) and re.match(
@@ -516,10 +554,6 @@ if __name__ == "__main__":
     #             )
     #             sys.exit()
 
-    short_platform = {
-        "windows": "win_amd64",
-        "linux": "linux_x86_64",
-    }
     matching_assets = [
         asset
         for asset in tag_data["assets"]
@@ -560,61 +594,7 @@ if __name__ == "__main__":
     missing_deps_urls = []
     for whl_file in matching_assets:
         # check if installed
-        whl_dep = whl_file["name"].split("-")[0]
         missing_deps_urls.append(whl_file["browser_download_url"])
-
-        # run_command(
-        #     [
-        #         sys.executable,
-        #         "-m",
-        #         "pip",
-        #         "install",
-        #         whl_path.as_posix(),
-        #     ]
-        # )
-        # # - Install the wheels
-        # for asset in matching_assets:
-        #     asset_name = asset["name"]
-        #     asset_download_url = asset["browser_download_url"]
-        #     print_formatted(f"Downloading asset: {asset_name}", color="yellow")
-        #     asset_dest = wheels_directory / asset_name
-        #     download_file(asset_download_url, asset_dest)
-
-        #     # - Unzip to wheels dir
-        #     whl_files = []
-        #     whl_order = None
-        #     with zipfile.ZipFile(asset_dest, "r") as zip_ref:
-        #         for item in tqdm(zip_ref.namelist(), desc="Extracting", unit="file"):
-        #             if item.endswith(".whl"):
-        #                 item_basename = os.path.basename(item)
-        #                 target_path = wheels_directory / item_basename
-        #                 with zip_ref.open(item) as source, open(
-        #                     target_path, "wb"
-        #                 ) as target:
-        #                     whl_files.append(target_path)
-        #                     shutil.copyfileobj(source, target)
-        #             elif item.endswith("order.txt"):
-        #                 item_basename = os.path.basename(item)
-        #                 target_path = wheels_directory / item_basename
-        #                 with zip_ref.open(item) as source, open(
-        #                     target_path, "wb"
-        #                 ) as target:
-        #                     whl_order = target_path
-        #                     shutil.copyfileobj(source, target)
-
-        #     print_formatted(
-        #         f"Wheels extracted for {current_platform} to the '{wheels_directory}' directory.",
-        #         "bold",
-        #         color="green",
-        #     )
-
-    # print_formatted(
-    #     "\tFound those missing wheels from the release:\n\t\t -"
-    #     + "\n\t\t - ".join(missing_deps_urls),
-    #     "italic",
-    #     color="yellow",
-    #     no_header=True,
-    # )
 
     install_cmd = [sys.executable, "-m", "pip", "install"]
 
@@ -622,10 +602,12 @@ if __name__ == "__main__":
 
     # - Install all deps
     if not args.dry:
+        # - first install the ordered wheel files
         run_command(wheel_cmd)
-        run_command(install_cmd + ["-r", (here / "reqs.txt").as_posix()])
+        # - then install the rest of the deps
+        run_command(install_cmd + ["-r", (here / "reqs.txt")])
         print_formatted(
-            "Successfully installed all dependencies.", "italic", color="green"
+            "✅ Successfully installed all dependencies.", "italic", color="green"
         )
     else:
         print_formatted(
