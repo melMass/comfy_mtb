@@ -1,4 +1,7 @@
 # MTB Nodes
+
+![embedded test](https://github.com/melMass/comfy_mtb/actions/workflows/test_embedded.yml/badge.svg)
+
 <!-- omit in toc -->
 
 **Translated Readme (using DeepTranslate, PRs are welcome)**:  
