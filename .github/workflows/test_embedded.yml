@@ -1,12 +1,6 @@
 name: 🧪 Test Comfy Portable
 
-on:
-  workflow_dispatch:
-    inputs:
-      invalidate_cache:
-        description: 'Whether to invalidate the cache or not'
-        required: false
-        default: 'false'
+on: workflow_dispatch
 jobs:
   install-comfy:
     runs-on: windows-latest
