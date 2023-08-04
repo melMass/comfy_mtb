@@ -150,14 +150,12 @@ def enqueue_output(out, queue):
 def run_command(cmd):
     if isinstance(cmd, str):
         shell_cmd = cmd
-        shell = True
     elif isinstance(cmd, list):
         shell_cmd = ""
         for arg in cmd:
             if isinstance(arg, Path):
                 arg = arg.as_posix()
             shell_cmd += f"{arg} "
-        shell = False
     else:
         raise ValueError(
             "Invalid 'cmd' argument. It must be a string or a list of arguments."
@@ -168,7 +166,7 @@ def run_command(cmd):
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         universal_newlines=True,
-        shell=shell,
+        shell=True,
     )
 
     # Create separate threads to read standard output and standard error streams
