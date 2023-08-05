@@ -25,7 +25,7 @@ def get_image(filename, subfolder, folder_type):
     data = {"filename": filename, "subfolder": subfolder, "type": folder_type}
     url_values = urllib.parse.urlencode(data)
     with urllib.request.urlopen(
-        "http://{}:{}/view?{}".format(args.listen, args.port, url_values)
+        f"http://{args.listen}:{args.port}/view?{url_values}"
     ) as response:
         return io.BytesIO(response.read())
 
@@ -33,7 +33,7 @@ def get_image(filename, subfolder, folder_type):
 class GetBatchFromHistory:
     """Very experimental node to load images from the history of the server.
 
-    Queue items without output are ignore in the count."""
+    Queue items without output are ignored in the count."""
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -42,8 +42,11 @@ class GetBatchFromHistory:
                 "enable": ("BOOLEAN", {"default": True}),
                 "count": ("INT", {"default": 1, "min": 0}),
                 "offset": ("INT", {"default": 0, "min": -1e9, "max": 1e9}),
+                "internal_count": ("INT", {"default": 0}),
             },
-            "optional": {"passthrough_image": ("IMAGE",)},
+            "optional": {
+                "passthrough_image": ("IMAGE",),
+            },
         }
 
     RETURN_TYPES = ("IMAGE",)
@@ -56,55 +59,63 @@ class GetBatchFromHistory:
         enable=True,
         count=0,
         offset=0,
+        internal_count=0,  # hacky way to invalidate the node
         passthrough_image=None,
     ):
         if not enable or count == 0:
             if passthrough_image is not None:
+                log.debug("Using passthrough image")
                 return (passthrough_image,)
             log.debug("Load from history is disabled for this iteration")
             return (torch.zeros(0),)
         frames = []
 
         with urllib.request.urlopen(
-            "http://{}:{}/history".format(args.listen, args.port)
+            f"http://{args.listen}:{args.port}/history"
         ) as response:
-            history = json.loads(response.read())
+            return self.load_batch_frames(response, offset, count, frames)
 
-            output_images = []
-            for k, run in history.items():
-                for o in run["outputs"]:
-                    for node_id in run["outputs"]:
-                        node_output = run["outputs"][node_id]
-                        if "images" in node_output:
-                            images_output = []
-                            for image in node_output["images"]:
-                                image_data = get_image(
-                                    image["filename"], image["subfolder"], image["type"]
-                                )
-                                images_output.append(image_data)
-                            output_images.extend(images_output)
-            if len(output_images) == 0:
-                return (torch.zeros(0),)
-            for i, image in enumerate(list(reversed(output_images))):
-                if i < offset:
-                    continue
-                if i >= offset + count:
-                    break
-                # Decode image as tensor
-                img = Image.open(image)
-                log.debug(f"Image from history {i} of shape {img.size}")
-                frames.append(img)
+    def load_batch_frames(self, response, offset, count, frames):
+        history = json.loads(response.read())
 
-                # Display the shape of the tensor
-                # print("Tensor shape:", image_tensor.shape)
+        output_images = []
+        for k, run in history.items():
+            for o in run["outputs"]:
+                for node_id in run["outputs"]:
+                    node_output = run["outputs"][node_id]
+                    if "images" in node_output:
+                        images_output = []
+                        for image in node_output["images"]:
+                            image_data = get_image(
+                                image["filename"], image["subfolder"], image["type"]
+                            )
+                            images_output.append(image_data)
+                        output_images.extend(images_output)
+        if not output_images:
+            return (torch.zeros(0),)
+        for i, image in enumerate(list(reversed(output_images))):
+            if i < offset:
+                continue
+            if i >= offset + count:
+                break
+            # Decode image as tensor
+            img = Image.open(image)
+            log.debug(f"Image from history {i} of shape {img.size}")
+            frames.append(img)
+
+            # Display the shape of the tensor
+            # print("Tensor shape:", image_tensor.shape)
 
             # return (output_images,)
+        if not frames:
+            return (torch.zeros(0),)
+        elif len(frames) != count:
+            log.warning(f"Expected {count} images, got {len(frames)} instead")
+        output = pil2tensor(
+            list(reversed(frames)),
+        )
 
-            output = pil2tensor(
-                list(reversed(frames)),
-            )
-
-            return (output,)
+        return (output,)
 
 
 class LoadFilmModel:
