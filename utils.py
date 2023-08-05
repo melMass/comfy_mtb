@@ -50,35 +50,42 @@ def import_install(package_name):
 # endregion
 
 # region GLOBAL VARIABLES
-# Get the absolute path of the parent directory of the current script
+# - Get the absolute path of the parent directory of the current script
 here = Path(__file__).parent.resolve()
 
-# Construct the absolute path to the ComfyUI directory
+# - Construct the absolute path to the ComfyUI directory
 comfy_dir = here.parent.parent
 
-# Construct the path to the font file
+# - Construct the path to the font file
 font_path = here / "font.ttf"
 
-# Add extern folder to path
+# - Add extern folder to path
 extern_root = here / "extern"
 add_path(extern_root)
 for pth in extern_root.iterdir():
     if pth.is_dir():
         add_path(pth)
 
-
-# Add the ComfyUI directory and custom nodes path to the sys.path list
+# - Add the ComfyUI directory and custom nodes path to the sys.path list
 add_path(comfy_dir)
 add_path((comfy_dir / "custom_nodes"))
+
+PIL_FILTER_MAP = {
+    "nearest": Image.Resampling.NEAREST,
+    "box": Image.Resampling.BOX,
+    "bilinear": Image.Resampling.BILINEAR,
+    "hamming": Image.Resampling.HAMMING,
+    "bicubic": Image.Resampling.BICUBIC,
+    "lanczos": Image.Resampling.LANCZOS,
+}
+
+
 # endregion
 
 
 # region TENSOR UTILITIES
 def tensor2pil(image: torch.Tensor) -> List[Image.Image]:
-    batch_count = 1
-    if len(image.shape) > 3:
-        batch_count = image.size(0)
-
+    batch_count = image.size(0) if len(image.shape) > 3 else 1
     if batch_count > 1:
         out = []
         for i in range(batch_count):
@@ -107,9 +114,7 @@ def np2tensor(img_np: np.ndarray | List[np.ndarray]) -> torch.Tensor:
 
 
 def tensor2np(tensor: torch.Tensor) -> List[np.ndarray]:
-    batch_count = 1
-    if len(tensor.shape) > 3:
-        batch_count = tensor.size(0)
+    batch_count = tensor.size(0) if len(tensor.shape) > 3 else 1
     if batch_count > 1:
         out = []
         for i in range(batch_count):
