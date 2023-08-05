@@ -101,7 +101,8 @@ class SaveGif:
                 "image": ("IMAGE",),
                 "fps": ("INT", {"default": 12, "min": 1, "max": 120}),
                 "resize_by": ("FLOAT", {"default": 1.0, "min": 0.1}),
-                "pingpong": ("BOOL", {"default": False}),
+                "optimize": ("BOOLEAN", {"default": False}),
+                "pingpong": ("BOOLEAN", {"default": False}),
             }
         }
 

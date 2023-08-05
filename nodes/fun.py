@@ -121,7 +121,7 @@ class QrCode:
                 "error_correct": (("L", "M", "Q", "H"), {"default": "L"}),
                 "box_size": ("INT", {"default": 10, "max": 8096, "min": 0, "step": 1}),
                 "border": ("INT", {"default": 4, "max": 8096, "min": 0, "step": 1}),
-                "invert": (("BOOL",), {"default": False}),
+                "invert": (("BOOLEAN",), {"default": False}),
             }
         }
 

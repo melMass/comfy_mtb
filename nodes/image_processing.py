@@ -377,7 +377,7 @@ class ImagePremultiply:
             "required": {
                 "image": ("IMAGE",),
                 "mask": ("MASK",),
-                "invert": ("BOOL", {"default": False}),
+                "invert": ("BOOLEAN", {"default": False}),
             }
         }
 
@@ -425,7 +425,7 @@ class ImageResizeFactor:
                     "FLOAT",
                     {"default": 2, "min": 0.01, "max": 16.0, "step": 0.01},
                 ),
-                "supersample": ("BOOL", {"default": True}),
+                "supersample": ("BOOLEAN", {"default": True}),
                 "resampling": (
                     ["lanczos", "nearest", "bilinear", "bicubic"],
                     {"default": "lanczos"},
@@ -546,7 +546,7 @@ class SaveImageGrid:
             "required": {
                 "images": ("IMAGE",),
                 "filename_prefix": ("STRING", {"default": "ComfyUI"}),
-                "save_intermediate": ("BOOL", {"default": False}),
+                "save_intermediate": ("BOOLEAN", {"default": False}),
             },
             "hidden": {"prompt": "PROMPT", "extra_pnginfo": "EXTRA_PNGINFO"},
         }

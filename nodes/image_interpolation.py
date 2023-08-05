@@ -6,9 +6,9 @@ import folder_paths
 from ..log import log
 import torch
 from frame_interpolation.eval import util, interpolator
-from ..utils import tensor2np
 import numpy as np
 import comfy
+import comfy.utils
 from PIL import Image
 import urllib.request
 import urllib.parse
@@ -39,7 +39,7 @@ class GetBatchFromHistory:
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "enable": ("BOOL", {"default": True}),
+                "enable": ("BOOLEAN", {"default": True}),
                 "count": ("INT", {"default": 1, "min": 0}),
                 "offset": ("INT", {"default": 0, "min": -1e9, "max": 1e9}),
             },

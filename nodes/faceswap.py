@@ -2,14 +2,13 @@
 import onnxruntime
 from pathlib import Path
 from PIL import Image
-from typing import List, Set, Tuple, Union, Optional
+from typing import List, Set, Union, Optional
 import cv2
 import folder_paths
 import glob
 import insightface
 import numpy as np
 import os
-import tempfile
 import torch
 from insightface.model_zoo.inswapper import INSwapper
 from ..utils import pil2tensor, tensor2pil
@@ -120,7 +119,6 @@ class FaceSwap:
                 "faces_index": ("STRING", {"default": "0"}),
                 "faceanalysis_model": ("FACE_ANALYSIS_MODEL", {"default": "None"}),
                 "faceswap_model": ("FACESWAP_MODEL", {"default": "None"}),
-                "debug": ("BOOL", {"default": False}),
             },
             "optional": {},
         }
@@ -136,7 +134,6 @@ class FaceSwap:
         faces_index: str,
         faceanalysis_model,
         faceswap_model,
-        debug=False,
     ):
         def do_swap(img):
             model_management.throw_exception_if_processing_interrupted()

@@ -38,7 +38,7 @@ class FitNumber:
         return {
             "required": {
                 "value": ("FLOAT", {"default": 0, "forceInput": True}),
-                "clamp": ("BOOL", {"default": False}),
+                "clamp": ("BOOLEAN", {"default": False}),
                 "source_min": ("FLOAT", {"default": 0.0}),
                 "source_max": ("FLOAT", {"default": 1.0}),
                 "target_min": ("FLOAT", {"default": 0.0}),

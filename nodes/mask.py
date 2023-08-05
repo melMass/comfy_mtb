@@ -13,7 +13,7 @@ class ImageRemoveBackgroundRembg:
             "required": {
                 "image": ("IMAGE",),
                 "alpha_matting": (
-                    "BOOL",
+                    "BOOLEAN",
                     {"default": False},
                 ),
                 "alpha_matting_foreground_threshold": (
@@ -29,7 +29,7 @@ class ImageRemoveBackgroundRembg:
                     {"default": 10, "min": 0, "max": 255},
                 ),
                 "post_process_mask": (
-                    "BOOL",
+                    "BOOLEAN",
                     {"default": False},
                 ),
                 "bgcolor": (

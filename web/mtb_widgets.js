@@ -13,7 +13,7 @@ import * as shared from '/extensions/mtb/comfy_shared.js'
 import { log } from '/extensions/mtb/comfy_shared.js'
 import { api } from '/scripts/api.js'
 
-const newTypes = ['BOOL', 'COLOR', 'BBOX']
+const newTypes = [, /*'BOOL'*/ 'COLOR', 'BBOX']
 
 export const MtbWidgets = {
   BBOX: (key, val) => {
@@ -204,116 +204,7 @@ export const MtbWidgets = {
     widget.desc = 'Represents a Bounding Box with x, y, width, and height.'
     return widget
   },
-  BOOL: (key, val, compute = false) => {
-    /** @type {import("/types/litegraph").IWidget} */
-    const widget = {
-      name: key,
-      type: 'BOOL',
-      options: { default: false },
-      y: 0,
 
-      draw: function (ctx, node, widget_width, widgetY, height) {
-        const hide = this.type !== 'BOOL' && app.canvas.ds.scale > 0.5
-        if (hide) {
-          return
-        }
-        const outline_color = LiteGraph.WIDGET_OUTLINE_COLOR
-        const background_color = LiteGraph.WIDGET_BGCOLOR
-        const text_color = LiteGraph.WIDGET_TEXT_COLOR
-        const H = LiteGraph.NODE_WIDGET_HEIGHT
-        // const arrowSize = 8
-
-        let margin = 15
-        if (hide) return
-
-        let currentY = widgetY
-
-        ctx.textAlign = 'left'
-        ctx.strokeStyle = outline_color
-        ctx.fillStyle = background_color
-        ctx.beginPath()
-        // ctx.roundRect(margin, currentY, widget_width - margin * 2, H, [H * 0.5]);
-        ctx.rect(margin, currentY, H, H) // Draw checkbox square
-
-        ctx.fill()
-        ctx.stroke()
-
-        ctx.fillStyle = text_color
-        // ctx.fillText(this.label || this.name, margin * 2 + 5, currentY + H * 0.7);
-        ctx.fillText(
-          this.label || this.name,
-          H + margin * 2,
-          currentY + H * 0.7
-        )
-
-        // Draw arrow if the value is true
-        // Draw checkmark if the value is true
-        if (this.value) {
-          ctx.fillStyle = text_color
-          ctx.beginPath()
-          ctx.moveTo(margin + H * 0.15, currentY + H * 0.5)
-          ctx.lineTo(margin + H * 0.4, currentY + H * 0.8)
-          ctx.lineTo(margin + H * 0.85, currentY + H * 0.2)
-          ctx.stroke()
-        }
-      },
-      get value() {
-        return this.inputEl.value === 'true'
-      },
-      set value(x) {
-        this.inputEl.value = x
-      },
-      computeSize: function (width) {
-        return [width, 32]
-      },
-      mouse: function (event, pos, node) {
-        // let x = pos[0] - node.pos[0];
-        // let y = pos[1] - node.pos[1];
-        // let width = node.size[0];
-        // let H = LiteGraph.NODE_WIDGET_HEIGHT;
-        // let margin = 15;
-
-        // if (event.type == LiteGraph.pointerevents_method + "down") {
-        //     if (x > margin && x < widget_width - margin && y > widgetY && y < widgetY + H) {
-        //         this.value = !this.value; // Toggle checkbox value
-        //         shared.inner_value_change(this, this.value, event);
-        //         app.canvas.setDirty(true);
-        //     }
-        // }
-        if (event.type === 'pointerdown') {
-          // get widgets of type type : "COLOR"
-          const widgets = node.widgets.filter((w) => w.type === 'BOOL')
-
-          for (const w of widgets) {
-            // color picker
-            const rect = [w.last_y, w.last_y + 32]
-            if (pos[1] > rect[0] && pos[1] < rect[1]) {
-              // picker.style.position = "absolute";
-              // picker.style.left = ( pos[0]) + "px";
-              // picker.style.top = (  pos[1]) + "px";
-
-              // place at screen center
-              // picker.style.position = "absolute";
-              // picker.style.left = (window.innerWidth / 2) + "px";
-              // picker.style.top = (window.innerHeight / 2) + "px";
-              // picker.style.transform = "translate(-50%, -50%)";
-              // picker.style.zIndex = 1000;
-
-              this.value = this.value ? false : true
-            }
-          }
-        }
-      },
-    }
-
-    // create a checkbox
-    widget.inputEl = document.createElement('input')
-    widget.inputEl.type = 'checkbox'
-    widget.value = val || false
-
-    document.body.appendChild(widget.inputEl)
-    return widget
-  },
   COLOR: (key, val, compute = false) => {
     /** @type {import("/types/litegraph").IWidget} */
     const widget = {}
