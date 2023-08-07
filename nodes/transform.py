@@ -19,6 +19,10 @@ class TransformImage:
                 "zoom": ("FLOAT", {"default": 1.0, "min": 0.001}),
                 "angle": ("FLOAT", {"default": 0}),
                 "shear": ("FLOAT", {"default": 0}),
+                "border_handling": (
+                    ["edge", "constant", "reflect", "symmetric"],
+                    {"default": "edge"},
+                ),
             },
         }
 
@@ -34,19 +38,41 @@ class TransformImage:
         zoom: float,
         angle: int,
         shear,
+        border_handling="edge",
     ):
         if image.size(0) == 0:
             return (torch.zeros(0),)
         transformed_images = []
-        for img in image:
-            img = img.transpose(0, 2)
+        frames_count, frame_height, frame_width, frame_channel_count = image.size()
 
-            transformed_image = F.affine(
-                img, angle=angle, scale=zoom, translate=[int(y), int(x)], shear=shear
+        new_height, new_width = int(frame_height * zoom), int(frame_width * zoom)
+
+        pw = int(frame_width - new_width)
+        ph = int(frame_height - new_height)
+        padding = [max(0, pw + x), max(0, ph + y), max(0, pw - x), max(0, ph - y)]
+
+        for img in image:
+            img = img.permute(2, 0, 1)
+            new_height, new_width = int(frame_height * zoom), int(frame_width * zoom)
+            pw = int(frame_width - new_width)
+            ph = int(frame_height - new_height)
+
+            padding = [int(i) for i in padding]
+
+            img = F.pad(
+                img,  # transformed_frame,
+                padding=padding,
+                padding_mode=border_handling,
             )
 
-            transformed_image = transformed_image.transpose(2, 0)
-            transformed_images.append(transformed_image.unsqueeze(0))
+            img = F.affine(img, angle=angle, scale=zoom, translate=[x, y], shear=shear)
+
+            crop = [ph + y, -(ph - y), x + pw, -(pw - x)]
+
+            img = img[:, crop[0] : crop[1], crop[2] : crop[3]]
+
+            img = img.permute(1, 2, 0)
+            transformed_images.append(img.unsqueeze(0))
 
         return (torch.cat(transformed_images, dim=0),)
 
