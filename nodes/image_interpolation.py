@@ -42,6 +42,7 @@ class GetBatchFromHistory:
                 "enable": ("BOOL", {"default": True}),
                 "count": ("INT", {"default": 1, "min": 0}),
                 "offset": ("INT", {"default": 0, "min": -1e9, "max": 1e9}),
+                "internal_count": ("INT", {"default": 0}),
             },
             "optional": {"passthrough_image": ("IMAGE",)},
         }
@@ -56,6 +57,7 @@ class GetBatchFromHistory:
         enable=True,
         count=0,
         offset=0,
+        internal_count=0, # hacky way to invalidate the node
         passthrough_image=None,
     ):
         if not enable or count == 0:
