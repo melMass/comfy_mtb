@@ -12,7 +12,7 @@ import os
 import tempfile
 import torch
 from insightface.model_zoo.inswapper import INSwapper
-from ..utils import pil2tensor, tensor2pil
+from ..utils import pil2tensor, tensor2pil, download_antelopev2
 from ..log import mklog, NullWriter
 import sys
 import comfy.model_management as model_management
@@ -53,6 +53,9 @@ class LoadFaceAnalysisModel:
     CATEGORY = "mtb/facetools"
 
     def load_model(self, faceswap_model: str):
+        if faceswap_model == "antelopev2":
+            download_antelopev2()
+
         face_analyser = insightface.app.FaceAnalysis(
             name=faceswap_model,
             root=os.path.join(folder_paths.models_dir, "insightface"),
