@@ -120,7 +120,6 @@ class FaceSwap:
                 "faces_index": ("STRING", {"default": "0"}),
                 "faceanalysis_model": ("FACE_ANALYSIS_MODEL", {"default": "None"}),
                 "faceswap_model": ("FACESWAP_MODEL", {"default": "None"}),
-                "debug": ("BOOL", {"default": False}),
             },
             "optional": {},
         }
@@ -136,7 +135,6 @@ class FaceSwap:
         faces_index: str,
         faceanalysis_model,
         faceswap_model,
-        debug=False,
     ):
         def do_swap(img):
             model_management.throw_exception_if_processing_interrupted()
