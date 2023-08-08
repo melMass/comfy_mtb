@@ -14,7 +14,7 @@
     "Film Interpolation (mtb)": "Google Research FILM frame interpolation for large motion",
     "Fit Number (mtb)": "Fit the input float using a source and target range",
     "Float To Number (mtb)": "Node addon for the WAS Suite. Converts a \"comfy\" FLOAT to a NUMBER.",
-    "Get Batch From History (mtb)": "Very experimental node to load images from the history of the server.\n\n    Queue items without output are ignore in the count.",
+    "Get Batch From History (mtb)": "Very experimental node to load images from the history of the server.\n\n    Queue items without output are ignored in the count.",
     "Image Compare (mtb)": "Compare two images and return a difference image",
     "Image Premultiply (mtb)": "Premultiply image with mask",
     "Image Remove Background Rembg (mtb)": "Removes the background from the input using Rembg.",
@@ -22,8 +22,7 @@
     "Int To Bool (mtb)": "Basic int to bool conversion",
     "Int To Number (mtb)": "Node addon for the WAS Suite. Converts a \"comfy\" INT to a NUMBER.",
     "Latent Lerp (mtb)": "Linear interpolation (blend) between two latent vectors",
-    "Latent Noise (mtb)": "Inject noise into latent space",
-    "Latent Transform (mtb)": "Dumb attempt at reproducing some deforum like motion",
+    "Load Face Analysis Model (mtb)": "Loads a face analysis model",
     "Load Face Enhance Model (mtb)": "Loads a GFPGan or RestoreFormer model for face enhancement.",
     "Load Face Swap Model (mtb)": "Loads a faceswap model",
     "Load Film Model (mtb)": "Loads a FILM model",
@@ -35,9 +34,12 @@
     "Save Gif (mtb)": "Save the images from the batch as a GIF",
     "Save Image Grid (mtb)": "Save all the images in the input batch as a grid of images.",
     "Save Image Sequence (mtb)": "Save an image sequence to a folder. The current frame is used to determine which image to save.\n\n    This is merely a wrapper around the `save_images` function with formatting for the output folder and filename.\n    ",
+    "Save Tensors (mtb)": "Save torch tensors (image, mask or latent) to disk, useful to debug things outside comfy",
     "Smart Step (mtb)": "Utils to control the steps start/stop of the KAdvancedSampler in percentage",
     "String Replace (mtb)": "Basic string replacement",
     "Styles Loader (mtb)": "Load csv files and populate a dropdown from the rows (\u00e0 la A111)",
     "Text To Image (mtb)": "Utils to convert text to image using a font\n\n\n    The tool looks for any .ttf file in the Comfy folder hierarchy.\n    ",
-    "Uncrop (mtb)": "Uncrops an image to a given bounding box\n\n    The bounding box can be given as a tuple of (x, y, width, height) or as a BBOX type\n    The BBOX input takes precedence over the tuple input"
+    "Transform Image (mtb)": "Save torch tensors (image, mask or latent) to disk, useful to debug things outside comfy\n\n\n    it return a tensor representing the transformed images with the same shape as the input tensor\n    ",
+    "Uncrop (mtb)": "Uncrops an image to a given bounding box\n\n    The bounding box can be given as a tuple of (x, y, width, height) or as a BBOX type\n    The BBOX input takes precedence over the tuple input",
+    "Unsplash Image (mtb)": "Unsplash Image given a keyword and a size"
 }

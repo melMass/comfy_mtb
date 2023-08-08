@@ -37,7 +37,16 @@ jobs:
         with:
           path: ComfyUI_windows_portable
           key: ${{ runner.os }}-comfy-env
+      - name: ⏬ Install other extensions
+        shell: bash
+        run: |
+          export COMFY_PYTHON="${GITHUB_WORKSPACE}/ComfyUI_windows_portable/python_embeded/python.exe"
+          cd "${GITHUB_WORKSPACE}/ComfyUI_windows_portable/ComfyUI/custom_nodes"
 
+          git clone https://github.com/Fannovel16/comfy_controlnet_preprocessors
+          cd comfy_controlnet_preprocessors
+          $COMFY_PYTHON install.py
+          
       - name: ♻️ Checking out comfy_mtb to custom_nodes
         uses: actions/checkout@v3
         with:

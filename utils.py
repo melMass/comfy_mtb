@@ -4,6 +4,7 @@ import torch
 from pathlib import Path
 import sys
 from typing import List
+from .log import log
 
 
 # region MISC Utilities
@@ -122,6 +123,46 @@ def tensor2np(tensor: torch.Tensor) -> List[np.ndarray]:
         return out
 
     return [np.clip(255.0 * tensor.cpu().numpy().squeeze(), 0, 255).astype(np.uint8)]
+
+
+# endregion
+
+# region MODEL Utilities
+def download_antelopev2():
+    antelopev2_url = "https://drive.google.com/uc?id=18wEUfMNohBJ4K3Ly5wpTejPfDzp-8fI8"
+
+    try:
+        import gdown
+
+        import folder_paths
+
+        log.debug("Loading antelopev2 model")
+
+        dest = Path(folder_paths.models_dir) / "insightface"
+        archive = dest / "antelopev2.zip"
+        final_path = dest / "models" / "antelopev2"
+        if not final_path.exists():
+            log.info(f"antelopev2 not found, downloading to {dest}")
+            gdown.download(
+                antelopev2_url,
+                archive.as_posix(),
+                resume=True,
+            )
+
+            log.info(f"Unzipping antelopev2 to {final_path}")
+
+            if archive.exists():
+                # we unzip it
+                import zipfile
+
+                with zipfile.ZipFile(archive.as_posix(), "r") as zip_ref:
+                    zip_ref.extractall(final_path.parent.as_posix())
+
+    except Exception as e:
+        log.error(
+            f"Could not load or download antelopev2 model, download it manually from {antelopev2_url}"
+        )
+        raise e
 
 
 # endregion
