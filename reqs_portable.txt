@@ -12,3 +12,4 @@ qrcode[pil]
 rembg==2.0.50
 tensorflow==2.10.1; platform_system == "Windows"
 facexlib==0.3.0
+protobuf==3.19.6

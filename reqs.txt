@@ -9,3 +9,4 @@ tensorflow; platform_system != "Windows"
 facexlib==0.3.0
 insightface==0.7.3
 basicsr==1.4.2
+protobuf==3.19.6
