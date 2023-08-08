@@ -45,7 +45,7 @@ jobs:
 
           git clone https://github.com/Fannovel16/comfy_controlnet_preprocessors
           cd comfy_controlnet_preprocessors
-          $COMFY_PYTHON install.py
+          $COMFY_PYTHON -m pip install -r requirements.txt
           
       - name: ♻️ Checking out comfy_mtb to custom_nodes
         uses: actions/checkout@v3
