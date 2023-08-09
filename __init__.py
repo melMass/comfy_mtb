@@ -187,6 +187,14 @@ import logging
 from .endpoint import endlog
 
 if hasattr(PromptServer, "instance"):
+    restore_deps = ["basicsr"]
+    swap_deps = ["insightface", "onnxruntime"]
+
+    node_dependency_mapping = {
+        "FaceSwap": swap_deps,
+        "LoadFaceSwapModel": swap_deps,
+        "LoadFaceAnalysisModel": restore_deps,
+    }
 
     @PromptServer.instance.routes.get("/mtb/status")
     async def get_full_library(request):
@@ -202,7 +210,13 @@ if hasattr(PromptServer, "instance"):
                 NODE_CLASS_MAPPINGS_DEBUG, title="Registered"
             )
             html_response += endpoint.render_table(
-                {k: "-" for k in failed}, title="Failed to load"
+                {
+                    k: {"dependencies": node_dependency_mapping.get(k)}
+                    if node_dependency_mapping.get(k)
+                    else "-"
+                    for k in failed
+                },
+                title="Failed to load",
             )
 
             return web.Response(
