@@ -781,6 +781,40 @@ const mtb_widgets = {
         }
         break
       }
+      case 'Interpolate Clip Sequential (mtb)': {
+        const onNodeCreated = nodeType.prototype.onNodeCreated
+        nodeType.prototype.onNodeCreated = function () {
+          const r = onNodeCreated
+            ? onNodeCreated.apply(this, arguments)
+            : undefined
+          const addReplacement = () => {
+            const input = this.addInput(
+              `replacement_${this.widgets.length}`,
+              'STRING',
+              ''
+            )
+            console.log(input)
+            this.addWidget('STRING', `replacement_${this.widgets.length}`, '')
+          }
+          //- add
+          this.addWidget('button', '+', 'add', function (value, widget, node) {
+            console.log('Button clicked', value, widget, node)
+            addReplacement()
+          })
+          //- remove
+          this.addWidget(
+            'button',
+            '-',
+            'remove',
+            function (value, widget, node) {
+              console.log(`Button clicked: ${value}`, widget, node)
+            }
+          )
+
+          return r
+        }
+        break
+      }
       case 'Styles Loader (mtb)': {
         const origGetExtraMenuOptions = nodeType.prototype.getExtraMenuOptions
         nodeType.prototype.getExtraMenuOptions = function (_, options) {
