@@ -7,6 +7,7 @@ import json
 from comfy.cli_args import args
 from ..utils import pil2tensor
 import io
+import numpy as np
 
 
 def get_image(filename, subfolder, folder_type):
@@ -107,6 +108,37 @@ class GetBatchFromHistory:
         return (output,)
 
 
+class AnyToString:
+    """Tries to take any input and convert it to a string"""
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {"input": ("*")},
+        }
+
+    RETURN_TYPES = ("STRING",)
+    FUNCTION = "do_str"
+    CATEGORY = "mtb/converters"
+
+    def do_str(self, input):
+        if isinstance(input, str):
+            return (input,)
+        elif isinstance(input, torch.Tensor):
+            return (f"Tensor of shape {input.shape} and dtype {input.dtype}",)
+        elif isinstance(input, Image.Image):
+            return (f"PIL Image of size {input.size} and mode {input.mode}",)
+        elif isinstance(input, np.ndarray):
+            return (f"Numpy array of shape {input.shape} and dtype {input.dtype}",)
+
+        elif isinstance(input, dict):
+            return (f"Dictionary of {len(input)} items, with keys {input.keys()}",)
+
+        else:
+            log.debug(f"Falling back to string conversion of {input}")
+            return (str(input),)
+
+
 class StringReplace:
     """Basic string replacement"""
 
@@ -178,4 +210,4 @@ class FitNumber:
         return (res,)
 
 
-__nodes__ = [StringReplace, FitNumber, GetBatchFromHistory]
+__nodes__ = [StringReplace, FitNumber, GetBatchFromHistory, AnyToString]

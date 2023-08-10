@@ -1,5 +1,7 @@
 import qrcode
 from ..utils import pil2tensor
+from ..utils import comfy_dir
+from typing import cast
 from PIL import Image
 from ..log import log
 
@@ -130,6 +132,9 @@ class QrCode:
     CATEGORY = "mtb/generate"
 
     def do_qr(self, url, width, height, error_correct, box_size, border, invert):
+        log.warning(
+            "This node will soon be deprecated, there are much better alternatives like https://github.com/coreyryanhanson/comfy-qr"
+        )
         if error_correct == "L" or error_correct not in ["M", "Q", "H"]:
             error_correct = qrcode.constants.ERROR_CORRECT_L
         elif error_correct == "M":
@@ -159,8 +164,123 @@ class QrCode:
         return (pil2tensor(code),)
 
 
+def bbox_dim(bbox):
+    left, upper, right, lower = bbox
+    width = right - left
+    height = lower - upper
+    return width, height
+
+
+class TextToImage:
+    """Utils to convert text to image using a font
+
+
+    The tool looks for any .ttf file in the Comfy folder hierarchy.
+    """
+
+    fonts = {}
+
+    def __init__(self):
+        # - This is executed when the graph is executed, we could conditionaly reload fonts there
+        pass
+
+    @classmethod
+    def CACHE_FONTS(cls):
+        font_extensions = ["*.ttf", "*.otf", "*.woff", "*.woff2", "*.eot"]
+        fonts = []
+
+        for extension in font_extensions:
+            fonts.extend(comfy_dir.glob(f"**/{extension}"))
+
+        if not fonts:
+            log.warn(
+                "> No fonts found in the comfy folder, place at least one font file somewhere in ComfyUI's hierarchy"
+            )
+        else:
+            log.debug(f"> Found {len(fonts)} fonts")
+
+        for font in fonts:
+            log.debug(f"Adding font {font}")
+            cls.fonts[font.stem] = font.as_posix()
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        if not cls.fonts:
+            cls.CACHE_FONTS()
+        else:
+            log.debug(f"Using cached fonts (count: {len(cls.fonts)})")
+        return {
+            "required": {
+                "text": (
+                    "STRING",
+                    {"default": "Hello world!"},
+                ),
+                "font": ((sorted(cls.fonts.keys())),),
+                "wrap": (
+                    "INT",
+                    {"default": 120, "min": 0, "max": 8096, "step": 1},
+                ),
+                "font_size": (
+                    "INT",
+                    {"default": 12, "min": 1, "max": 2500, "step": 1},
+                ),
+                "width": (
+                    "INT",
+                    {"default": 512, "min": 1, "max": 8096, "step": 1},
+                ),
+                "height": (
+                    "INT",
+                    {"default": 512, "min": 1, "max": 8096, "step": 1},
+                ),
+                # "position": (["INT"], {"default": 0, "min": 0, "max": 100, "step": 1}),
+                "color": (
+                    "COLOR",
+                    {"default": "black"},
+                ),
+                "background": (
+                    "COLOR",
+                    {"default": "white"},
+                ),
+            }
+        }
+
+    RETURN_TYPES = ("IMAGE",)
+    RETURN_NAMES = ("image",)
+    FUNCTION = "text_to_image"
+    CATEGORY = "mtb/generate"
+
+    def text_to_image(
+        self, text, font, wrap, font_size, width, height, color, background
+    ):
+        from PIL import Image, ImageDraw, ImageFont
+        import textwrap
+
+        font = self.fonts[font]
+        font = cast(ImageFont.FreeTypeFont, ImageFont.truetype(font, font_size))
+        if wrap == 0:
+            wrap = width / font_size
+        lines = textwrap.wrap(text, width=wrap)
+        log.debug(f"Lines: {lines}")
+        line_height = bbox_dim(font.getbbox("hg"))[1]
+        img_height = height  # line_height * len(lines)
+        img_width = width  # max(font.getsize(line)[0] for line in lines)
+
+        img = Image.new("RGBA", (img_width, img_height), background)
+        draw = ImageDraw.Draw(img)
+        y_text = 0
+        # - bbox is [left, upper, right, lower]
+        for line in lines:
+            width, height = bbox_dim(font.getbbox(line))
+            draw.text((0, y_text), line, color, font=font)
+            y_text += height
+
+        # img.save(os.path.join(folder_paths.base_path, f'{str(uuid.uuid4())}.png'))
+        return (pil2tensor(img),)
+
+
 __nodes__ = [
     QrCode,
-    UnsplashImage
+    UnsplashImage,
+    TextToImage
     #  MtbExamples,
 ]
