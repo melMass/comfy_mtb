@@ -10,6 +10,7 @@ import io
 
 
 def get_image(filename, subfolder, folder_type):
+    log.debug(f"Getting image {filename} from {subfolder} of {folder_type}")
     data = {"filename": filename, "subfolder": subfolder, "type": folder_type}
     url_values = urllib.parse.urlencode(data)
     with urllib.request.urlopen(
