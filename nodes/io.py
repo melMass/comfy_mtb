@@ -11,8 +11,8 @@ from PIL import Image
 from typing import Optional, List
 
 
-class ExportToProres:
-    """Export to ProRes 4444 (Experimental)"""
+class ExportWithFfmpeg:
+    """Export with FFmpeg (Experimental)"""
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -22,6 +22,11 @@ class ExportToProres:
                 # "frames": ("FRAMES",),
                 "fps": ("FLOAT", {"default": 24, "min": 1}),
                 "prefix": ("STRING", {"default": "export"}),
+                "format": (["mov", "mp4", "mkv", "avi"], {"default": "mov"}),
+                "codec": (
+                    ["prores_ks", "libx264", "libx265"],
+                    {"default": "prores_ks"},
+                ),
             }
         }
 
@@ -35,11 +40,15 @@ class ExportToProres:
         images: torch.Tensor,
         fps: float,
         prefix: str,
+        format: str,
+        codec: str,
     ):
         if images.size(0) == 0:
             return ("",)
         output_dir = Path(folder_paths.get_output_directory())
-        file_id = f"{prefix}_{uuid.uuid4()}.mov"
+        pix_fmt = "rgb48le" if codec == "prores_ks" else "yuv420p"
+        file_ext = format
+        file_id = f"{prefix}_{uuid.uuid4()}.{file_ext}"
 
         log.debug(f"Exporting to {output_dir / file_id}")
 
@@ -64,17 +73,13 @@ class ExportToProres:
             "-s",
             f"{width}x{height}",
             "-pix_fmt",
-            "rgb48le",
+            pix_fmt,
             "-r",
             str(fps),
             "-i",
             "-",
             "-c:v",
-            "prores_ks",
-            "-profile:v",
-            "4",
-            "-pix_fmt",
-            "yuva444p10le",
+            codec,
             "-r",
             str(fps),
             "-y",
@@ -187,4 +192,4 @@ class SaveGif:
         return {"ui": {"gif": results}}
 
 
-__nodes__ = [SaveGif, ExportToProres]
+__nodes__ = [SaveGif, ExportWithFfmpeg]
