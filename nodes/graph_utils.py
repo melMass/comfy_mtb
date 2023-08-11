@@ -5,7 +5,7 @@ import urllib.parse
 import torch
 import json
 from comfy.cli_args import args
-from ..utils import pil2tensor
+from ..utils import pil2tensor, apply_easing
 import io
 import numpy as np
 
@@ -40,7 +40,7 @@ class GetBatchFromHistory:
         }
 
     RETURN_TYPES = ("IMAGE",)
-    RETURN_NAMES = "images"
+    RETURN_NAMES = ("images",)
     CATEGORY = "mtb/animation"
     FUNCTION = "load_from_history"
 
@@ -69,41 +69,32 @@ class GetBatchFromHistory:
         history = json.loads(response.read())
 
         output_images = []
-        for k, run in history.items():
-            for o in run["outputs"]:
-                for node_id in run["outputs"]:
-                    node_output = run["outputs"][node_id]
-                    if "images" in node_output:
-                        images_output = []
-                        for image in node_output["images"]:
-                            image_data = get_image(
-                                image["filename"], image["subfolder"], image["type"]
-                            )
-                            images_output.append(image_data)
-                        output_images.extend(images_output)
+
+        for run in history.values():
+            for node_output in run["outputs"].values():
+                if "images" in node_output:
+                    for image in node_output["images"]:
+                        image_data = get_image(
+                            image["filename"], image["subfolder"], image["type"]
+                        )
+                        output_images.append(image_data)
+
         if not output_images:
             return (torch.zeros(0),)
-        for i, image in enumerate(list(reversed(output_images))):
-            if i < offset:
-                continue
-            if i >= offset + count:
-                break
-            # Decode image as tensor
-            img = Image.open(image)
-            log.debug(f"Image from history {i} of shape {img.size}")
-            frames.append(img)
 
-            # Display the shape of the tensor
-            # print("Tensor shape:", image_tensor.shape)
+        # Directly get desired range of images
+        start_index = max(len(output_images) - offset - count, 0)
+        end_index = len(output_images) - offset
+        selected_images = output_images[start_index:end_index]
 
-            # return (output_images,)
+        frames = [Image.open(image) for image in selected_images]
+
         if not frames:
             return (torch.zeros(0),)
         elif len(frames) != count:
             log.warning(f"Expected {count} images, got {len(frames)} instead")
-        output = pil2tensor(
-            list(reversed(frames)),
-        )
+
+        output = pil2tensor(frames)
 
         return (output,)
 
@@ -181,6 +172,33 @@ class FitNumber:
                 "source_max": ("FLOAT", {"default": 1.0}),
                 "target_min": ("FLOAT", {"default": 0.0}),
                 "target_max": ("FLOAT", {"default": 1.0}),
+                "easing": (
+                    [
+                        "Linear",
+                        "Sine In",
+                        "Sine Out",
+                        "Sine In/Out",
+                        "Quart In",
+                        "Quart Out",
+                        "Quart In/Out",
+                        "Cubic In",
+                        "Cubic Out",
+                        "Cubic In/Out",
+                        "Circ In",
+                        "Circ Out",
+                        "Circ In/Out",
+                        "Back In",
+                        "Back Out",
+                        "Back In/Out",
+                        "Elastic In",
+                        "Elastic Out",
+                        "Elastic In/Out",
+                        "Bounce In",
+                        "Bounce Out",
+                        "Bounce In/Out",
+                    ],
+                    {"default": "Linear"},
+                ),
             }
         }
 
@@ -196,10 +214,14 @@ class FitNumber:
         source_max: float,
         target_min: float,
         target_max: float,
+        easing: str,
     ):
-        res = target_min + (target_max - target_min) * (value - source_min) / (
-            source_max - source_min
-        )
+        normalized_value = (value - source_min) / (source_max - source_min)
+
+        eased_value = apply_easing(normalized_value, easing)
+
+        # - Convert the eased value to the target range
+        res = target_min + (target_max - target_min) * eased_value
 
         if clamp:
             if target_min > target_max:

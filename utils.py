@@ -4,30 +4,34 @@ import torch
 from pathlib import Path
 import sys
 from typing import List
-from .log import log
 import signal
 from contextlib import suppress
 from queue import Queue, Empty
 import subprocess
 import threading
 import os
+import math
 
-# - detect mode
-comfy_mode = None
-if os.environ.get("COLAB_GPU"):
-    comfy_mode = "colab"
-elif "python_embeded" in sys.executable:
-    comfy_mode = "embeded"
-elif ".venv" in sys.executable:
-    comfy_mode = "venv"
+try:
+    from .log import log
+except ImportError:
+    try:
+        from log import log
+
+        log.warn("Imported log without relative path")
+    except ImportError:
+        import logging
+
+        log = logging.getLogger("comfy mtb utils")
+        log.warn("[comfy mtb] You probably called the file outside a module.")
 
 
+# region MISC Utilities
 def hex_to_rgb(hex_color):
     hex_color = hex_color.lstrip("#")
     return tuple(int(hex_color[i : i + 2], 16) for i in (0, 2, 4))
 
 
-# region MISC Utilities
 def add_path(path, prepend=False):
     if isinstance(path, list):
         for p in path:
@@ -143,7 +147,17 @@ def import_install(package_name):
 
 # endregion
 
+
 # region GLOBAL VARIABLES
+# - detect mode
+comfy_mode = None
+if os.environ.get("COLAB_GPU"):
+    comfy_mode = "colab"
+elif "python_embeded" in sys.executable:
+    comfy_mode = "embeded"
+elif ".venv" in sys.executable:
+    comfy_mode = "venv"
+
 # - Get the absolute path of the parent directory of the current script
 here = Path(__file__).parent.resolve()
 
@@ -172,8 +186,6 @@ PIL_FILTER_MAP = {
     "bicubic": Image.Resampling.BICUBIC,
     "lanczos": Image.Resampling.LANCZOS,
 }
-
-
 # endregion
 
 
@@ -257,6 +269,197 @@ def download_antelopev2():
             f"Could not load or download antelopev2 model, download it manually from {antelopev2_url}"
         )
         raise e
+
+
+# endregion
+
+
+# region UV Utilities
+
+
+def create_uv_map_tensor(width=512, height=512):
+    u = torch.linspace(0.0, 1.0, steps=width)
+    v = torch.linspace(0.0, 1.0, steps=height)
+
+    U, V = torch.meshgrid(u, v)
+
+    uv_map = torch.zeros(height, width, 3, dtype=torch.float32)
+    uv_map[:, :, 0] = U.t()
+    uv_map[:, :, 1] = V.t()
+
+    return uv_map.unsqueeze(0)
+
+
+# endregion
+
+
+# region ANIMATION Utilities
+def apply_easing(value, easing_type):
+    if value < 0 or value > 1:
+        raise ValueError("The value should be between 0 and 1.")
+
+    if easing_type == "Linear":
+        return value
+
+    # Back easing functions
+    def easeInBack(t):
+        s = 1.70158
+        return t * t * ((s + 1) * t - s)
+
+    def easeOutBack(t):
+        s = 1.70158
+        return ((t - 1) * t * ((s + 1) * t + s)) + 1
+
+    def easeInOutBack(t):
+        s = 1.70158 * 1.525
+        if t < 0.5:
+            return (t * t * (t * (s + 1) - s)) * 2
+        return ((t - 2) * t * ((s + 1) * t + s) + 2) * 2
+
+    # Elastic easing functions
+    def easeInElastic(t):
+        if t == 0:
+            return 0
+        if t == 1:
+            return 1
+        p = 0.3
+        s = p / 4
+        return -(math.pow(2, 10 * (t - 1)) * math.sin((t - 1 - s) * (2 * math.pi) / p))
+
+    def easeOutElastic(t):
+        if t == 0:
+            return 0
+        if t == 1:
+            return 1
+        p = 0.3
+        s = p / 4
+        return math.pow(2, -10 * t) * math.sin((t - s) * (2 * math.pi) / p) + 1
+
+    def easeInOutElastic(t):
+        if t == 0:
+            return 0
+        if t == 1:
+            return 1
+        p = 0.3 * 1.5
+        s = p / 4
+        t = t * 2
+        if t < 1:
+            return -0.5 * (
+                math.pow(2, 10 * (t - 1)) * math.sin((t - 1 - s) * (2 * math.pi) / p)
+            )
+        return (
+            0.5 * math.pow(2, -10 * (t - 1)) * math.sin((t - 1 - s) * (2 * math.pi) / p)
+            + 1
+        )
+
+    # Bounce easing functions
+    def easeInBounce(t):
+        return 1 - easeOutBounce(1 - t)
+
+    def easeOutBounce(t):
+        if t < (1 / 2.75):
+            return 7.5625 * t * t
+        elif t < (2 / 2.75):
+            t -= 1.5 / 2.75
+            return 7.5625 * t * t + 0.75
+        elif t < (2.5 / 2.75):
+            t -= 2.25 / 2.75
+            return 7.5625 * t * t + 0.9375
+        else:
+            t -= 2.625 / 2.75
+            return 7.5625 * t * t + 0.984375
+
+    def easeInOutBounce(t):
+        if t < 0.5:
+            return easeInBounce(t * 2) * 0.5
+        return easeOutBounce(t * 2 - 1) * 0.5 + 0.5
+
+    # Quart easing functions
+    def easeInQuart(t):
+        return t * t * t * t
+
+    def easeOutQuart(t):
+        t -= 1
+        return -(t**2 * t * t - 1)
+
+    def easeInOutQuart(t):
+        t *= 2
+        if t < 1:
+            return 0.5 * t * t * t * t
+        t -= 2
+        return -0.5 * (t**2 * t * t - 2)
+
+    # Cubic easing functions
+    def easeInCubic(t):
+        return t * t * t
+
+    def easeOutCubic(t):
+        t -= 1
+        return t**2 * t + 1
+
+    def easeInOutCubic(t):
+        t *= 2
+        if t < 1:
+            return 0.5 * t * t * t
+        t -= 2
+        return 0.5 * (t**2 * t + 2)
+
+    # Circ easing functions
+    def easeInCirc(t):
+        return -(math.sqrt(1 - t * t) - 1)
+
+    def easeOutCirc(t):
+        t -= 1
+        return math.sqrt(1 - t**2)
+
+    def easeInOutCirc(t):
+        t *= 2
+        if t < 1:
+            return -0.5 * (math.sqrt(1 - t**2) - 1)
+        t -= 2
+        return 0.5 * (math.sqrt(1 - t**2) + 1)
+
+    # Sine easing functions
+    def easeInSine(t):
+        return -math.cos(t * (math.pi / 2)) + 1
+
+    def easeOutSine(t):
+        return math.sin(t * (math.pi / 2))
+
+    def easeInOutSine(t):
+        return -0.5 * (math.cos(math.pi * t) - 1)
+
+    easing_functions = {
+        "Sine In": easeInSine,
+        "Sine Out": easeOutSine,
+        "Sine In/Out": easeInOutSine,
+        "Quart In": easeInQuart,
+        "Quart Out": easeOutQuart,
+        "Quart In/Out": easeInOutQuart,
+        "Cubic In": easeInCubic,
+        "Cubic Out": easeOutCubic,
+        "Cubic In/Out": easeInOutCubic,
+        "Circ In": easeInCirc,
+        "Circ Out": easeOutCirc,
+        "Circ In/Out": easeInOutCirc,
+        "Back In": easeInBack,
+        "Back Out": easeOutBack,
+        "Back In/Out": easeInOutBack,
+        "Elastic In": easeInElastic,
+        "Elastic Out": easeOutElastic,
+        "Elastic In/Out": easeInOutElastic,
+        "Bounce In": easeInBounce,
+        "Bounce Out": easeOutBounce,
+        "Bounce In/Out": easeInOutBounce,
+    }
+
+    function_ease = easing_functions.get(easing_type)
+    if function_ease:
+        return function_ease(value)
+
+    log.error(f"Unknown easing type: {easing_type}")
+    log.error(f"Available easing types: {list(easing_functions.keys())}")
+    raise ValueError(f"Unknown easing type: {easing_type}")
 
 
 # endregion
