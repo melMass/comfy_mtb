@@ -10,6 +10,9 @@
 import { app } from '/scripts/app.js'
 import parseCss from '/extensions/mtb/extern/parse-css.js'
 import * as shared from '/extensions/mtb/comfy_shared.js'
+import { o3d_to_three, make_wireframe } from '/extensions/mtb/geometry_nodes.js'
+import * as THREE from '/extensions/mtb/extern/three.module.js'
+
 import { log } from '/extensions/mtb/comfy_shared.js'
 import { api } from '/scripts/api.js'
 
@@ -303,6 +306,164 @@ export const MtbWidgets = {
     w.inputEl.onload = function () {
       w.inputRatio = w.inputEl.naturalWidth / w.inputEl.naturalHeight
     }
+    document.body.appendChild(w.inputEl)
+    return w
+  },
+  DEBUG_GEOM: (name, val) => {
+    const w = {
+      name,
+      type: 'geometry',
+      value: val,
+      animate: false,
+      show_wireframe: false,
+      menu: null,
+      // draw: function (ctx, node, widgetWidth, widgetY, height) {
+      //   const [cw, ch] = this.computeSize(widgetWidth)
+      //   shared.offsetDOMWidget(this, ctx, node, widgetWidth, widgetY, ch)
+      // },
+      draw: function (ctx, node, widgetWidth, widgetY, height) {
+        const [cw, ch] = this.computeSize(widgetWidth)
+        shared.offsetDOMWidget(this, ctx, node, widgetWidth, widgetY, ch)
+        // write text
+        ctx.fillStyle = '#000'
+        ctx.font = '14px Arial'
+        ctx.textAlign = 'center'
+        // ctx.fillText('CLICK ME', widgetWidth * 0.5, widgetY + 14)
+      },
+      initThreeJS: function (canvas) {
+        const size = this.computeSize()
+        this.renderer = new THREE.WebGLRenderer({
+          canvas: canvas,
+          alpha: true,
+          antialias: true,
+        })
+        // this.renderer.setClearColor(0x0000ff)
+        this.scene = new THREE.Scene()
+        this.camera = new THREE.PerspectiveCamera(
+          75,
+          size[0] / size[1],
+          0.1,
+          1000
+        )
+        this.camera.position.z = 5
+
+        // Ambient Light
+        const ambientLight = new THREE.AmbientLight(0x404040, 0.5) // Soft white ambient light
+        this.scene.add(ambientLight)
+
+        // Directional Light
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 1)
+        directionalLight.position.set(2, 4, -3)
+        directionalLight.castShadow = true
+
+        // Define the visible area of the projected shadow
+        directionalLight.shadow.camera.left = -10
+        directionalLight.shadow.camera.right = 10
+        directionalLight.shadow.camera.top = 10
+        directionalLight.shadow.camera.bottom = -10
+        directionalLight.shadow.camera.near = 0.1
+        directionalLight.shadow.camera.far = 1000
+
+        directionalLight.shadow.mapSize.width = 512 // Shadow resolution
+        directionalLight.shadow.mapSize.height = 512
+
+        this.scene.add(directionalLight)
+
+        // Update function
+        const animate = () => {
+          requestAnimationFrame(animate)
+          if (this.mesh && this.animate) {
+            this.group.rotation.x += 0.005
+            this.group.rotation.y += 0.005
+          }
+          this.renderer.render(this.scene, this.camera)
+        }
+        animate()
+        log('Scene setup done and loop running.')
+      },
+      createThreeCanvas: function (ctx) {
+        // this.canvas = LiteGraph.createCanvas(this.size[0], this.size[1])
+        // this.addWidget('canvas', '', '', this.canvas)
+        this.canvas = w.inputEl
+        this.ctx = this.canvas.getContext('2d')
+        // Initialize Three.js here
+        this.initThreeJS(this.canvas)
+      },
+
+      onResize: function (size) {
+        console.log(size)
+      },
+      computeSize: function (width) {
+        if (width) {
+          return [width, width]
+        }
+        return [128, 128]
+      },
+      onRemoved: function () {
+        if (this.inputEl) {
+          this.inputEl.remove()
+        }
+      },
+    }
+    log('Creating canvas')
+    w.inputEl = document.createElement('canvas')
+
+    // add context menu with "animate" and "show wireframe"
+    w.inputEl.addEventListener('contextmenu', (e) => {
+      e.preventDefault()
+      if (w.menu) {
+        w.menu.remove()
+      }
+
+      w.menu = document.createElement('div')
+      Object.assign(w.menu.style, {
+        position: 'absolute',
+        top: `${e.clientY}px`,
+        left: `${e.clientX}px`,
+        background: '#333',
+        border: 'none',
+        color: '#fff',
+        padding: '5px',
+        borderRadius: '5px',
+        zIndex: 999,
+      })
+      const anim_btn = document.createElement('button')
+      anim_btn.textContent = `${w.animate ? 'stop' : 'start'} animation`
+      anim_btn.onclick = () => {
+        w.animate = !w.animate
+        if (w.menu) {
+          w.menu.remove()
+        }
+      }
+
+      w.menu.appendChild(anim_btn)
+      const wire = document.createElement('button')
+      wire.textContent = `${w.show_wireframe ? 'hide' : 'show'} wireframe`
+      wire.onclick = () => {
+        w.show_wireframe = !w.show_wireframe
+        if (w.show_wireframe) {
+          w.group.add(w.mesh_wireframe)
+        } else {
+          w.group.remove(w.mesh_wireframe)
+        }
+        if (w.menu) {
+          w.menu.remove()
+        }
+      }
+
+      w.menu.appendChild(wire)
+      document.body.appendChild(w.menu)
+    })
+
+    w.initThreeJS(w.inputEl, val)
+
+    w.mesh = o3d_to_three(val)
+    w.mesh_wireframe = make_wireframe(w.mesh)
+    w.group = new THREE.Group()
+
+    w.group.add(w.mesh)
+    w.scene.add(w.group)
+
     document.body.appendChild(w.inputEl)
     return w
   },

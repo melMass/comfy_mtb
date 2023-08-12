@@ -5,6 +5,8 @@ import torch
 import folder_paths
 from typing import Optional
 from pathlib import Path
+from .geo_tools import mesh_to_json
+import open3d as o3d
 
 
 class Debug:
@@ -23,7 +25,7 @@ class Debug:
 
     def do_debug(self, **kwargs):
         output = {
-            "ui": {"b64_images": [], "text": []},
+            "ui": {"b64_images": [], "text": [], "geometry": []},
             "result": ("A"),
         }
         for k, v in kwargs.items():
@@ -49,6 +51,9 @@ class Debug:
             elif isinstance(anything, bool):
                 log.debug(f"Input {k} contains boolean: {anything}")
                 output["ui"]["text"] += ["True" if anything else "False"]
+            elif isinstance(anything, o3d.geometry.Geometry):
+                log.debug(f"Input {k} contains geometry")
+                output["ui"]["geometry"] += [mesh_to_json(anything)]
             else:
                 text = str(anything)
                 log.debug(f"Input {k} contains text: {text}")

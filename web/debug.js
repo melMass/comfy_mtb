@@ -11,6 +11,7 @@ import { app } from '/scripts/app.js'
 import * as shared from '/extensions/mtb/comfy_shared.js'
 import { log } from '/extensions/mtb/comfy_shared.js'
 import { MtbWidgets } from '/extensions/mtb/mtb_widgets.js'
+import { o3d_to_three } from '/extensions/mtb/geometry_nodes.js'
 
 // TODO: respect inputs order...
 
@@ -81,6 +82,18 @@ app.registerExtension({
           }
           // this.onResize?.(this.size);
           // this.resize?.(this.size)
+          this.setSize(this.computeSize())
+        }
+
+        if (message.geometry) {
+          for (const geom of message.geometry) {
+            console.log('Adding geom', geom, typeof geom)
+            const w = this.addCustomWidget(
+              MtbWidgets.DEBUG_GEOM(`${prefix}_${widgetI}`, geom)
+            )
+            w.parent = this
+            widgetI++
+          }
           this.setSize(this.computeSize())
         }
 
