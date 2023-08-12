@@ -17,7 +17,7 @@ class AnimationBuilder:
             },
         }
 
-    RETURN_TYPES = ("INT", "FLOAT", "INT", "BOOL")
+    RETURN_TYPES = ("INT", "FLOAT", "INT", "BOOLEAN")
     RETURN_NAMES = ("frame", "0-1 (scaled)", "count", "loop_ended")
     CATEGORY = "mtb/animation"
     FUNCTION = "build_animation"

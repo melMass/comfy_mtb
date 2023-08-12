@@ -1,7 +1,6 @@
 import requests
 import os
 import ast
-import re
 import argparse
 import sys
 import subprocess
@@ -9,10 +8,12 @@ from importlib import import_module
 import platform
 from pathlib import Path
 import sys
-import zipfile
-import shutil
 import stat
-
+import threading
+import signal
+from contextlib import suppress
+from queue import Queue, Empty
+from contextlib import contextmanager
 
 here = Path(__file__).parent
 executable = sys.executable
@@ -27,8 +28,18 @@ elif ".venv" in executable:
     mode = "venv"
 
 
-if mode == None:
+if mode is None:
     mode = "unknown"
+
+# - Constants
+repo_url = "https://github.com/melmass/comfy_mtb.git"
+repo_owner = "melmass"
+repo_name = "comfy_mtb"
+short_platform = {
+    "windows": "win_amd64",
+    "linux": "linux_x86_64",
+}
+current_platform = platform.system().lower()
 
 # region ansi
 # ANSI escape sequences for text styling
@@ -102,11 +113,122 @@ def print_formatted(text, *formats, color=None, background=None, **kwargs):
     formatted_text = apply_format(text, *formats)
     formatted_text = apply_color(formatted_text, color, background)
     file = kwargs.get("file", sys.stdout)
+    header = "[mtb install] "
+
+    # Handle console encoding for Unicode characters (utf-8)
+    encoded_header = header.encode(sys.stdout.encoding, errors="replace").decode(
+        sys.stdout.encoding
+    )
+    encoded_text = formatted_text.encode(sys.stdout.encoding, errors="replace").decode(
+        sys.stdout.encoding
+    )
+
     print(
-        apply_color(apply_format("[mtb install] ", "bold"), color="yellow"),
-        formatted_text,
+        " " * len(encoded_header)
+        if kwargs.get("no_header")
+        else apply_color(apply_format(encoded_header, "bold"), color="yellow"),
+        encoded_text,
         file=file,
     )
+
+
+# endregion
+
+
+# region utils
+def enqueue_output(out, queue):
+    for char in iter(lambda: out.read(1), b""):
+        queue.put(char)
+    out.close()
+
+
+def run_command(cmd, ignored_lines_start=None):
+    if ignored_lines_start is None:
+        ignored_lines_start = []
+
+    if isinstance(cmd, str):
+        shell_cmd = cmd
+    elif isinstance(cmd, list):
+        shell_cmd = ""
+        for arg in cmd:
+            if isinstance(arg, Path):
+                arg = arg.as_posix()
+            shell_cmd += f"{arg} "
+    else:
+        raise ValueError(
+            "Invalid 'cmd' argument. It must be a string or a list of arguments."
+        )
+
+    process = subprocess.Popen(
+        shell_cmd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        universal_newlines=True,
+        shell=True,
+    )
+
+    # Create separate threads to read standard output and standard error streams
+    stdout_queue = Queue()
+    stderr_queue = Queue()
+    stdout_thread = threading.Thread(
+        target=enqueue_output, args=(process.stdout, stdout_queue)
+    )
+    stderr_thread = threading.Thread(
+        target=enqueue_output, args=(process.stderr, stderr_queue)
+    )
+    stdout_thread.daemon = True
+    stderr_thread.daemon = True
+    stdout_thread.start()
+    stderr_thread.start()
+
+    interrupted = False
+
+    def signal_handler(signum, frame):
+        nonlocal interrupted
+        interrupted = True
+        print("Command execution interrupted.")
+
+    # Register the signal handler for keyboard interrupts (SIGINT)
+    signal.signal(signal.SIGINT, signal_handler)
+
+    stdout_buffer = ""
+    stderr_buffer = ""
+
+    # Process output from both streams until the process completes or interrupted
+    while not interrupted and (
+        process.poll() is None or not stdout_queue.empty() or not stderr_queue.empty()
+    ):
+        with suppress(Empty):
+            stdout_char = stdout_queue.get_nowait()
+            stdout_buffer += stdout_char
+            if stdout_char == "\n":
+                if not any(
+                    stdout_buffer.startswith(ign) for ign in ignored_lines_start
+                ):
+                    print(stdout_buffer.strip())
+                stdout_buffer = ""
+        with suppress(Empty):
+            stderr_char = stderr_queue.get_nowait()
+            stderr_buffer += stderr_char
+            if stderr_char == "\n":
+                print(stderr_buffer.strip())
+                stderr_buffer = ""
+
+    # Print any remaining content in buffers
+    if stdout_buffer and not any(
+        stdout_buffer.startswith(ign) for ign in ignored_lines_start
+    ):
+        print(stdout_buffer.strip())
+    if stderr_buffer:
+        print(stderr_buffer.strip())
+
+    return_code = process.returncode
+
+    if return_code == 0 and not interrupted:
+        print("Command executed successfully!")
+    else:
+        if not interrupted:
+            print(f"Command failed with return code: {return_code}")
 
 
 # endregion
@@ -115,9 +237,7 @@ try:
     import requirements
 except ImportError:
     print_formatted("Installing requirements-parser...", "italic", color="yellow")
-    subprocess.check_call(
-        [sys.executable, "-m", "pip", "install", "requirements-parser"]
-    )
+    run_command([sys.executable, "-m", "pip", "install", "requirements-parser"])
     import requirements
 
     print_formatted("Done.", "italic", color="green")
@@ -126,10 +246,8 @@ try:
     from tqdm import tqdm
 except ImportError:
     print_formatted("Installing tqdm...", "italic", color="yellow")
-    subprocess.check_call([sys.executable, "-m", "pip", "install", "--upgrade", "tqdm"])
+    run_command([sys.executable, "-m", "pip", "install", "--upgrade", "tqdm"])
     from tqdm import tqdm
-import importlib
-
 
 pip_map = {
     "onnxruntime-gpu": "onnxruntime",
@@ -141,16 +259,41 @@ pip_map = {
 
 
 def is_pipe():
-    try:
-        mode = os.fstat(0).st_mode
-        return (
-            stat.S_ISFIFO(mode)
-            or stat.S_ISREG(mode)
-            or stat.S_ISBLK(mode)
-            or stat.S_ISSOCK(mode)
-        )
-    except OSError:
+    if not sys.stdin.isatty():
         return False
+    if sys.platform == "win32":
+        try:
+            import msvcrt
+
+            return msvcrt.get_osfhandle(0) != -1
+        except ImportError:
+            return False
+    else:
+        try:
+            mode = os.fstat(0).st_mode
+            return (
+                stat.S_ISFIFO(mode)
+                or stat.S_ISREG(mode)
+                or stat.S_ISBLK(mode)
+                or stat.S_ISSOCK(mode)
+            )
+        except OSError:
+            return False
+
+
+@contextmanager
+def suppress_std():
+    with open(os.devnull, "w") as devnull:
+        old_stdout = sys.stdout
+        old_stderr = sys.stderr
+        sys.stdout = devnull
+        sys.stderr = devnull
+
+        try:
+            yield
+        finally:
+            sys.stdout = old_stdout
+            sys.stderr = old_stderr
 
 
 # Get the version from __init__.py
@@ -211,87 +354,94 @@ def try_import(requirement):
     installed = False
 
     pip_name = dependency
-    if specs := requirement.specs:
-        pip_name += "".join(specs[0])
-
+    pip_spec = "".join(specs[0]) if (specs := requirement.specs) else ""
     try:
-        import_module(import_name)
+        with suppress_std():
+            import_module(import_name)
         print_formatted(
-            f"Package {pip_name} already installed (import name: '{import_name}').",
+            f"\t✅ Package {pip_name} already installed (import name: '{import_name}').",
             "bold",
             color="green",
+            no_header=True,
         )
         installed = True
     except ImportError:
-        pass
+        print_formatted(
+            f"\t⛔ Package {pip_name} is missing (import name: '{import_name}').",
+            "bold",
+            color="red",
+            no_header=True,
+        )
 
-    return (installed, pip_name, import_name)
+    return (installed, pip_name, pip_spec, import_name)
 
 
 def import_or_install(requirement, dry=False):
-    installed, pip_name, import_name = try_import(requirement)
+    installed, pip_name, pip_spec, import_name = try_import(requirement)
+
+    pip_install_name = pip_name + pip_spec
 
     if not installed:
         print_formatted(f"Installing package {pip_name}...", "italic", color="yellow")
         if dry:
             print_formatted(
-                f"Dry-run: Package {pip_name} would be installed (import name: '{import_name}').",
+                f"Dry-run: Package {pip_install_name} would be installed (import name: '{import_name}').",
                 color="yellow",
             )
         else:
             try:
-                subprocess.check_call(
-                    [sys.executable, "-m", "pip", "install", pip_name]
-                )
+                run_command([sys.executable, "-m", "pip", "install", pip_install_name])
                 print_formatted(
-                    f"Package {pip_name} installed successfully using pip package name  (import name: '{import_name}')",
+                    f"Package {pip_install_name} installed successfully using pip package name  (import name: '{import_name}')",
                     "bold",
                     color="green",
                 )
             except subprocess.CalledProcessError as e:
                 print_formatted(
-                    f"Failed to install package {pip_name} using pip package name  (import name: '{import_name}'). Error: {str(e)}",
+                    f"Failed to install package {pip_install_name} using pip package name  (import name: '{import_name}'). Error: {str(e)}",
                     "bold",
                     color="red",
                 )
 
 
+def get_github_assets(tag=None):
+    if tag:
+        tag_url = (
+            f"https://api.github.com/repos/{repo_owner}/{repo_name}/releases/tags/{tag}"
+        )
+    else:
+        tag_url = (
+            f"https://api.github.com/repos/{repo_owner}/{repo_name}/releases/latest"
+        )
+    response = requests.get(tag_url)
+    if response.status_code == 404:
+        # print_formatted(
+        #     f"Tag version '{apply_color(version,'cyan')}' not found for {owner}/{repo} repository."
+        # )
+        print_formatted("Error retrieving the release assets.", color="red")
+        sys.exit()
+
+    tag_data = response.json()
+    tag_name = tag_data["name"]
+
+    return tag_data, tag_name
+
+
 # Install dependencies from requirements.txt
 def install_dependencies(dry=False):
-    parsed_requirements = get_requirements(here / "requirements.txt")
+    parsed_requirements = get_requirements(here / "reqs.txt")
     if not parsed_requirements:
         return
     print_formatted(
-        "Installing dependencies from requirements.txt...", "italic", color="yellow"
+        "Installing dependencies from reqs.txt...", "italic", color="yellow"
     )
 
     for requirement in parsed_requirements:
         import_or_install(requirement, dry=dry)
 
-    if mode == "venv":
-        parsed_requirements = get_requirements(here / "requirements-wheels.txt")
-        if not parsed_requirements:
-            return
-        for requirement in parsed_requirements:
-            import_or_install(requirement, dry=dry)
-
 
 if __name__ == "__main__":
     full = False
-    if is_pipe():
-        print_formatted("Pipe detected, full install...", color="green")
-        # we clone our repo
-        url = "https://github.com/melmass/comfy_mtb.git"
-        clone_dir = here / "custom_nodes" / "comfy_mtb"
-        if not clone_dir.exists():
-            clone_dir.parent.mkdir(parents=True, exist_ok=True)
-            print_formatted(f"Cloning {url} to {clone_dir}", "italic", color="yellow")
-            subprocess.check_call(["git", "clone", "--recursive", url, clone_dir])
-
-        # os.chdir(clone_dir)
-        here = clone_dir
-        full = True
-
     if len(sys.argv) == 1:
         print_formatted(
             "No arguments provided, doing a full install/update...",
@@ -302,7 +452,13 @@ if __name__ == "__main__":
         full = True
 
     # Parse command-line arguments
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(description="Comfy_mtb install script")
+    parser.add_argument(
+        "--path",
+        "-p",
+        type=str,
+        help="Path to clone the repository to (i.e the absolute path to ComfyUI/custom_nodes)",
+    )
     parser.add_argument(
         "--wheels", "-w", action="store_true", help="Install wheel dependencies"
     )
@@ -315,73 +471,88 @@ if __name__ == "__main__":
         help="Print what will happen without doing it (still making requests to the GH Api)",
     )
 
+    # - keep
     # parser.add_argument(
     #     "--version",
     #     default=get_local_version(),
     #     help="Version to check against the GitHub API",
     # )
+    print_formatted("mtb install", "bold", color="yellow")
 
     args = parser.parse_args()
 
-    wheels_directory = here / "wheels"
+    # wheels_directory = here / "wheels"
     print_formatted(f"Detected environment: {apply_color(mode,'cyan')}")
+
+    if args.path:
+        clone_dir = Path(args.path)
+        if not clone_dir.exists():
+            print_formatted(
+                "The path provided does not exist on disk... It must be pointing to ComfyUI's custom_nodes directory"
+            )
+            sys.exit()
+
+        else:
+            repo_dir = clone_dir / repo_name
+            if not repo_dir.exists():
+                print_formatted(f"Cloning to {repo_dir}...", "italic", color="yellow")
+                run_command(["git", "clone", "--recursive", repo_url, repo_dir])
+            else:
+                print_formatted(
+                    f"Directory {repo_dir} already exists, we will update it..."
+                )
+                run_command(["git", "pull", "-C", repo_dir])
+        # os.chdir(clone_dir)
+        here = clone_dir
+        full = True
 
     # Install dependencies from requirements.txt
     # if args.requirements or mode == "venv":
-    install_dependencies(dry=args.dry)
 
-    if (not args.wheels and mode not in ["colab", "embeded"]) and not full:
-        print_formatted(
-            "Skipping wheel installation. Use --wheels to install wheel dependencies. (only needed for Comfy embed)",
-            "italic",
-            color="yellow",
-        )
-        sys.exit()
+    # if (not args.wheels and mode not in ["colab", "embeded"]) and not full:
+    #     print_formatted(
+    #         "Skipping wheel installation. Use --wheels to install wheel dependencies. (only needed for Comfy embed)",
+    #         "italic",
+    #         color="yellow",
+    #     )
 
-    if mode in ["colab", "embeded"]:
-        print_formatted(
-            f"Downloading and installing release wheels since we are in a Comfy {apply_color(mode,'cyan')} environment",
-        )
-    if full:
-        print_formatted(
-            f"Downloading and installing release wheels since no arguments where provided"
-        )
+    #     install_dependencies(dry=args.dry)
+    #     sys.exit()
 
-    # - Check the env before proceeding.
-    missing_wheels = False
-    parsed_requirements = get_requirements(here / "requirements-wheels.txt")
-    if parsed_requirements:
+    # if mode in ["colab", "embeded"]:
+    #     print_formatted(
+    #         f"Downloading and installing release wheels since we are in a Comfy {apply_color(mode,'cyan')} environment",
+    #         "italic",
+    #         color="yellow",
+    #     )
+    # if full:
+    #     print_formatted(
+    #         f"Downloading and installing release wheels since no arguments where provided",
+    #         "italic",
+    #         color="yellow",
+    #     )
+
+    print_formatted("Checking environment...", "italic", color="yellow")
+    missing_deps = []
+    if parsed_requirements := get_requirements(here / "reqs.txt"):
         for requirement in parsed_requirements:
-            installed, pip_name, import_name = try_import(requirement)
+            installed, pip_name, pip_spec, import_name = try_import(requirement)
             if not installed:
-                missing_wheels = True
-                break
+                missing_deps.append(pip_name.split("-")[0])
 
-    if not missing_wheels:
+    if not missing_deps:
         print_formatted(
-            f"All required wheels are already installed.", "italic", color="green"
+            "All requirements are already installed. Enjoy 🚀",
+            "italic",
+            color="green",
         )
         sys.exit()
 
-    # Fetch the JSON data from the GitHub API URL
-    owner = "melmass"
-    repo = "comfy_mtb"
+    # # - Get the tag version from the GitHub API
+    # tag_data, tag_name = get_github_assets(tag=None)
+
+    # # - keep
     # version = args.version
-    current_platform = platform.system().lower()
-
-    # Get the tag version from the GitHub API
-    tag_url = f"https://api.github.com/repos/{owner}/{repo}/releases/latest"
-    response = requests.get(tag_url)
-    if response.status_code == 404:
-        # print_formatted(
-        #     f"Tag version '{apply_color(version,'cyan')}' not found for {owner}/{repo} repository."
-        # )
-        print_formatted("Error retrieving the release assets.", color="red")
-        sys.exit()
-
-    tag_data = response.json()
-    tag_name = tag_data["name"]
-
     # # Compare the local and tag versions
     # if version and tag_name:
     #     if re.match(r"v?(\d+(\.\d+)+)", version) and re.match(
@@ -398,75 +569,64 @@ if __name__ == "__main__":
     #             )
     #             sys.exit()
 
-    # Download the assets for the given version
-    matching_assets = [
-        asset for asset in tag_data["assets"] if current_platform in asset["name"]
-    ]
-    if not matching_assets:
-        print_formatted(
-            f"Unsupported operating system: {current_platform}", color="yellow"
-        )
+    # matching_assets = [
+    #     asset
+    #     for asset in tag_data["assets"]
+    #     if asset["name"].endswith(".whl")
+    #     and (
+    #         "any" in asset["name"] or short_platform[current_platform] in asset["name"]
+    #     )
+    # ]
+    # if not matching_assets:
+    #     print_formatted(
+    #         f"Unsupported operating system: {current_platform}", color="yellow"
+    #     )
+    # wheel_order_asset = next(
+    #     (asset for asset in tag_data["assets"] if asset["name"] == "wheel_order.txt"),
+    #     None,
+    # )
+    # if wheel_order_asset is not None:
+    #     print_formatted(
+    #         "⚙️ Sorting the release wheels using wheels order", "italic", color="yellow"
+    #     )
+    #     response = requests.get(wheel_order_asset["browser_download_url"])
+    #     if response.status_code == 200:
+    #         wheel_order = [line.strip() for line in response.text.splitlines()]
 
-    wheels_directory.mkdir(exist_ok=True)
+    #         def get_order_index(val):
+    #             try:
+    #                 return wheel_order.index(val)
+    #             except ValueError:
+    #                 return len(wheel_order)
 
-    for asset in matching_assets:
-        asset_name = asset["name"]
-        asset_download_url = asset["browser_download_url"]
-        print_formatted(f"Downloading asset: {asset_name}", color="yellow")
-        asset_dest = wheels_directory / asset_name
-        download_file(asset_download_url, asset_dest)
+    #         matching_assets = sorted(
+    #             matching_assets,
+    #             key=lambda x: get_order_index(x["name"].split("-")[0]),
+    #         )
+    #     else:
+    #         print("Failed to fetch wheel_order.txt. Status code:", response.status_code)
 
-        # - Unzip to wheels dir
-        whl_files = []
-        with zipfile.ZipFile(asset_dest, "r") as zip_ref:
-            for item in tqdm(zip_ref.namelist(), desc="Extracting", unit="file"):
-                if item.endswith(".whl"):
-                    item_basename = os.path.basename(item)
-                    target_path = wheels_directory / item_basename
-                    with zip_ref.open(item) as source, open(
-                        target_path, "wb"
-                    ) as target:
-                        whl_files.append(target_path)
-                        shutil.copyfileobj(source, target)
+    # missing_deps_urls = []
+    # for whl_file in matching_assets:
+    #     # check if installed
+    #     missing_deps_urls.append(whl_file["browser_download_url"])
 
-        print_formatted(
-            f"Wheels extracted for {current_platform} to the '{wheels_directory}' directory.",
-            "bold",
-            color="green",
-        )
+    install_cmd = [sys.executable, "-m", "pip", "install"]
 
-        if whl_files:
-            for whl_file in tqdm(whl_files, desc="Installing", unit="package"):
-                whl_path = wheels_directory / whl_file
-
-                # check if installed
-                try:
-                    whl_dep = whl_path.name.split("-")[0]
-                    import_name = pip_map.get(whl_dep, whl_dep)
-                    import_module(import_name)
-                    tqdm.write(
-                        f"Package {import_name} already installed, skipping wheel installation.",
-                    )
-                    continue
-                except ImportError:
-                    if args.dry:
-                        tqdm.write(
-                            f"Dry-run: Package {whl_path.name} would be installed.",
-                        )
-                        continue
-
-                    tqdm.write("Installing wheel: " + whl_path.name)
-
-                    subprocess.check_call(
-                        [
-                            sys.executable,
-                            "-m",
-                            "pip",
-                            "install",
-                            whl_path.resolve().as_posix(),
-                        ]
-                    )
-
-            print_formatted("Wheels installation completed.", color="green")
+    # - Install all deps
+    if not args.dry:
+        if platform.system() == "Windows":
+            wheel_cmd = install_cmd + ["-r", (here / "reqs_windows.txt")]
         else:
-            print_formatted("No .whl files found. Nothing to install.", color="yellow")
+            wheel_cmd = install_cmd + ["-r", (here / "reqs.txt")]
+
+        run_command(wheel_cmd)
+        print_formatted(
+            "✅ Successfully installed all dependencies.", "italic", color="green"
+        )
+    else:
+        print_formatted(
+            f"Would have run the following command:\n\t{apply_color(' '.join(install_cmd),'cyan')}",
+            "italic",
+            color="yellow",
+        )

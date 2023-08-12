@@ -6,7 +6,7 @@ on:
       name:
         description: Release tag / name ?
         required: true
-        default: "latest"
+        default: 'latest'
         type: string
       environment:
         description: Environment to run tests against
@@ -27,9 +27,9 @@ jobs:
       - name: ♻️ Checking out the repository
         uses: actions/checkout@v3
         with:
-          submodules: "recursive"
+          submodules: 'recursive'
           path: ${{ env.repo_name }}
-          
+
       # - name: 📝 Prepare file with paths to remove
       #   run: |
       #     find ${{ env.repo_name }} -type f -size +10M > .release_ignore
@@ -56,7 +56,7 @@ jobs:
           else
             echo "No .release_ignore file found. Skipping removal of files and directories."
           fi
-          
+
       - name: 📦 Building custom comfy nodes
         shell: bash
         run: |
@@ -98,10 +98,18 @@ jobs:
         id: cache
         with:
           path: ${{ env.archive_name }}.zip
-          key: ${{ env.archive_name }}
+          key: ${{ env.archive_name }}-${{ hashFiles('reqs.txt') }}
+      - name: 📦 Unzip wheels
+        shell: bash
+        run: |
+          mkdir -p wheels
+          unzip -j ${{ env.archive_name }}.zip "**/*.whl" -d wheels
+          unzip -j ${{ env.archive_name }}.zip "**/*.txt" -d wheels
+        if: success()
       - name: ✅ Add wheels to release
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ inputs.name }}
           files: |
-            ${{ env.archive_name }}.zip
+            wheels/*.whl
+            wheels/wheel_order.txt

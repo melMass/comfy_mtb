@@ -13,6 +13,6 @@
     "reportMissingImports": true,
     "reportMissingTypeStubs": false,
     "pythonVersion": "3.10",
-    "pythonPlatform": "Windows",
+    "pythonPlatform": "All",
     "reportOptionalMemberAccess": "none"
 }

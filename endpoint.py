@@ -1,11 +1,35 @@
-from .utils import here
+from .utils import here, run_command, comfy_mode
 from aiohttp import web
 from .log import mklog
-import os
+import sys
 
 endlog = mklog("mtb endpoint")
 
-#- ACTIONS
+# - ACTIONS
+import requirements
+
+
+
+def ACTIONS_installDependency(dependency_names=None):
+    if dependency_names is None:
+        return {"error": "No dependency name provided"}
+    endlog.debug(f"Received Install Dependency request for {dependency_names}")
+    reqs = []
+    if comfy_mode == "embeded":
+        reqs = list(requirements.parse((here / "reqs_portable.txt").read_text()))
+    else:
+        reqs = list(requirements.parse((here / "reqs.txt").read_text()))
+    print([x.specs for x in reqs])
+    print(
+        "\n".join([f"{x.line} {''.join(x.specs[0] if x.specs else '')}" for x in reqs])
+    )
+    for dependency_name in dependency_names:
+        for req in reqs:
+            if req.name == dependency_name:
+                endlog.debug(f"Dependency {dependency_name} installed")
+                break
+    return {"success": True}
+
 
 def ACTIONS_getStyles(style_name=None):
     from .nodes.conditions import StylesLoader
@@ -19,10 +43,7 @@ def ACTIONS_getStyles(style_name=None):
             if not key.startswith("__") and key not in match_list
         }
         if style_name:
-            if style_name in filtered_styles:
-                return filtered_styles[style_name]
-            else:
-                return {"error": "Style not found"}
+            return filtered_styles.get(style_name, {"error": "Style not found"})
         return filtered_styles
     return {"error": "No styles found"}
 
@@ -35,7 +56,7 @@ async def do_action(request) -> web.Response:
 
     endlog.debug(f"Received action request: {name} {args}")
 
-    method_name = "ACTIONS_" + name
+    method_name = f"ACTIONS_{name}"
     method = globals().get(method_name)
 
     if callable(method):
@@ -53,16 +74,36 @@ async def do_action(request) -> web.Response:
 
 
 # - HTML UTILS
+
+
+def dependencies_button(name, dependencies):
+    deps = ",".join([f"'{x}'" for x in dependencies])
+    return f"""
+        <button class="dependency-button" onclick="window.mtb_action('installDependency',[{deps}])">Install {name} deps</button>
+        """
+
+
 def render_table(table_dict, sort=True, title=None):
-    table_rows = ""
     table_dict = sorted(
         table_dict.items(), key=lambda item: item[0]
     )  # Sort the dictionary by keys
 
-    for name, description in table_dict:
-        table_rows += f"<tr><td>{name}</td><td>{description}</td></tr>"
+    table_rows = ""
+    for name, item in table_dict:
+        if isinstance(item, dict):
+            if "dependencies" in item:
+                table_rows += f"<tr><td>{name}</td><td>"
+                table_rows += f"{dependencies_button(name,item['dependencies'])}"
 
-    html_response = f"""
+                table_rows += "</td></tr>"
+            else:
+                table_rows += f"<tr><td>{name}</td><td>{render_table(item)}</td></tr>"
+        # elif isinstance(item, str):
+        #     table_rows += f"<tr><td>{name}</td><td>{item}</td></tr>"
+        else:
+            table_rows += f"<tr><td>{name}</td><td>{item}</td></tr>"
+
+    return f"""
         <div class="table-container">
         {"" if title is None else f"<h1>{title}</h1>"}
         <table>
@@ -78,7 +119,6 @@ def render_table(table_dict, sort=True, title=None):
         </table>      
         </div>
         """
-    return html_response
 
 
 def render_base_template(title, content):
@@ -98,6 +138,29 @@ def render_base_template(title, content):
             {css_content}
         </style>
     </head>
+    <script type="module">
+        import {{ api }} from '/scripts/api.js'
+        const mtb_action = async (action, args) =>{{
+            console.log(`Sending ${{action}} with args: ${{args}}`)
+            }}
+        window.mtb_action = async (action, args) =>{{
+            console.log(`Sending ${{action}} with args: ${{args}} to the API`)
+            const res = await api.fetchApi('/actions', {{
+                method: 'POST',
+                body: JSON.stringify({{
+                  name: action,
+                  args,
+                }}),
+            }})
+
+              const output = await res.json()
+              console.debug(`Received ${{action}} response:`, output)
+              if (output?.result?.error){{
+                  alert(`An error occured: {{output?.result?.error}}`)
+              }}
+              return output?.result
+        }}
+    </script>
     <body>
         <header>
         <a href="/">Back to Comfy</a>
@@ -117,5 +180,6 @@ def render_base_template(title, content):
             <!-- Shared footer content here -->
         </footer>
     </body>
+    
     </html>
     """

@@ -261,7 +261,7 @@ class DeepBump:
                         "LARGEST",
                     ],
                 ),
-                "normals_to_height_seamless": ("BOOL", {"default": False}),
+                "normals_to_height_seamless": ("BOOLEAN", {"default": False}),
             },
         }
 

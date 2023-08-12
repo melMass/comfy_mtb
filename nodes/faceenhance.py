@@ -4,9 +4,12 @@ import numpy as np
 import os
 from pathlib import Path
 import folder_paths
+from ..utils import pil2tensor, np2tensor, tensor2np
+
 from basicsr.utils import imwrite
+
+
 from PIL import Image
-from ..utils import pil2tensor, tensor2pil, np2tensor, tensor2np
 import torch
 from ..log import NullWriter, log
 from comfy import model_management
@@ -23,15 +26,39 @@ class LoadFaceEnhanceModel:
 
     @classmethod
     def get_models_root(cls):
-        return Path(folder_paths.models_dir) / "upscale_models"
+        fr = Path(folder_paths.models_dir) / "face_restore"
+        if fr.exists():
+            return (fr, None)
+
+        um = Path(folder_paths.models_dir) / "upscale_models"
+        return (fr, um) if um.exists() else (None, None)
 
     @classmethod
     def get_models(cls):
-        models_path = cls.get_models_root()
+        fr_models_path, um_models_path = cls.get_models_root()
+
+        if fr_models_path is None and um_models_path is None:
+            log.warning("Face restoration models not found.")
+            return []
+        if not fr_models_path.exists():
+            log.warning(
+                f"No Face Restore checkpoints found at {fr_models_path} (if you've used mtb before these checkpoints were saved in upscale_models before)"
+            )
+            log.warning(
+                "For now we fallback to upscale_models but this will be removed in a future version"
+            )
+            if um_models_path.exists():
+                return [
+                    x
+                    for x in um_models_path.iterdir()
+                    if x.name.endswith(".pth")
+                    and ("GFPGAN" in x.name or "RestoreFormer" in x.name)
+                ]
+            return []
 
         return [
             x
-            for x in models_path.iterdir()
+            for x in fr_models_path.iterdir()
             if x.name.endswith(".pth")
             and ("GFPGAN" in x.name or "RestoreFormer" in x.name)
         ]
@@ -57,7 +84,7 @@ class LoadFaceEnhanceModel:
     def load_model(self, model_name, upscale=2, bg_upsampler=None):
         basic = "RestoreFormer" not in model_name
 
-        root = self.get_models_root()
+        fr_root, um_root = self.get_models_root()
 
         if bg_upsampler is not None:
             log.warning(
@@ -68,7 +95,9 @@ class LoadFaceEnhanceModel:
 
         sys.stdout = NullWriter()
         model = GFPGANer(
-            model_path=(root / model_name).as_posix(),
+            model_path=(
+                (fr_root if fr_root.exists() else um_root) / model_name
+            ).as_posix(),
             upscale=upscale,
             arch="clean" if basic else "RestoreFormer",  # or original for v1.0 only
             channel_multiplier=2,  # 1 for v1.0 only
@@ -136,12 +165,12 @@ class RestoreFace:
                 "image": ("IMAGE",),
                 "model": ("FACEENHANCE_MODEL",),
                 # Input are aligned faces
-                "aligned": ("BOOL", {"default": False}),
+                "aligned": ("BOOLEAN", {"default": False}),
                 # Only restore the center face
-                "only_center_face": ("BOOL", {"default": False}),
+                "only_center_face": ("BOOLEAN", {"default": False}),
                 # Adjustable weights
                 "weight": ("FLOAT", {"default": 0.5}),
-                "save_tmp_steps": ("BOOL", {"default": True}),
+                "save_tmp_steps": ("BOOLEAN", {"default": True}),
             }
         }
 

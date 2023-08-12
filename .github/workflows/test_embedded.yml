@@ -1,0 +1,71 @@
+name: 🧪 Test Comfy Portable
+
+on: workflow_dispatch
+jobs:
+  install-comfy:
+    runs-on: windows-latest
+    env:
+      repo_name: ${{ github.event.repository.name }}
+    steps:
+      - name: ⚡️ Restore Cache if Available
+        id: cache-comfy
+        uses: actions/cache/restore@v3
+        with:
+          path: ComfyUI_windows_portable
+          key: ${{ runner.os }}-comfy-env
+
+      - name: 🚡 Download and Extract Comfy
+        id: download-extract-comfy
+        if: steps.cache-comfy.outputs.cache-hit != 'true'
+        shell: bash
+        run: |
+          mkdir comfy_temp
+          curl -L -o comfy_temp/comfyui.7z https://github.com/comfyanonymous/ComfyUI/releases/download/latest/ComfyUI_windows_portable_nvidia_cu118_or_cpu.7z
+
+          7z x comfy_temp/comfyui.7z -o./comfy_temp
+
+
+          # mv comfy_temp/ComfyUI_windows_portable/python_embeded .
+          # mv comfy_temp/ComfyUI_windows_portable/ComfyUI .
+          # mv comfy_temp/ComfyUI_windows_portable/update .
+          ls
+          mv comfy_temp/ComfyUI_windows_portable .
+
+      - name: 💾 Store cache
+        uses: actions/cache/save@v3
+        if: steps.cache-comfy.outputs.cache-hit != 'true'
+        with:
+          path: ComfyUI_windows_portable
+          key: ${{ runner.os }}-comfy-env
+      - name: ⏬ Install other extensions
+        shell: bash
+        run: |
+          export COMFY_PYTHON="${GITHUB_WORKSPACE}/ComfyUI_windows_portable/python_embeded/python.exe"
+          cd "${GITHUB_WORKSPACE}/ComfyUI_windows_portable/ComfyUI/custom_nodes"
+
+          git clone https://github.com/Fannovel16/comfy_controlnet_preprocessors
+          cd comfy_controlnet_preprocessors
+          $COMFY_PYTHON -m pip install -r requirements.txt
+          
+      - name: ♻️ Checking out comfy_mtb to custom_nodes
+        uses: actions/checkout@v3
+        with:
+          submodules: 'recursive'
+          path: ComfyUI_windows_portable/ComfyUI/custom_nodes/${{ env.repo_name }}
+
+      - name: 📦 Install mtb nodes
+        shell: bash
+        run: |
+          # run install
+          export COMFY_PYTHON="${GITHUB_WORKSPACE}/ComfyUI_windows_portable/python_embeded/python.exe"
+          cd "${GITHUB_WORKSPACE}/ComfyUI_windows_portable/ComfyUI/custom_nodes"
+          $COMFY_PYTHON ${{ env.repo_name }}/install.py -w
+
+      - name: ⏬ Import mtb_nodes
+        shell: bash
+        run: |
+          export COMFY_PYTHON="${GITHUB_WORKSPACE}/ComfyUI_windows_portable/python_embeded/python.exe"
+          cd "${GITHUB_WORKSPACE}/ComfyUI_windows_portable/ComfyUI"
+          $COMFY_PYTHON -s main.py --quick-test-for-ci --cpu
+
+          $COMFY_PYTHON -m pip freeze

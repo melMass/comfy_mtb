@@ -31,10 +31,10 @@ const styles = {
     background: 'none',
     border: 'none',
     color: '#fff',
-    zIndex: 9999999,
+    zIndex: 1000,
     fontSize: '30px',
     cursor: 'pointer',
-    pointerEvents: 'bounding-box',
+    pointerEvents: 'auto',
     ...extra,
   }),
   img_list: {
@@ -43,7 +43,7 @@ const styles = {
     width: '100vw',
     position: 'absolute',
     bottom: 0,
-    zIndex: 9999999,
+    zIndex: 10,
     background: '#333',
     overflow: 'auto',
   },
@@ -53,10 +53,21 @@ let currentImageIndex = 0
 const imageUrls = []
 
 let image_menu = null
+let activated = true
 
 app.registerExtension({
   name: 'mtb.ImageFeed',
-  setup: async () => {
+  init: async () => {
+    const pythongossFeed = app.extensions.find(
+      (e) => e.name == 'pysssss.ImageFeed'
+    )
+    if (pythongossFeed) {
+      console.warn(
+        "[mtb] - Aborting the loading of mtb's imageFeed in favor of pysssss.ImageFeed"
+      )
+      activated = false // just in case other methods are added later on
+      return
+    }
     // - HTML & CSS
     //- lightbox
     const lightboxContainer = document.createElement('div')
@@ -209,11 +220,14 @@ app.registerExtension({
       Object.assign(but.style, {
         height: '120px',
         width: '120px',
+        border: 'none',
+        padding: 0,
+        margin: 0,
       })
       Object.assign(img.style, {
         width: '100%',
         height: '100%',
-        objectFit: 'scale-down',
+        objectFit: 'cover',
       })
 
       img.src = `/view?filename=${encodeURIComponent(src.filename)}&type=${
@@ -223,6 +237,10 @@ app.registerExtension({
       imageUrls.push(img.src)
 
       console.debug(img.src)
+
+      img.onload = () => {
+        but.style.width = `${120 * (img.naturalWidth / img.naturalHeight)}px`
+      }
 
       but.onclick = () => {
         lightboxContainer.style.display = 'flex'
@@ -270,9 +288,11 @@ app.registerExtension({
         if (history.outputs) {
           for (const key of Object.keys(history.outputs)) {
             console.debug(key)
-            for (const im of history.outputs[key].images) {
-              console.debug(im)
-              createImageBtn(im)
+            if (history.outputs[key].images) {
+              for (const im of history.outputs[key].images) {
+                console.debug(im)
+                createImageBtn(im)
+              }
             }
           }
           // for (const src of outputs.outputs.images) {

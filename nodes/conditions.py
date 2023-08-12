@@ -1,10 +1,91 @@
-from ..utils import pil2tensor
-from ..utils import here, comfy_dir
+from ..utils import here
 from ..log import log
 import folder_paths
 from pathlib import Path
 import shutil
 import csv
+
+
+class InterpolateClipSequential:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "base_text": ("STRING", {"multiline": True}),
+                "text_to_replace": ("STRING", {"default": ""}),
+                "clip": ("CLIP",),
+                "interpolation_strength": (
+                    "FLOAT",
+                    {"default": 1.0, "min": 0.0, "max": 1.0, "step": 0.01},
+                ),
+            }
+        }
+
+    RETURN_TYPES = ("CONDITIONING",)
+    FUNCTION = "interpolate_encodings_sequential"
+
+    CATEGORY = "mtb/conditioning"
+
+    def interpolate_encodings_sequential(
+        self, base_text, text_to_replace, clip, interpolation_strength, **replacements
+    ):
+        log.debug(f"Received interpolation_strength: {interpolation_strength}")
+
+        # - Ensure interpolation strength is within [0, 1]
+        interpolation_strength = max(0.0, min(1.0, interpolation_strength))
+
+        # - Check if replacements were provided
+        if not replacements:
+            raise ValueError("At least one replacement should be provided.")
+
+        num_replacements = len(replacements)
+        log.debug(f"Number of replacements: {num_replacements}")
+
+        segment_length = 1.0 / num_replacements
+        log.debug(f"Calculated segment_length: {segment_length}")
+
+        # - Find the segment that the interpolation_strength falls into
+        segment_index = min(
+            int(interpolation_strength // segment_length), num_replacements - 1
+        )
+        log.debug(f"Segment index: {segment_index}")
+
+        # - Calculate the local strength within the segment
+        local_strength = (
+            interpolation_strength - (segment_index * segment_length)
+        ) / segment_length
+        log.debug(f"Local strength: {local_strength}")
+
+        # - If it's the first segment, interpolate between base_text and the first replacement
+        if segment_index == 0:
+            replacement_text = list(replacements.values())[0]
+            log.debug("Using the base text a the base blend")
+            # -  Start with the base_text condition
+            tokens = clip.tokenize(base_text)
+            cond_from, pooled_from = clip.encode_from_tokens(tokens, return_pooled=True)
+        else:
+            base_replace = list(replacements.values())[segment_index - 1]
+            log.debug(f"Using {base_replace} a the base blend")
+
+            # - Start with the base_text condition replaced by the closest replacement
+            tokens = clip.tokenize(base_text.replace(text_to_replace, base_replace))
+            cond_from, pooled_from = clip.encode_from_tokens(tokens, return_pooled=True)
+
+            replacement_text = list(replacements.values())[segment_index]
+
+        interpolated_text = base_text.replace(text_to_replace, replacement_text)
+        tokens = clip.tokenize(interpolated_text)
+        cond_to, pooled_to = clip.encode_from_tokens(tokens, return_pooled=True)
+
+        # - Linearly interpolate between the two conditions
+        interpolated_condition = (
+            1.0 - local_strength
+        ) * cond_from + local_strength * cond_to
+        interpolated_pooled = (
+            1.0 - local_strength
+        ) * pooled_from + local_strength * pooled_to
+
+        return ([[interpolated_condition, {"pooled_output": interpolated_pooled}]],)
 
 
 class SmartStep:
@@ -97,110 +178,4 @@ class StylesLoader:
         return (self.options[style_name][0], self.options[style_name][1])
 
 
-class TextToImage:
-    """Utils to convert text to image using a font
-
-
-    The tool looks for any .ttf file in the Comfy folder hierarchy.
-    """
-
-    fonts = {}
-
-    def __init__(self):
-        # - This is executed when the graph is executed, we could conditionaly reload fonts there
-        pass
-
-    @classmethod
-    def CACHE_FONTS(cls):
-        font_extensions = ["*.ttf", "*.otf", "*.woff", "*.woff2", "*.eot"]
-        fonts = []
-
-        for extension in font_extensions:
-            fonts.extend(comfy_dir.glob(f"**/{extension}"))
-
-        if not fonts:
-            log.warn(
-                "> No fonts found in the comfy folder, place at least one font file somewhere in ComfyUI's hierarchy"
-            )
-        else:
-            log.debug(f"> Found {len(fonts)} fonts")
-
-        for font in fonts:
-            log.debug(f"Adding font {font}")
-            cls.fonts[font.stem] = font.as_posix()
-
-    @classmethod
-    def INPUT_TYPES(cls):
-        if not cls.fonts:
-            cls.CACHE_FONTS()
-        else:
-            log.debug(f"Using cached fonts (count: {len(cls.fonts)})")
-        return {
-            "required": {
-                "text": (
-                    "STRING",
-                    {"default": "Hello world!"},
-                ),
-                "font": ((sorted(cls.fonts.keys())),),
-                "wrap": (
-                    "INT",
-                    {"default": 120, "min": 0, "max": 8096, "step": 1},
-                ),
-                "font_size": (
-                    "INT",
-                    {"default": 12, "min": 1, "max": 2500, "step": 1},
-                ),
-                "width": (
-                    "INT",
-                    {"default": 512, "min": 1, "max": 8096, "step": 1},
-                ),
-                "height": (
-                    "INT",
-                    {"default": 512, "min": 1, "max": 8096, "step": 1},
-                ),
-                # "position": (["INT"], {"default": 0, "min": 0, "max": 100, "step": 1}),
-                "color": (
-                    "COLOR",
-                    {"default": "black"},
-                ),
-                "background": (
-                    "COLOR",
-                    {"default": "white"},
-                ),
-            }
-        }
-
-    RETURN_TYPES = ("IMAGE",)
-    RETURN_NAMES = ("image",)
-    FUNCTION = "text_to_image"
-    CATEGORY = "mtb/generate"
-
-    def text_to_image(
-        self, text, font, wrap, font_size, width, height, color, background
-    ):
-        from PIL import Image, ImageDraw, ImageFont
-        import textwrap
-
-        font = self.fonts[font]
-        font = ImageFont.truetype(font, font_size)
-        if wrap == 0:
-            wrap = width / font_size
-        lines = textwrap.wrap(text, width=wrap)
-        log.debug(f"Lines: {lines}")
-        line_height = font.getsize("hg")[1]
-        img_height = height  # line_height * len(lines)
-        img_width = width  # max(font.getsize(line)[0] for line in lines)
-
-        img = Image.new("RGBA", (img_width, img_height), background)
-        draw = ImageDraw.Draw(img)
-        y_text = 0
-        for line in lines:
-            width, height = font.getsize(line)
-            draw.text((0, y_text), line, color, font=font)
-            y_text += height
-
-        # img.save(os.path.join(folder_paths.base_path, f'{str(uuid.uuid4())}.png'))
-        return (pil2tensor(img),)
-
-
-__nodes__ = [SmartStep, TextToImage, StylesLoader]
+__nodes__ = [SmartStep, StylesLoader, InterpolateClipSequential]

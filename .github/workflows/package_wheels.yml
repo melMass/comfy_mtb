@@ -27,21 +27,28 @@ jobs:
     steps:
       - name: ♻️ Checking out the repository
         uses: actions/checkout@v3
-      - name: "🐍 Setting up Python"
+      - name: '🐍 Setting up Python'
         uses: actions/setup-python@v4
         with:
-          python-version: "3.10.9"
+          python-version: '3.10.9'
 
       - name: 📦 Building and Bundling wheels
         shell: bash
         run: |
-          python -m pip wheel --no-cache-dir --no-deps -r requirements-wheels.txt -w ./wheels 2>&1 | tee build.log
+          python -m pip wheel --no-cache-dir -r reqs.txt -w ./wheels 2>&1 | tee build.log
 
           # find source wheels
           packages=$(cat build.log | awk -F 'Building wheels for collected packages: ' '{print $2}')
           packages=$(echo "$packages" | tr -d '[:space:]')
 
           IFS=', ' read -r -a package_array <<< "$packages"
+
+          # Save reversed package_array to wheel_order.txt
+          reversed_array=()
+          for ((idx=${#package_array[@]}-1; idx>=0; idx--)); do
+            reversed_array+=("${package_array[idx]}")
+          done
+          printf '%s\n' "${reversed_array[@]}" > ./wheels/wheel_order.txt
 
           printf "Autodetect this source package: \e[32m%s\e[0m\n" "${package_array[@]}"
 
@@ -69,4 +76,4 @@ jobs:
         uses: actions/cache/save@v3
         with:
           path: ${{ env.archive_name }}.zip
-          key: ${{ env.archive_name }}
+          key: ${{ env.archive_name }}-${{ hashFiles('reqs.txt') }}

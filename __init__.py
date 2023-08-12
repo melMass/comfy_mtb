@@ -5,11 +5,13 @@
 # Project: comfy_mtb
 # Author: Mel Massadian
 # Copyright (c) 2023 Mel Massadian
-# 
+#
 ###
 import os
 
+# todo: don't override this if the user has that setup already
 os.environ["TF_FORCE_GPU_ALLOW_GROWTH"] = "true"
+os.environ["TF_GPU_ALLOCATOR"] = "cuda_malloc_async"
 
 import traceback
 from .log import log, blue_text, cyan_text, get_summary, get_label
@@ -24,7 +26,7 @@ NODE_CLASS_MAPPINGS = {}
 NODE_DISPLAY_NAME_MAPPINGS = {}
 NODE_CLASS_MAPPINGS_DEBUG = {}
 
-__version__ = "0.1.1"
+__version__ = "0.1.4"
 
 
 def extract_nodes_from_source(filename):
@@ -43,19 +45,15 @@ def extract_nodes_from_source(filename):
                 if isinstance(target, ast.Name) and target.id == "__nodes__":
                     value = ast.get_source_segment(source_code, node.value)
                     node_value = ast.parse(value).body[0].value
-                    if isinstance(node_value, ast.List) or isinstance(
-                        node_value, ast.Tuple
-                    ):
-                        for element in node_value.elts:
-                            if isinstance(element, ast.Name):
-                                print(element.id)
-                                nodes.append(element.id)
-
+                    if isinstance(node_value, (ast.List, ast.Tuple)):
+                        nodes.extend(
+                            element.id
+                            for element in node_value.elts
+                            if isinstance(element, ast.Name)
+                        )
                     break
     except SyntaxError:
         log.error("Failed to parse")
-        pass  # File couldn't be parsed
-
     return nodes
 
 
@@ -112,8 +110,16 @@ if web_mtb.exists():
 
 elif web_extensions_root.exists():
     web_tgt = here / "web"
+    src = web_tgt.as_posix()
+    dst = web_mtb.as_posix()
     try:
-        os.symlink(web_tgt.as_posix(), web_mtb.as_posix())
+        if os.name == "nt":
+            import _winapi
+
+            _winapi.CreateJunction(src, dst)
+        else:
+            os.symlink(web_tgt.as_posix(), web_mtb.as_posix())
+
     except OSError:
         log.warn(f"Failed to create symlink to {web_mtb}, trying to copy it")
         try:
@@ -121,15 +127,17 @@ elif web_extensions_root.exists():
 
             shutil.copytree(web_tgt, web_mtb)
             log.info(f"Successfully copied {web_tgt} to {web_mtb}")
-        except Exception:
+        except Exception as e:
             log.warn(
                 f"Failed to symlink and copy {web_tgt} to {web_mtb}. Please copy the folder manually."
             )
+            log.warn(e)
 
-    except Exception:  # OSError
+    except Exception as e:
         log.warn(
             f"Failed to create symlink to {web_mtb}. Please copy the folder manually."
         )
+        log.warn(e)
 else:
     log.warn(
         f"Comfy root probably not found automatically, please copy the folder {web_mtb} manually in the web/extensions folder of ComfyUI"
@@ -174,123 +182,132 @@ from importlib import reload
 import logging
 from .endpoint import endlog
 
+if hasattr(PromptServer, "instance"):
+    restore_deps = ["basicsr"]
+    swap_deps = ["insightface", "onnxruntime"]
 
-@PromptServer.instance.routes.get("/mtb/status")
-async def get_full_library(request):
-    from . import endpoint
+    node_dependency_mapping = {
+        "FaceSwap": swap_deps,
+        "LoadFaceSwapModel": swap_deps,
+        "LoadFaceAnalysisModel": restore_deps,
+    }
 
-    reload(endpoint)
+    @PromptServer.instance.routes.get("/mtb/status")
+    async def get_full_library(request):
+        from . import endpoint
 
-    endlog.debug("Getting node registration status")
-    # Check if the request prefers HTML content
-    if "text/html" in request.headers.get("Accept", ""):
-        # # Return an HTML page
-        html_response = endpoint.render_table(
-            NODE_CLASS_MAPPINGS_DEBUG, title="Registered"
+        reload(endpoint)
+
+        endlog.debug("Getting node registration status")
+        # Check if the request prefers HTML content
+        if "text/html" in request.headers.get("Accept", ""):
+            # # Return an HTML page
+            html_response = endpoint.render_table(
+                NODE_CLASS_MAPPINGS_DEBUG, title="Registered"
+            )
+            html_response += endpoint.render_table(
+                {
+                    k: {"dependencies": node_dependency_mapping.get(k)}
+                    if node_dependency_mapping.get(k)
+                    else "-"
+                    for k in failed
+                },
+                title="Failed to load",
+            )
+
+            return web.Response(
+                text=endpoint.render_base_template("MTB", html_response),
+                content_type="text/html",
+            )
+
+        return web.json_response(
+            {
+                "registered": NODE_CLASS_MAPPINGS_DEBUG,
+                "failed": failed,
+            }
         )
-        html_response += endpoint.render_table(
-            {k: "-" for k in failed}, title="Failed to load"
-        )
 
-        return web.Response(
-            text=endpoint.render_base_template("MTB", html_response),
-            content_type="text/html",
-        )
+    @PromptServer.instance.routes.post("/mtb/debug")
+    async def set_debug(request):
+        json_data = await request.json()
+        enabled = json_data.get("enabled")
+        if enabled:
+            os.environ["MTB_DEBUG"] = "true"
+            log.setLevel(logging.DEBUG)
+            log.debug("Debug mode set from API (/mtb/debug POST route)")
 
-    return web.json_response(
-        {
-            "registered": NODE_CLASS_MAPPINGS_DEBUG,
-            "failed": failed,
-        }
-    )
-
-
-@PromptServer.instance.routes.post("/mtb/debug")
-async def set_debug(request):
-    json_data = await request.json()
-    enabled = json_data.get("enabled")
-    if enabled:
-        os.environ["MTB_DEBUG"] = "true"
-        log.setLevel(logging.DEBUG)
-        log.debug("Debug mode set from API (/mtb/debug POST route)")
-
-    else:
-        if "MTB_DEBUG" in os.environ:
+        elif "MTB_DEBUG" in os.environ:
             # del os.environ["MTB_DEBUG"]
             os.environ.pop("MTB_DEBUG")
             log.setLevel(logging.INFO)
 
-    return web.json_response({"message": f"Debug mode {'set' if enabled else 'unset'}"})
-
-
-@PromptServer.instance.routes.get("/mtb")
-async def get_home(request):
-    from . import endpoint
-
-    reload(endpoint)
-    # Check if the request prefers HTML content
-    if "text/html" in request.headers.get("Accept", ""):
-        # # Return an HTML page
-        html_response = f"""
-        <div class="flex-container menu">
-            <a href="/mtb/debug">debug</a>
-            <a href="/mtb/status">status</a>
-        </div>            
-        """
-        return web.Response(
-            text=endpoint.render_base_template("MTB", html_response),
-            content_type="text/html",
+        return web.json_response(
+            {"message": f"Debug mode {'set' if enabled else 'unset'}"}
         )
 
-    # Return JSON for other requests
-    return web.json_response({"message": "Welcome to MTB!"})
+    @PromptServer.instance.routes.get("/mtb")
+    async def get_home(request):
+        from . import endpoint
 
+        reload(endpoint)
+        # Check if the request prefers HTML content
+        if "text/html" in request.headers.get("Accept", ""):
+            # # Return an HTML page
+            html_response = """
+            <div class="flex-container menu">
+                <a href="/mtb/debug">debug</a>
+                <a href="/mtb/status">status</a>
+            </div>            
+            """
+            return web.Response(
+                text=endpoint.render_base_template("MTB", html_response),
+                content_type="text/html",
+            )
 
-@PromptServer.instance.routes.get("/mtb/debug")
-async def get_debug(request):
-    from . import endpoint
+        # Return JSON for other requests
+        return web.json_response({"message": "Welcome to MTB!"})
 
-    reload(endpoint)
-    enabled = False
-    if "MTB_DEBUG" in os.environ:
-        enabled = True
-    # Check if the request prefers HTML content
-    if "text/html" in request.headers.get("Accept", ""):
-        # # Return an HTML page
-        html_response = f"""
-            <h1>MTB Debug Status: {'Enabled' if enabled else 'Disabled'}</h1>
-        """
-        return web.Response(
-            text=endpoint.render_base_template("Debug", html_response),
-            content_type="text/html",
-        )
+    @PromptServer.instance.routes.get("/mtb/debug")
+    async def get_debug(request):
+        from . import endpoint
 
-    # Return JSON for other requests
-    return web.json_response({"enabled": enabled})
+        reload(endpoint)
+        enabled = "MTB_DEBUG" in os.environ
+        # Check if the request prefers HTML content
+        if "text/html" in request.headers.get("Accept", ""):
+            # # Return an HTML page
+            html_response = f"""
+                <h1>MTB Debug Status: {'Enabled' if enabled else 'Disabled'}</h1>
+            """
+            return web.Response(
+                text=endpoint.render_base_template("Debug", html_response),
+                content_type="text/html",
+            )
 
+        # Return JSON for other requests
+        return web.json_response({"enabled": enabled})
 
-@PromptServer.instance.routes.get("/mtb/actions")
-async def no_route(request):
-    from . import endpoint
+    @PromptServer.instance.routes.get("/mtb/actions")
+    async def no_route(request):
+        from . import endpoint
 
-    if "text/html" in request.headers.get("Accept", ""):
-        html_response = f"""
-         <h1>Actions has no get for now...</h1>
-        """
-        return web.Response(
-            text=endpoint.render_base_template("Actions", html_response),
-            content_type="text/html",
-        )
-    return web.json_response({"message": "actions has no get for now"})
+        if "text/html" in request.headers.get("Accept", ""):
+            html_response = """
+            <h1>Actions has no get for now...</h1>
+            """
+            return web.Response(
+                text=endpoint.render_base_template("Actions", html_response),
+                content_type="text/html",
+            )
+        return web.json_response({"message": "actions has no get for now"})
 
+    @PromptServer.instance.routes.post("/mtb/actions")
+    async def do_action(request):
+        from . import endpoint
 
-@PromptServer.instance.routes.post("/mtb/actions")
-async def do_action(request):
-    from . import endpoint
+        reload(endpoint)
 
-    reload(endpoint)
-
-    return await endpoint.do_action(request)
+        return await endpoint.do_action(request)
 
 
 # - WAS Dictionary

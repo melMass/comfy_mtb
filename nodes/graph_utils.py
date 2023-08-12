@@ -1,4 +1,133 @@
 from ..log import log
+from PIL import Image
+import urllib.request
+import urllib.parse
+import torch
+import json
+from comfy.cli_args import args
+from ..utils import pil2tensor, apply_easing
+import io
+import numpy as np
+
+
+def get_image(filename, subfolder, folder_type):
+    log.debug(f"Getting image {filename} from {subfolder} of {folder_type}")
+    data = {"filename": filename, "subfolder": subfolder, "type": folder_type}
+    url_values = urllib.parse.urlencode(data)
+    with urllib.request.urlopen(
+        f"http://{args.listen}:{args.port}/view?{url_values}"
+    ) as response:
+        return io.BytesIO(response.read())
+
+
+class GetBatchFromHistory:
+    """Very experimental node to load images from the history of the server.
+
+    Queue items without output are ignored in the count."""
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "enable": ("BOOLEAN", {"default": True}),
+                "count": ("INT", {"default": 1, "min": 0}),
+                "offset": ("INT", {"default": 0, "min": -1e9, "max": 1e9}),
+                "internal_count": ("INT", {"default": 0}),
+            },
+            "optional": {
+                "passthrough_image": ("IMAGE",),
+            },
+        }
+
+    RETURN_TYPES = ("IMAGE",)
+    RETURN_NAMES = ("images",)
+    CATEGORY = "mtb/animation"
+    FUNCTION = "load_from_history"
+
+    def load_from_history(
+        self,
+        enable=True,
+        count=0,
+        offset=0,
+        internal_count=0,  # hacky way to invalidate the node
+        passthrough_image=None,
+    ):
+        if not enable or count == 0:
+            if passthrough_image is not None:
+                log.debug("Using passthrough image")
+                return (passthrough_image,)
+            log.debug("Load from history is disabled for this iteration")
+            return (torch.zeros(0),)
+        frames = []
+
+        with urllib.request.urlopen(
+            f"http://{args.listen}:{args.port}/history"
+        ) as response:
+            return self.load_batch_frames(response, offset, count, frames)
+
+    def load_batch_frames(self, response, offset, count, frames):
+        history = json.loads(response.read())
+
+        output_images = []
+
+        for run in history.values():
+            for node_output in run["outputs"].values():
+                if "images" in node_output:
+                    for image in node_output["images"]:
+                        image_data = get_image(
+                            image["filename"], image["subfolder"], image["type"]
+                        )
+                        output_images.append(image_data)
+
+        if not output_images:
+            return (torch.zeros(0),)
+
+        # Directly get desired range of images
+        start_index = max(len(output_images) - offset - count, 0)
+        end_index = len(output_images) - offset
+        selected_images = output_images[start_index:end_index]
+
+        frames = [Image.open(image) for image in selected_images]
+
+        if not frames:
+            return (torch.zeros(0),)
+        elif len(frames) != count:
+            log.warning(f"Expected {count} images, got {len(frames)} instead")
+
+        output = pil2tensor(frames)
+
+        return (output,)
+
+
+class AnyToString:
+    """Tries to take any input and convert it to a string"""
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {"input": ("*")},
+        }
+
+    RETURN_TYPES = ("STRING",)
+    FUNCTION = "do_str"
+    CATEGORY = "mtb/converters"
+
+    def do_str(self, input):
+        if isinstance(input, str):
+            return (input,)
+        elif isinstance(input, torch.Tensor):
+            return (f"Tensor of shape {input.shape} and dtype {input.dtype}",)
+        elif isinstance(input, Image.Image):
+            return (f"PIL Image of size {input.size} and mode {input.mode}",)
+        elif isinstance(input, np.ndarray):
+            return (f"Numpy array of shape {input.shape} and dtype {input.dtype}",)
+
+        elif isinstance(input, dict):
+            return (f"Dictionary of {len(input)} items, with keys {input.keys()}",)
+
+        else:
+            log.debug(f"Falling back to string conversion of {input}")
+            return (str(input),)
 
 
 class StringReplace:
@@ -38,11 +167,38 @@ class FitNumber:
         return {
             "required": {
                 "value": ("FLOAT", {"default": 0, "forceInput": True}),
-                "clamp": ("BOOL", {"default": False}),
+                "clamp": ("BOOLEAN", {"default": False}),
                 "source_min": ("FLOAT", {"default": 0.0}),
                 "source_max": ("FLOAT", {"default": 1.0}),
                 "target_min": ("FLOAT", {"default": 0.0}),
                 "target_max": ("FLOAT", {"default": 1.0}),
+                "easing": (
+                    [
+                        "Linear",
+                        "Sine In",
+                        "Sine Out",
+                        "Sine In/Out",
+                        "Quart In",
+                        "Quart Out",
+                        "Quart In/Out",
+                        "Cubic In",
+                        "Cubic Out",
+                        "Cubic In/Out",
+                        "Circ In",
+                        "Circ Out",
+                        "Circ In/Out",
+                        "Back In",
+                        "Back Out",
+                        "Back In/Out",
+                        "Elastic In",
+                        "Elastic Out",
+                        "Elastic In/Out",
+                        "Bounce In",
+                        "Bounce Out",
+                        "Bounce In/Out",
+                    ],
+                    {"default": "Linear"},
+                ),
             }
         }
 
@@ -58,10 +214,14 @@ class FitNumber:
         source_max: float,
         target_min: float,
         target_max: float,
+        easing: str,
     ):
-        res = target_min + (target_max - target_min) * (value - source_min) / (
-            source_max - source_min
-        )
+        normalized_value = (value - source_min) / (source_max - source_min)
+
+        eased_value = apply_easing(normalized_value, easing)
+
+        # - Convert the eased value to the target range
+        res = target_min + (target_max - target_min) * eased_value
 
         if clamp:
             if target_min > target_max:
@@ -72,4 +232,4 @@ class FitNumber:
         return (res,)
 
 
-__nodes__ = [StringReplace, FitNumber]
+__nodes__ = [StringReplace, FitNumber, GetBatchFromHistory, AnyToString]
