@@ -265,7 +265,7 @@
         "Node name for S&R": "CLIPTextEncode"
       },
       "widgets_values": [
-        "Closeup portrait of an old bearded Caucasian man smiling, (NYC 1995), trench coat, golden ring, brown eyes"
+        "Medium cinematic shot of an old Caucasian man smiling, (NYC 1995), trench coat, golden ring, brown eyes, (with a blue light saber)"
       ]
     },
     {
@@ -425,65 +425,6 @@
       ]
     },
     {
-      "id": 3,
-      "type": "KSampler",
-      "pos": [
-        -483,
-        -21
-      ],
-      "size": [
-        315,
-        474
-      ],
-      "flags": {},
-      "order": 14,
-      "mode": 0,
-      "inputs": [
-        {
-          "name": "model",
-          "type": "MODEL",
-          "link": 120
-        },
-        {
-          "name": "positive",
-          "type": "CONDITIONING",
-          "link": 4
-        },
-        {
-          "name": "negative",
-          "type": "CONDITIONING",
-          "link": 6
-        },
-        {
-          "name": "latent_image",
-          "type": "LATENT",
-          "link": 2
-        }
-      ],
-      "outputs": [
-        {
-          "name": "LATENT",
-          "type": "LATENT",
-          "links": [
-            138
-          ],
-          "slot_index": 0
-        }
-      ],
-      "properties": {
-        "Node name for S&R": "KSampler"
-      },
-      "widgets_values": [
-        542821171533322,
-        "fixed",
-        45,
-        8,
-        "dpmpp_sde",
-        "simple",
-        1
-      ]
-    },
-    {
       "id": 66,
       "type": "VAEDecodeTiled",
       "pos": [
@@ -584,7 +525,7 @@
         52
       ],
       "size": [
-        260.3902351585391,
+        260.3902282714844,
         58
       ],
       "flags": {},
@@ -615,8 +556,8 @@
         40
       ],
       "size": [
-        265.97600515853924,
-        87.31192548828142
+        265.97601318359375,
+        87.31192779541016
       ],
       "flags": {},
       "order": 11,
@@ -795,8 +736,66 @@
         "Node name for S&R": "Face Swap (mtb)"
       },
       "widgets_values": [
-        "0",
-        false
+        "0"
+      ]
+    },
+    {
+      "id": 3,
+      "type": "KSampler",
+      "pos": [
+        -483,
+        -21
+      ],
+      "size": [
+        315,
+        474
+      ],
+      "flags": {},
+      "order": 14,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "link": 120
+        },
+        {
+          "name": "positive",
+          "type": "CONDITIONING",
+          "link": 4
+        },
+        {
+          "name": "negative",
+          "type": "CONDITIONING",
+          "link": 6
+        },
+        {
+          "name": "latent_image",
+          "type": "LATENT",
+          "link": 2
+        }
+      ],
+      "outputs": [
+        {
+          "name": "LATENT",
+          "type": "LATENT",
+          "links": [
+            138
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "KSampler"
+      },
+      "widgets_values": [
+        542071534529,
+        "fixed",
+        32,
+        9,
+        "dpmpp_2m",
+        "normal",
+        1
       ]
     }
   ],

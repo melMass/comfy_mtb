@@ -1,6 +1,6 @@
 {
   "last_node_id": 86,
-  "last_link_id": 171,
+  "last_link_id": 172,
   "nodes": [
     {
       "id": 59,
@@ -112,40 +112,6 @@
       }
     },
     {
-      "id": 5,
-      "type": "EmptyLatentImage",
-      "pos": [
-        -1410,
-        660
-      ],
-      "size": [
-        315,
-        106
-      ],
-      "flags": {},
-      "order": 0,
-      "mode": 0,
-      "outputs": [
-        {
-          "name": "LATENT",
-          "type": "LATENT",
-          "links": [
-            2,
-            153
-          ],
-          "slot_index": 0
-        }
-      ],
-      "properties": {
-        "Node name for S&R": "EmptyLatentImage"
-      },
-      "widgets_values": [
-        768,
-        512,
-        1
-      ]
-    },
-    {
       "id": 3,
       "type": "KSampler",
       "pos": [
@@ -211,7 +177,7 @@
         "Node name for S&R": "KSampler"
       },
       "widgets_values": [
-        45,
+        1682,
         "fixed",
         45,
         8,
@@ -232,7 +198,7 @@
         58
       ],
       "flags": {},
-      "order": 1,
+      "order": 0,
       "mode": 0,
       "outputs": [
         {
@@ -263,7 +229,7 @@
         246
       ],
       "flags": {},
-      "order": 23,
+      "order": 22,
       "mode": 0,
       "inputs": [
         {
@@ -289,7 +255,7 @@
         75.28300476074219
       ],
       "flags": {},
-      "order": 18,
+      "order": 16,
       "mode": 0,
       "inputs": [
         {
@@ -301,7 +267,7 @@
         {
           "name": "text",
           "type": "STRING",
-          "link": 171,
+          "link": 172,
           "widget": {
             "name": "text",
             "config": [
@@ -437,7 +403,7 @@
       "flags": {
         "collapsed": false
       },
-      "order": 20,
+      "order": 19,
       "mode": 0,
       "inputs": [
         {
@@ -480,7 +446,7 @@
         474
       ],
       "flags": {},
-      "order": 19,
+      "order": 18,
       "mode": 0,
       "inputs": [
         {
@@ -536,7 +502,7 @@
         "Node name for S&R": "KSampler"
       },
       "widgets_values": [
-        45,
+        1682,
         "fixed",
         45,
         8,
@@ -557,7 +523,7 @@
         98
       ],
       "flags": {},
-      "order": 2,
+      "order": 1,
       "mode": 0,
       "outputs": [
         {
@@ -648,7 +614,7 @@
         46
       ],
       "flags": {},
-      "order": 21,
+      "order": 20,
       "mode": 0,
       "inputs": [
         {
@@ -757,10 +723,10 @@
       ],
       "size": [
         294,
-        104.4554216999652
+        104.4554214477539
       ],
       "flags": {},
-      "order": 3,
+      "order": 2,
       "mode": 0,
       "outputs": [
         {
@@ -847,7 +813,7 @@
         78
       ],
       "flags": {},
-      "order": 22,
+      "order": 21,
       "mode": 0,
       "inputs": [
         {
@@ -882,34 +848,36 @@
       ]
     },
     {
-      "id": 85,
-      "type": "Save Gif (mtb)",
+      "id": 83,
+      "type": "Text box",
       "pos": [
-        1546,
-        401
+        -2456,
+        236
       ],
       "size": [
-        210,
-        336
+        400,
+        200
       ],
       "flags": {},
-      "order": 24,
+      "order": 3,
       "mode": 0,
-      "inputs": [
+      "outputs": [
         {
-          "name": "image",
-          "type": "IMAGE",
-          "link": 169
+          "name": "STRING",
+          "type": "STRING",
+          "links": [
+            166,
+            167
+          ],
+          "shape": 3,
+          "slot_index": 0
         }
       ],
       "properties": {
-        "Node name for S&R": "Save Gif (mtb)"
+        "Node name for S&R": "Text box"
       },
       "widgets_values": [
-        12,
-        0.7,
-        true,
-        "/view?filename=eda71478da.gif&subfolder=&type=output"
+        "Close up photo of the face of a Caucasian young man (looking down, and frowning), rim lighting, Tokyo 1987, Bernard, over a blue sky, blue eyes shaved close"
       ]
     },
     {
@@ -951,49 +919,16 @@
       "title": "seed",
       "properties": {},
       "widgets_values": [
-        45,
+        1682,
         "fixed"
-      ]
-    },
-    {
-      "id": 83,
-      "type": "Text box",
-      "pos": [
-        -2456,
-        236
-      ],
-      "size": [
-        400,
-        200
-      ],
-      "flags": {},
-      "order": 5,
-      "mode": 0,
-      "outputs": [
-        {
-          "name": "STRING",
-          "type": "STRING",
-          "links": [
-            166,
-            167
-          ],
-          "shape": 3,
-          "slot_index": 0
-        }
-      ],
-      "properties": {
-        "Node name for S&R": "Text box"
-      },
-      "widgets_values": [
-        "Close up photo of the face of a man (looking down, and frowning), rim lighting, Tokyo 1987, Bernard, over a blue sky, blue eyes and a long beard"
       ]
     },
     {
       "id": 69,
       "type": "String Replace (mtb)",
       "pos": [
-        -1442,
-        -1
+        -1529,
+        -3
       ],
       "size": [
         315,
@@ -1014,7 +949,7 @@
           "name": "STRING",
           "type": "STRING",
           "links": [
-            170
+            172
           ],
           "shape": 3,
           "slot_index": 0
@@ -1024,48 +959,75 @@
         "Node name for S&R": "String Replace (mtb)"
       },
       "widgets_values": [
-        "looking down",
-        "looking up"
+        "a Caucasian young",
+        "an African old"
       ]
     },
     {
-      "id": 86,
-      "type": "String Replace (mtb)",
+      "id": 5,
+      "type": "EmptyLatentImage",
       "pos": [
-        -1082,
-        1
+        -1410,
+        660
       ],
       "size": [
         315,
-        82
+        106
       ],
       "flags": {},
-      "order": 16,
+      "order": 5,
       "mode": 0,
-      "inputs": [
-        {
-          "name": "string",
-          "type": "STRING",
-          "link": 170
-        }
-      ],
       "outputs": [
         {
-          "name": "STRING",
-          "type": "STRING",
+          "name": "LATENT",
+          "type": "LATENT",
           "links": [
-            171
+            2,
+            153
           ],
-          "shape": 3,
           "slot_index": 0
         }
       ],
       "properties": {
-        "Node name for S&R": "String Replace (mtb)"
+        "Node name for S&R": "EmptyLatentImage"
       },
       "widgets_values": [
-        "frowning",
-        "smiling"
+        768,
+        320,
+        1
+      ]
+    },
+    {
+      "id": 85,
+      "type": "Save Gif (mtb)",
+      "pos": [
+        1519,
+        364
+      ],
+      "size": [
+        862.6054045703117,
+        496.63413712402314
+      ],
+      "flags": {},
+      "order": 23,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "link": 169
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "Save Gif (mtb)"
+      },
+      "widgets_values": [
+        12,
+        0.7,
+        true,
+        "/view?filename=eda71478da.gif&subfolder=&type=output",
+        "nearest",
+        "/view?filename=421883da47.gif&subfolder=&type=output"
       ]
     }
   ],
@@ -1327,16 +1289,8 @@
       "IMAGE"
     ],
     [
-      170,
+      172,
       69,
-      0,
-      86,
-      0,
-      "STRING"
-    ],
-    [
-      171,
-      86,
       0,
       71,
       1,
