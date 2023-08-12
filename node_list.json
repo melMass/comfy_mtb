@@ -17,9 +17,11 @@
     "Float To Number (mtb)": "Node addon for the WAS Suite. Converts a \"comfy\" FLOAT to a NUMBER.",
     "Get Batch From History (mtb)": "Very experimental node to load images from the history of the server.\n\n    Queue items without output are ignored in the count.",
     "Image Compare (mtb)": "Compare two images and return a difference image",
+    "Image Distort With Uv (mtb)": "Distorts an image based on a UV map.",
     "Image Premultiply (mtb)": "Premultiply image with mask",
     "Image Remove Background Rembg (mtb)": "Removes the background from the input using Rembg.",
     "Image Resize Factor (mtb)": "Extracted mostly from WAS Node Suite, with a few edits (most notably multiple image support) and less features.",
+    "Image To Uv (mtb)": "Turn an image back into a UV map. (Shallow converter)",
     "Int To Bool (mtb)": "Basic int to bool conversion",
     "Int To Number (mtb)": "Node addon for the WAS Suite. Converts a \"comfy\" INT to a NUMBER.",
     "Latent Lerp (mtb)": "Linear interpolation (blend) between two latent vectors",
@@ -42,5 +44,10 @@
     "Text To Image (mtb)": "Utils to convert text to image using a font\n\n\n    The tool looks for any .ttf file in the Comfy folder hierarchy.\n    ",
     "Transform Image (mtb)": "Save torch tensors (image, mask or latent) to disk, useful to debug things outside comfy\n\n\n    it return a tensor representing the transformed images with the same shape as the input tensor\n    ",
     "Uncrop (mtb)": "Uncrops an image to a given bounding box\n\n    The bounding box can be given as a tuple of (x, y, width, height) or as a BBOX type\n    The BBOX input takes precedence over the tuple input",
-    "Unsplash Image (mtb)": "Unsplash Image given a keyword and a size"
+    "Unsplash Image (mtb)": "Unsplash Image given a keyword and a size",
+    "Uv Distort (mtb)": "Applies a polar coordinates or wave distortion to the UV map",
+    "Uv Map (mtb)": "Generates a UV Map tensor given a widht and height",
+    "Uv Remove Seams (mtb)": "Blends values near the UV borders to mitigate visible seams.",
+    "Uv Tile (mtb)": "Tiles the UV map based on the specified number of tiles.",
+    "Uv To Image (mtb)": "Converts the UV map to an image. (Shallow converter)"
 }

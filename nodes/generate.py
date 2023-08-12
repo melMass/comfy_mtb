@@ -1,5 +1,5 @@
 import qrcode
-from ..utils import pil2tensor
+from ..utils import pil2tensor, create_uv_map_tensor
 from ..utils import comfy_dir
 from typing import cast
 from PIL import Image
@@ -235,11 +235,11 @@ class TextToImage:
                 # "position": (["INT"], {"default": 0, "min": 0, "max": 100, "step": 1}),
                 "color": (
                     "COLOR",
-                    {"default": "black"},
+                    {"default": "#000000"},
                 ),
                 "background": (
                     "COLOR",
-                    {"default": "white"},
+                    {"default": "#FFFFFF"},
                 ),
             }
         }
@@ -278,9 +278,31 @@ class TextToImage:
         return (pil2tensor(img),)
 
 
+class UvMap:
+    """Generates a UV Map tensor given a widht and height"""
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "width": ("INT", {"default": 512, "min": 1, "max": 8096, "step": 1}),
+                "height": ("INT", {"default": 512, "min": 1, "max": 8096, "step": 1}),
+            }
+        }
+
+    RETURN_TYPES = ("UV_MAP",)
+    RETURN_NAMES = ("uv_map",)
+    FUNCTION = "create_uv_map"
+    CATEGORY = "mtb/generate"
+
+    def create_uv_map(self, width, height):
+        return (create_uv_map_tensor(width, height),)
+
+
 __nodes__ = [
     QrCode,
     UnsplashImage,
-    TextToImage
+    TextToImage,
+    UvMap
     #  MtbExamples,
 ]
