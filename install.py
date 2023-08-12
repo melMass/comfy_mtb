@@ -119,22 +119,13 @@ def print_formatted(text, *formats, color=None, background=None, **kwargs):
     encoded_header = header.encode("utf-8", errors="replace").decode("utf-8")
     encoded_text = formatted_text.encode("utf-8", errors="replace").decode("utf-8")
 
-    if sys.platform == "win32":
-        output_text = (
-            " " * len(encoded_header)
-            if kwargs.get("no_header")
-            else apply_color(apply_format(encoded_header, "bold"), color="yellow")
-        )
-        output_text += encoded_text + "\n"
-        sys.stdout.buffer.write(output_text.encode("utf-8"))
-    else:
-        print(
-            " " * len(encoded_header)
-            if kwargs.get("no_header")
-            else apply_color(apply_format(encoded_header, "bold"), color="yellow"),
-            encoded_text,
-            file=file,
-        )
+    print(
+        " " * len(encoded_header)
+        if kwargs.get("no_header")
+        else apply_color(apply_format(encoded_header, "bold"), color="yellow"),
+        encoded_text,
+        file=file,
+    )
 
 
 # endregion
@@ -142,12 +133,15 @@ def print_formatted(text, *formats, color=None, background=None, **kwargs):
 
 # region utils
 def enqueue_output(out, queue):
-    for line in iter(out.readline, b""):
-        queue.put(line)
+    for char in iter(lambda: out.read(1), b""):
+        queue.put(char)
     out.close()
 
 
-def run_command(cmd):
+def run_command(cmd, ignored_lines_start=None):
+    if ignored_lines_start is None:
+        ignored_lines_start = []
+
     if isinstance(cmd, str):
         shell_cmd = cmd
     elif isinstance(cmd, list):
@@ -193,18 +187,37 @@ def run_command(cmd):
     # Register the signal handler for keyboard interrupts (SIGINT)
     signal.signal(signal.SIGINT, signal_handler)
 
+    stdout_buffer = ""
+    stderr_buffer = ""
+
     # Process output from both streams until the process completes or interrupted
     while not interrupted and (
         process.poll() is None or not stdout_queue.empty() or not stderr_queue.empty()
     ):
         with suppress(Empty):
-            stdout_line = stdout_queue.get_nowait()
-            if stdout_line.strip() != "":
-                print(stdout_line.strip())
+            stdout_char = stdout_queue.get_nowait()
+            stdout_buffer += stdout_char
+            if stdout_char == "\n":
+                if not any(
+                    stdout_buffer.startswith(ign) for ign in ignored_lines_start
+                ):
+                    print(stdout_buffer.strip())
+                stdout_buffer = ""
         with suppress(Empty):
-            stderr_line = stderr_queue.get_nowait()
-            if stderr_line.strip() != "":
-                print(stderr_line.strip())
+            stderr_char = stderr_queue.get_nowait()
+            stderr_buffer += stderr_char
+            if stderr_char == "\n":
+                print(stderr_buffer.strip())
+                stderr_buffer = ""
+
+    # Print any remaining content in buffers
+    if stdout_buffer and not any(
+        stdout_buffer.startswith(ign) for ign in ignored_lines_start
+    ):
+        print(stdout_buffer.strip())
+    if stderr_buffer:
+        print(stderr_buffer.strip())
+
     return_code = process.returncode
 
     if return_code == 0 and not interrupted:
@@ -231,8 +244,6 @@ except ImportError:
     print_formatted("Installing tqdm...", "italic", color="yellow")
     run_command([sys.executable, "-m", "pip", "install", "--upgrade", "tqdm"])
     from tqdm import tqdm
-import importlib
-
 
 pip_map = {
     "onnxruntime-gpu": "onnxruntime",
@@ -462,6 +473,7 @@ if __name__ == "__main__":
     #     default=get_local_version(),
     #     help="Version to check against the GitHub API",
     # )
+    print_formatted("mtb install", "bold", color="yellow")
 
     args = parser.parse_args()
 
@@ -472,7 +484,7 @@ if __name__ == "__main__":
         clone_dir = Path(args.path)
         if not clone_dir.exists():
             print_formatted(
-                f"The path provided does not exist on disk... It must be pointing to ComfyUI's custom_nodes directory"
+                "The path provided does not exist on disk... It must be pointing to ComfyUI's custom_nodes directory"
             )
             sys.exit()
 
@@ -493,48 +505,49 @@ if __name__ == "__main__":
     # Install dependencies from requirements.txt
     # if args.requirements or mode == "venv":
 
-    if (not args.wheels and mode not in ["colab", "embeded"]) and not full:
-        print_formatted(
-            "Skipping wheel installation. Use --wheels to install wheel dependencies. (only needed for Comfy embed)",
-            "italic",
-            color="yellow",
-        )
+    # if (not args.wheels and mode not in ["colab", "embeded"]) and not full:
+    #     print_formatted(
+    #         "Skipping wheel installation. Use --wheels to install wheel dependencies. (only needed for Comfy embed)",
+    #         "italic",
+    #         color="yellow",
+    #     )
 
-        install_dependencies(dry=args.dry)
-        sys.exit()
+    #     install_dependencies(dry=args.dry)
+    #     sys.exit()
 
-    if mode in ["colab", "embeded"]:
-        print_formatted(
-            f"Downloading and installing release wheels since we are in a Comfy {apply_color(mode,'cyan')} environment",
-            "italic",
-            color="yellow",
-        )
-    if full:
-        print_formatted(
-            f"Downloading and installing release wheels since no arguments where provided",
-            "italic",
-            color="yellow",
-        )
+    # if mode in ["colab", "embeded"]:
+    #     print_formatted(
+    #         f"Downloading and installing release wheels since we are in a Comfy {apply_color(mode,'cyan')} environment",
+    #         "italic",
+    #         color="yellow",
+    #     )
+    # if full:
+    #     print_formatted(
+    #         f"Downloading and installing release wheels since no arguments where provided",
+    #         "italic",
+    #         color="yellow",
+    #     )
 
-    # - Check the env before proceeding.
+    print_formatted("Checking environment...", "italic", color="yellow")
     missing_deps = []
-    parsed_requirements = get_requirements(here / "reqs.txt")
-    if parsed_requirements:
+    if parsed_requirements := get_requirements(here / "reqs.txt"):
         for requirement in parsed_requirements:
             installed, pip_name, pip_spec, import_name = try_import(requirement)
             if not installed:
                 missing_deps.append(pip_name.split("-")[0])
 
-    if len(missing_deps) == 0:
+    if not missing_deps:
         print_formatted(
-            f"All requirements are already installed. Enjoy 🚀", "italic", color="green"
+            "All requirements are already installed. Enjoy 🚀",
+            "italic",
+            color="green",
         )
         sys.exit()
 
-    # - Get the tag version from the GitHub API
-    tag_data, tag_name = get_github_assets(tag=None)
+    # # - Get the tag version from the GitHub API
+    # tag_data, tag_name = get_github_assets(tag=None)
 
-    # - keep
+    # # - keep
     # version = args.version
     # # Compare the local and tag versions
     # if version and tag_name:
@@ -552,58 +565,58 @@ if __name__ == "__main__":
     #             )
     #             sys.exit()
 
-    matching_assets = [
-        asset
-        for asset in tag_data["assets"]
-        if asset["name"].endswith(".whl")
-        and (
-            "any" in asset["name"] or short_platform[current_platform] in asset["name"]
-        )
-    ]
-    if not matching_assets:
-        print_formatted(
-            f"Unsupported operating system: {current_platform}", color="yellow"
-        )
-    wheel_order_asset = next(
-        (asset for asset in tag_data["assets"] if asset["name"] == "wheel_order.txt"),
-        None,
-    )
-    if wheel_order_asset is not None:
-        print_formatted(
-            "⚙️ Sorting the release wheels using wheels order", "italic", color="yellow"
-        )
-        response = requests.get(wheel_order_asset["browser_download_url"])
-        if response.status_code == 200:
-            wheel_order = [line.strip() for line in response.text.splitlines()]
+    # matching_assets = [
+    #     asset
+    #     for asset in tag_data["assets"]
+    #     if asset["name"].endswith(".whl")
+    #     and (
+    #         "any" in asset["name"] or short_platform[current_platform] in asset["name"]
+    #     )
+    # ]
+    # if not matching_assets:
+    #     print_formatted(
+    #         f"Unsupported operating system: {current_platform}", color="yellow"
+    #     )
+    # wheel_order_asset = next(
+    #     (asset for asset in tag_data["assets"] if asset["name"] == "wheel_order.txt"),
+    #     None,
+    # )
+    # if wheel_order_asset is not None:
+    #     print_formatted(
+    #         "⚙️ Sorting the release wheels using wheels order", "italic", color="yellow"
+    #     )
+    #     response = requests.get(wheel_order_asset["browser_download_url"])
+    #     if response.status_code == 200:
+    #         wheel_order = [line.strip() for line in response.text.splitlines()]
 
-            def get_order_index(val):
-                try:
-                    return wheel_order.index(val)
-                except ValueError:
-                    return len(wheel_order)
+    #         def get_order_index(val):
+    #             try:
+    #                 return wheel_order.index(val)
+    #             except ValueError:
+    #                 return len(wheel_order)
 
-            matching_assets = sorted(
-                matching_assets,
-                key=lambda x: get_order_index(x["name"].split("-")[0]),
-            )
-        else:
-            print("Failed to fetch wheel_order.txt. Status code:", response.status_code)
+    #         matching_assets = sorted(
+    #             matching_assets,
+    #             key=lambda x: get_order_index(x["name"].split("-")[0]),
+    #         )
+    #     else:
+    #         print("Failed to fetch wheel_order.txt. Status code:", response.status_code)
 
-    missing_deps_urls = []
-    for whl_file in matching_assets:
-        # check if installed
-        missing_deps_urls.append(whl_file["browser_download_url"])
+    # missing_deps_urls = []
+    # for whl_file in matching_assets:
+    #     # check if installed
+    #     missing_deps_urls.append(whl_file["browser_download_url"])
 
     install_cmd = [sys.executable, "-m", "pip", "install"]
 
-    wheel_cmd = install_cmd + missing_deps_urls
-
     # - Install all deps
     if not args.dry:
-        # - first install the ordered wheel files
+        if platform.system() == "Windows":
+            wheel_cmd = install_cmd + ["-r", (here / "reqs_windows.txt")]
+        else:
+            wheel_cmd = install_cmd + ["-r", (here / "reqs.txt")]
+
         run_command(wheel_cmd)
-        # - then install the rest of the deps
-        run_command(install_cmd + ["-r", (here / "reqs.txt")])
         print_formatted(
             "✅ Successfully installed all dependencies.", "italic", color="green"
         )

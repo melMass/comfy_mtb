@@ -38,9 +38,9 @@ class Debug:
                 b64_imgs = []
                 for im in image:
                     buffered = io.BytesIO()
-                    im.save(buffered, format="JPEG")
+                    im.save(buffered, format="PNG")
                     b64_imgs.append(
-                        "data:image/jpeg;base64,"
+                        "data:image/png;base64,"
                         + base64.b64encode(buffered.getvalue()).decode("utf-8")
                     )
 

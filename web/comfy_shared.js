@@ -49,7 +49,7 @@ export function offsetDOMWidget(
     position: 'absolute',
     background: !node.color ? '' : node.color,
     color: !node.color ? '' : 'white',
-    zIndex: app.graph._nodes.indexOf(node),
+    zIndex: 5, //app.graph._nodes.indexOf(node),
   })
 }
 
@@ -60,7 +60,7 @@ export function offsetDOMWidget(
  */
 export function getWidgetType(config) {
   // Special handling for COMBO so we restrict links based on the entries
-  let type = config[0]
+  let type = config?.[0]
   let linkType = type
   if (type instanceof Array) {
     type = 'COMBO'

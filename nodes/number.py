@@ -14,7 +14,7 @@ class IntToBool:
             }
         }
 
-    RETURN_TYPES = ("BOOL",)
+    RETURN_TYPES = ("BOOLEAN",)
     FUNCTION = "int_to_bool"
     CATEGORY = "mtb/number"
 

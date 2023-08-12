@@ -1,5 +1,6 @@
 {
     "Animation Builder (mtb)": "Convenient way to manage basic animation maths at the core of many of my workflows",
+    "Any To String (mtb)": "Tries to take any input and convert it to a string",
     "Bbox (mtb)": "The bounding box (BBOX) custom type used by other nodes",
     "Bbox From Mask (mtb)": "From a mask extract the bounding box",
     "Blur (mtb)": "Blur an image using a Gaussian filter.",
@@ -9,7 +10,7 @@
     "Crop (mtb)": "Crops an image and an optional mask to a given bounding box\n\n    The bounding box can be given as a tuple of (x, y, width, height) or as a BBOX type\n    The BBOX input takes precedence over the tuple input\n    ",
     "Debug (mtb)": "Experimental node to debug any Comfy values, support for more types and widgets is planned",
     "Deep Bump (mtb)": "Normal & height maps generation from single pictures",
-    "Export To Prores (mtb)": "Export to ProRes 4444 (Experimental)",
+    "Export With Ffmpeg (mtb)": "Export with FFmpeg (Experimental)",
     "Face Swap (mtb)": "Face swap using deepinsight/insightface models",
     "Film Interpolation (mtb)": "Google Research FILM frame interpolation for large motion",
     "Fit Number (mtb)": "Fit the input float using a source and target range",

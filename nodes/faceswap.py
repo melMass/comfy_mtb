@@ -2,14 +2,13 @@
 import onnxruntime
 from pathlib import Path
 from PIL import Image
-from typing import List, Set, Tuple, Union, Optional
+from typing import List, Set, Union, Optional
 import cv2
 import folder_paths
 import glob
 import insightface
 import numpy as np
 import os
-import tempfile
 import torch
 from insightface.model_zoo.inswapper import INSwapper
 from ..utils import pil2tensor, tensor2pil, download_antelopev2

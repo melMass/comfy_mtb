@@ -165,12 +165,12 @@ class RestoreFace:
                 "image": ("IMAGE",),
                 "model": ("FACEENHANCE_MODEL",),
                 # Input are aligned faces
-                "aligned": ("BOOL", {"default": False}),
+                "aligned": ("BOOLEAN", {"default": False}),
                 # Only restore the center face
-                "only_center_face": ("BOOL", {"default": False}),
+                "only_center_face": ("BOOLEAN", {"default": False}),
                 # Adjustable weights
                 "weight": ("FLOAT", {"default": 0.5}),
-                "save_tmp_steps": ("BOOL", {"default": True}),
+                "save_tmp_steps": ("BOOLEAN", {"default": True}),
             }
         }
 

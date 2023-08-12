@@ -1,11 +1,7 @@
 onnxruntime-gpu==1.15.1
 qrcode[pil]
 rembg==2.0.50
-# on windows non WSL 2.10 is the last version with GPU support
-tensorflow==2.10.1; platform_system == "Windows"
-tb-nightly==2.12.0a20230126; platform_system == "Windows"
-tensorflow; platform_system != "Windows"
-# the old tf version on windows comes with a breaking protobuf version
+tensorflow
 facexlib==0.3.0
 insightface==0.7.3
 basicsr==1.4.2

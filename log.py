@@ -3,7 +3,6 @@ import re
 import os
 
 base_log_level = logging.DEBUG if os.environ.get("MTB_DEBUG") else logging.INFO
-print(f"Log level: {base_log_level}")
 
 
 # Custom object that discards the output

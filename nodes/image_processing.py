@@ -1,20 +1,16 @@
 import torch
 from skimage.filters import gaussian
-from skimage.restoration import denoise_tv_chambolle
 from skimage.util import compare_images
-from skimage.color import rgb2hsv, hsv2rgb
 import numpy as np
-import torchvision.transforms.functional as F
-from PIL import Image, ImageChops
-from ..utils import tensor2pil, pil2tensor, np2tensor, tensor2np
-import cv2
+import torch.nn.functional as F
+from PIL import Image
+from ..utils import tensor2pil, pil2tensor, tensor2np
 import torch
-from ..log import log
 import folder_paths
 from PIL.PngImagePlugin import PngInfo
 import json
 import os
-import comfy.model_management as model_management
+import math
 
 
 # try:
@@ -377,7 +373,7 @@ class ImagePremultiply:
             "required": {
                 "image": ("IMAGE",),
                 "mask": ("MASK",),
-                "invert": ("BOOL", {"default": False}),
+                "invert": ("BOOLEAN", {"default": False}),
             }
         }
 
@@ -425,10 +421,18 @@ class ImageResizeFactor:
                     "FLOAT",
                     {"default": 2, "min": 0.01, "max": 16.0, "step": 0.01},
                 ),
-                "supersample": ("BOOL", {"default": True}),
+                "supersample": ("BOOLEAN", {"default": True}),
                 "resampling": (
-                    ["lanczos", "nearest", "bilinear", "bicubic"],
-                    {"default": "lanczos"},
+                    [
+                        "nearest",
+                        "linear",
+                        "bilinear",
+                        "bicubic",
+                        "trilinear",
+                        "area",
+                        "nearest-exact",
+                    ],
+                    {"default": "nearest"},
                 ),
             },
             "optional": {
@@ -440,71 +444,6 @@ class ImageResizeFactor:
     RETURN_TYPES = ("IMAGE", "MASK")
     FUNCTION = "resize"
 
-    def resize_image(
-        self,
-        image: torch.Tensor,
-        factor: float = 0.5,
-        supersample=False,
-        resample="lanczos",
-        mask=None,
-    ) -> torch.Tensor:
-        model_management.throw_exception_if_processing_interrupted()
-        batch_count = 1
-        img = tensor2pil(image)
-
-        if isinstance(img, list):
-            log.debug("Multiple images detected (list)")
-            out = []
-            for im in img:
-                im = self.resize_image(
-                    pil2tensor(im), factor, supersample, resample, mask
-                )
-                out.append(im)
-            return torch.cat(out, dim=0)
-        elif isinstance(img, torch.Tensor):
-            if len(image.shape) > 3:
-                batch_count = image.size(0)
-
-        if batch_count > 1:
-            log.debug("Multiple images detected (batch count)")
-            out = [
-                self.resize_image(image[i], factor, supersample, resample, mask)
-                for i in range(batch_count)
-            ]
-            return torch.cat(out, dim=0)
-
-        log.debug("Resizing image")
-        # Get the current width and height of the image
-        current_width, current_height = img.size
-
-        log.debug(f"Current width: {current_width}, Current height: {current_height}")
-
-        # Calculate the new width and height based on the given mode and parameters
-        new_width, new_height = int(factor * current_width), int(
-            factor * current_height
-        )
-
-        log.debug(f"New width: {new_width}, New height: {new_height}")
-
-        # Define a dictionary of resampling filters
-        resample_filters = {"nearest": 0, "bilinear": 2, "bicubic": 3, "lanczos": 1}
-
-        # Apply supersample
-        if supersample:
-            super_size = (new_width * 8, new_height * 8)
-            log.debug(f"Applying supersample: {super_size}")
-            img = img.resize(
-                super_size, resample=Image.Resampling(resample_filters[resample])
-            )
-
-        # Resize the image using the given resampling filter
-        resized_image = img.resize(
-            (new_width, new_height),
-            resample=Image.Resampling(resample_filters[resample]),
-        )
-
-        return pil2tensor(resized_image)
-
     def resize(
         self,
         image: torch.Tensor,
@@ -513,24 +452,53 @@ class ImageResizeFactor:
         resampling: str,
         mask=None,
     ):
-        log.debug(f"Resizing image with factor {factor} and resampling {resampling}")
+        # Check if the tensor has the correct dimension
+        if len(image.shape) not in [3, 4]:  # HxWxC or BxHxWxC
+            raise ValueError("Expected image tensor of shape (H, W, C) or (B, H, W, C)")
 
-        batch_count = image.size(0)
-        log.debug(f"Batch count: {batch_count}")
-        if batch_count == 1:
-            log.debug("Batch count is 1, returning single image")
-            return (self.resize_image(image, factor, supersample, resampling),)
+        # Transpose to CxHxW or BxCxHxW for PyTorch
+        if len(image.shape) == 3:
+            image = image.permute(2, 0, 1).unsqueeze(0)  # CxHxW
         else:
-            log.debug("Batch count is greater than 1, returning multiple images")
-            images = [
-                self.resize_image(image[i], factor, supersample, resampling)
-                for i in range(batch_count)
-            ]
-            images = torch.cat(images, dim=0)
-            return (images,)
+            image = image.permute(0, 3, 1, 2)  # BxCxHxW
 
+        # Compute new dimensions
+        B, C, H, W = image.shape
+        new_H, new_W = int(H * factor), int(W * factor)
 
-import math
+        align_corner_filters = ("linear", "bilinear", "bicubic", "trilinear")
+        # Resize the image
+        resized_image = F.interpolate(
+            image,
+            size=(new_H, new_W),
+            mode=resampling,
+            align_corners=resampling in align_corner_filters,
+        )
+
+        # Optionally supersample
+        if supersample:
+            resized_image = F.interpolate(
+                resized_image,
+                scale_factor=2,
+                mode=resampling,
+                align_corners=resampling in align_corner_filters,
+            )
+
+        # Transpose back to the original format: BxHxWxC or HxWxC
+        if len(image.shape) == 4:
+            resized_image = resized_image.permute(0, 2, 3, 1)
+        else:
+            resized_image = resized_image.squeeze(0).permute(1, 2, 0)
+
+        # Apply mask if provided
+        if mask is not None:
+            if len(mask.shape) != len(resized_image.shape):
+                raise ValueError(
+                    "Mask tensor should have the same dimensions as the image tensor"
+                )
+            resized_image = resized_image * mask
+
+        return (resized_image,)
 
 
 class SaveImageGrid:
@@ -546,7 +514,7 @@ class SaveImageGrid:
             "required": {
                 "images": ("IMAGE",),
                 "filename_prefix": ("STRING", {"default": "ComfyUI"}),
-                "save_intermediate": ("BOOL", {"default": False}),
+                "save_intermediate": ("BOOLEAN", {"default": False}),
             },
             "hidden": {"prompt": "PROMPT", "extra_pnginfo": "EXTRA_PNGINFO"},
         }

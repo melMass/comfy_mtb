@@ -45,19 +45,15 @@ def extract_nodes_from_source(filename):
                 if isinstance(target, ast.Name) and target.id == "__nodes__":
                     value = ast.get_source_segment(source_code, node.value)
                     node_value = ast.parse(value).body[0].value
-                    if isinstance(node_value, ast.List) or isinstance(
-                        node_value, ast.Tuple
-                    ):
-                        for element in node_value.elts:
-                            if isinstance(element, ast.Name):
-                                print(element.id)
-                                nodes.append(element.id)
-
+                    if isinstance(node_value, (ast.List, ast.Tuple)):
+                        nodes.extend(
+                            element.id
+                            for element in node_value.elts
+                            if isinstance(element, ast.Name)
+                        )
                     break
     except SyntaxError:
         log.error("Failed to parse")
-        pass  # File couldn't be parsed
-
     return nodes
 
 
@@ -187,6 +183,14 @@ import logging
 from .endpoint import endlog
 
 if hasattr(PromptServer, "instance"):
+    restore_deps = ["basicsr"]
+    swap_deps = ["insightface", "onnxruntime"]
+
+    node_dependency_mapping = {
+        "FaceSwap": swap_deps,
+        "LoadFaceSwapModel": swap_deps,
+        "LoadFaceAnalysisModel": restore_deps,
+    }
 
     @PromptServer.instance.routes.get("/mtb/status")
     async def get_full_library(request):
@@ -202,7 +206,13 @@ if hasattr(PromptServer, "instance"):
                 NODE_CLASS_MAPPINGS_DEBUG, title="Registered"
             )
             html_response += endpoint.render_table(
-                {k: "-" for k in failed}, title="Failed to load"
+                {
+                    k: {"dependencies": node_dependency_mapping.get(k)}
+                    if node_dependency_mapping.get(k)
+                    else "-"
+                    for k in failed
+                },
+                title="Failed to load",
             )
 
             return web.Response(
@@ -226,11 +236,10 @@ if hasattr(PromptServer, "instance"):
             log.setLevel(logging.DEBUG)
             log.debug("Debug mode set from API (/mtb/debug POST route)")
 
-        else:
-            if "MTB_DEBUG" in os.environ:
-                # del os.environ["MTB_DEBUG"]
-                os.environ.pop("MTB_DEBUG")
-                log.setLevel(logging.INFO)
+        elif "MTB_DEBUG" in os.environ:
+            # del os.environ["MTB_DEBUG"]
+            os.environ.pop("MTB_DEBUG")
+            log.setLevel(logging.INFO)
 
         return web.json_response(
             {"message": f"Debug mode {'set' if enabled else 'unset'}"}
@@ -244,7 +253,7 @@ if hasattr(PromptServer, "instance"):
         # Check if the request prefers HTML content
         if "text/html" in request.headers.get("Accept", ""):
             # # Return an HTML page
-            html_response = f"""
+            html_response = """
             <div class="flex-container menu">
                 <a href="/mtb/debug">debug</a>
                 <a href="/mtb/status">status</a>
@@ -263,9 +272,7 @@ if hasattr(PromptServer, "instance"):
         from . import endpoint
 
         reload(endpoint)
-        enabled = False
-        if "MTB_DEBUG" in os.environ:
-            enabled = True
+        enabled = "MTB_DEBUG" in os.environ
         # Check if the request prefers HTML content
         if "text/html" in request.headers.get("Accept", ""):
             # # Return an HTML page
@@ -285,7 +292,7 @@ if hasattr(PromptServer, "instance"):
         from . import endpoint
 
         if "text/html" in request.headers.get("Accept", ""):
-            html_response = f"""
+            html_response = """
             <h1>Actions has no get for now...</h1>
             """
             return web.Response(
