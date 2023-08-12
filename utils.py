@@ -7,6 +7,7 @@ import sys
 from typing import List, Optional
 from pytoshop.user import nested_layers
 from pytoshop import enums
+
 # from pytoshop.layers import LayerMask, LayerRecord
 from .log import log
 from typing import List
@@ -475,241 +476,6 @@ def apply_easing(value, easing_type):
 # endregion
 
 
-# endregion
-
-
-# region MODEL Utilities
-def download_antelopev2():
-    antelopev2_url = "https://drive.google.com/uc?id=18wEUfMNohBJ4K3Ly5wpTejPfDzp-8fI8"
-
-    try:
-        import gdown
-
-        import folder_paths
-
-        log.debug("Loading antelopev2 model")
-
-        dest = Path(folder_paths.models_dir) / "insightface"
-        archive = dest / "antelopev2.zip"
-        final_path = dest / "models" / "antelopev2"
-        if not final_path.exists():
-            log.info(f"antelopev2 not found, downloading to {dest}")
-            gdown.download(
-                antelopev2_url,
-                archive.as_posix(),
-                resume=True,
-            )
-
-            log.info(f"Unzipping antelopev2 to {final_path}")
-
-            if archive.exists():
-                # we unzip it
-                import zipfile
-
-                with zipfile.ZipFile(archive.as_posix(), "r") as zip_ref:
-                    zip_ref.extractall(final_path.parent.as_posix())
-
-    except Exception as e:
-        log.error(
-            f"Could not load or download antelopev2 model, download it manually from {antelopev2_url}"
-        )
-        raise e
-
-
-# endregion
-
-
-# region UV Utilities
-
-
-def create_uv_map_tensor(width=512, height=512):
-    u = torch.linspace(0.0, 1.0, steps=width)
-    v = torch.linspace(0.0, 1.0, steps=height)
-
-    U, V = torch.meshgrid(u, v)
-
-    uv_map = torch.zeros(height, width, 3, dtype=torch.float32)
-    uv_map[:, :, 0] = U.t()
-    uv_map[:, :, 1] = V.t()
-
-    return uv_map.unsqueeze(0)
-
-
-# endregion
-
-
-# region ANIMATION Utilities
-def apply_easing(value, easing_type):
-    if value < 0 or value > 1:
-        raise ValueError("The value should be between 0 and 1.")
-
-    if easing_type == "Linear":
-        return value
-
-    # Back easing functions
-    def easeInBack(t):
-        s = 1.70158
-        return t * t * ((s + 1) * t - s)
-
-    def easeOutBack(t):
-        s = 1.70158
-        return ((t - 1) * t * ((s + 1) * t + s)) + 1
-
-    def easeInOutBack(t):
-        s = 1.70158 * 1.525
-        if t < 0.5:
-            return (t * t * (t * (s + 1) - s)) * 2
-        return ((t - 2) * t * ((s + 1) * t + s) + 2) * 2
-
-    # Elastic easing functions
-    def easeInElastic(t):
-        if t == 0:
-            return 0
-        if t == 1:
-            return 1
-        p = 0.3
-        s = p / 4
-        return -(math.pow(2, 10 * (t - 1)) * math.sin((t - 1 - s) * (2 * math.pi) / p))
-
-    def easeOutElastic(t):
-        if t == 0:
-            return 0
-        if t == 1:
-            return 1
-        p = 0.3
-        s = p / 4
-        return math.pow(2, -10 * t) * math.sin((t - s) * (2 * math.pi) / p) + 1
-
-    def easeInOutElastic(t):
-        if t == 0:
-            return 0
-        if t == 1:
-            return 1
-        p = 0.3 * 1.5
-        s = p / 4
-        t = t * 2
-        if t < 1:
-            return -0.5 * (
-                math.pow(2, 10 * (t - 1)) * math.sin((t - 1 - s) * (2 * math.pi) / p)
-            )
-        return (
-            0.5 * math.pow(2, -10 * (t - 1)) * math.sin((t - 1 - s) * (2 * math.pi) / p)
-            + 1
-        )
-
-    # Bounce easing functions
-    def easeInBounce(t):
-        return 1 - easeOutBounce(1 - t)
-
-    def easeOutBounce(t):
-        if t < (1 / 2.75):
-            return 7.5625 * t * t
-        elif t < (2 / 2.75):
-            t -= 1.5 / 2.75
-            return 7.5625 * t * t + 0.75
-        elif t < (2.5 / 2.75):
-            t -= 2.25 / 2.75
-            return 7.5625 * t * t + 0.9375
-        else:
-            t -= 2.625 / 2.75
-            return 7.5625 * t * t + 0.984375
-
-    def easeInOutBounce(t):
-        if t < 0.5:
-            return easeInBounce(t * 2) * 0.5
-        return easeOutBounce(t * 2 - 1) * 0.5 + 0.5
-
-    # Quart easing functions
-    def easeInQuart(t):
-        return t * t * t * t
-
-    def easeOutQuart(t):
-        t -= 1
-        return -(t**2 * t * t - 1)
-
-    def easeInOutQuart(t):
-        t *= 2
-        if t < 1:
-            return 0.5 * t * t * t * t
-        t -= 2
-        return -0.5 * (t**2 * t * t - 2)
-
-    # Cubic easing functions
-    def easeInCubic(t):
-        return t * t * t
-
-    def easeOutCubic(t):
-        t -= 1
-        return t**2 * t + 1
-
-    def easeInOutCubic(t):
-        t *= 2
-        if t < 1:
-            return 0.5 * t * t * t
-        t -= 2
-        return 0.5 * (t**2 * t + 2)
-
-    # Circ easing functions
-    def easeInCirc(t):
-        return -(math.sqrt(1 - t * t) - 1)
-
-    def easeOutCirc(t):
-        t -= 1
-        return math.sqrt(1 - t**2)
-
-    def easeInOutCirc(t):
-        t *= 2
-        if t < 1:
-            return -0.5 * (math.sqrt(1 - t**2) - 1)
-        t -= 2
-        return 0.5 * (math.sqrt(1 - t**2) + 1)
-
-    # Sine easing functions
-    def easeInSine(t):
-        return -math.cos(t * (math.pi / 2)) + 1
-
-    def easeOutSine(t):
-        return math.sin(t * (math.pi / 2))
-
-    def easeInOutSine(t):
-        return -0.5 * (math.cos(math.pi * t) - 1)
-
-    easing_functions = {
-        "Sine In": easeInSine,
-        "Sine Out": easeOutSine,
-        "Sine In/Out": easeInOutSine,
-        "Quart In": easeInQuart,
-        "Quart Out": easeOutQuart,
-        "Quart In/Out": easeInOutQuart,
-        "Cubic In": easeInCubic,
-        "Cubic Out": easeOutCubic,
-        "Cubic In/Out": easeInOutCubic,
-        "Circ In": easeInCirc,
-        "Circ Out": easeOutCirc,
-        "Circ In/Out": easeInOutCirc,
-        "Back In": easeInBack,
-        "Back Out": easeOutBack,
-        "Back In/Out": easeInOutBack,
-        "Elastic In": easeInElastic,
-        "Elastic Out": easeOutElastic,
-        "Elastic In/Out": easeInOutElastic,
-        "Bounce In": easeInBounce,
-        "Bounce Out": easeOutBounce,
-        "Bounce In/Out": easeInOutBounce,
-    }
-
-    function_ease = easing_functions.get(easing_type)
-    if function_ease:
-        return function_ease(value)
-
-    log.error(f"Unknown easing type: {easing_type}")
-    log.error(f"Available easing types: {list(easing_functions.keys())}")
-    raise ValueError(f"Unknown easing type: {easing_type}")
-
-
-# endregion
-
-
 def tensor2pytolayer(
     tensor: torch.Tensor,
     name: str,
@@ -723,29 +489,27 @@ def tensor2pytolayer(
     metadata: dict = {},
     layer_color=0,
     color_mode=None,
-    mask: Optional[torch.Tensor] = None,  # Add the mask parameter with default value as None
+    mask: Optional[
+        torch.Tensor
+    ] = None,  # Add the mask parameter with default value as None
 ) -> nested_layers.Image:
-    batch_count = 1
-    if len(tensor.shape) > 3:
-        batch_count = tensor.size(0)
-
+    batch_count = tensor.size(0) if len(tensor.shape) > 3 else 1
     if batch_count > 1:
-        raise Exception(
+        raise ValueError(
             f"Only one image is supported (batch size is currently {batch_count})"
         )
     out_channels = tensor2pil(tensor)[0]
     arr = np.array(out_channels)
-    
-     # If a mask is provided, convert it to numpy array
+
+    # If a mask is provided, convert it to numpy array
     if mask is not None:
         mask_arr = np.array(tensor2pil(mask)[0])
     else:
         mask_arr = np.full_like(arr, 255, dtype=np.uint8)
 
     channels = [arr[:, :, 0], arr[:, :, 1], arr[:, :, 2], mask_arr[:, :, 0]]
-    
-    
-    image =  nested_layers.Image(
+
+    image = nested_layers.Image(
         name=name,
         visible=visible,
         opacity=opacity,
@@ -758,6 +522,5 @@ def tensor2pytolayer(
         layer_color=layer_color,
         color_mode=color_mode,
     )
-
 
     return image
