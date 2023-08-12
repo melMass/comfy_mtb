@@ -116,8 +116,12 @@ def print_formatted(text, *formats, color=None, background=None, **kwargs):
     header = "[mtb install] "
 
     # Handle console encoding for Unicode characters (utf-8)
-    encoded_header = header.encode("utf-8", errors="replace").decode("utf-8")
-    encoded_text = formatted_text.encode("utf-8", errors="replace").decode("utf-8")
+    encoded_header = header.encode(sys.stdout.encoding, errors="replace").decode(
+        sys.stdout.encoding
+    )
+    encoded_text = formatted_text.encode(sys.stdout.encoding, errors="replace").decode(
+        sys.stdout.encoding
+    )
 
     print(
         " " * len(encoded_header)
