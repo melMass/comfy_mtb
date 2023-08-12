@@ -34,7 +34,7 @@ class ImageRemoveBackgroundRembg:
                 ),
                 "bgcolor": (
                     "COLOR",
-                    {"default": "black"},
+                    {"default": "#000000"},
                 ),
             },
         }

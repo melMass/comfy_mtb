@@ -1,5 +1,5 @@
 import torch
-import torchvision.transforms.functional as F
+import torchvision.transforms.functional as TF
 from ..utils import log, hex_to_rgb, tensor2pil, pil2tensor
 from math import sqrt, ceil
 from typing import cast
@@ -30,7 +30,7 @@ class TransformImage:
                     ["edge", "constant", "reflect", "symmetric"],
                     {"default": "edge"},
                 ),
-                "constant_color": ("COLOR", {"default": "black"}),
+                "constant_color": ("COLOR", {"default": "#000000"}),
             },
         }
 
@@ -71,8 +71,8 @@ class TransformImage:
         pw = int(frame_width - new_width)
         ph = int(frame_height - new_height)
 
-        pw += max_padding
-        ph += max_padding
+        pw += abs(max_padding)
+        ph += abs(max_padding)
 
         padding = [max(0, pw + x), max(0, ph + y), max(0, pw - x), max(0, ph - y)]
 
@@ -80,7 +80,7 @@ class TransformImage:
         log.debug(f"Fill Tuple: {constant_color}")
 
         for img in tensor2pil(image):
-            img = F.pad(
+            img = TF.pad(
                 img,  # transformed_frame,
                 padding=padding,
                 padding_mode=border_handling,
@@ -89,7 +89,7 @@ class TransformImage:
 
             img = cast(
                 Image.Image,
-                F.affine(img, angle=angle, scale=zoom, translate=[x, y], shear=shear),
+                TF.affine(img, angle=angle, scale=zoom, translate=[x, y], shear=shear),
             )
 
             left = abs(padding[0])

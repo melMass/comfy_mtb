@@ -28,8 +28,12 @@ except ImportError:
 
 # region MISC Utilities
 def hex_to_rgb(hex_color):
-    hex_color = hex_color.lstrip("#")
-    return tuple(int(hex_color[i : i + 2], 16) for i in (0, 2, 4))
+    try:
+        hex_color = hex_color.lstrip("#")
+        return tuple(int(hex_color[i : i + 2], 16) for i in (0, 2, 4))
+    except ValueError:
+        log.error(f"Invalid hex color: {hex_color}")
+        return (0, 0, 0)
 
 
 def add_path(path, prepend=False):
