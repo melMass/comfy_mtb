@@ -650,22 +650,22 @@ const mtb_widgets = {
                 i++
               }
             }
-            this.setSize?.(this.computeSize())
-            return r
-          }
-
-          const onRemoved = nodeType.prototype.onRemoved
-          nodeType.prototype.onRemoved = function (message) {
-            const r = onRemoved ? onRemoved.apply(this, message) : undefined
-            if (!this.widgets) return r
-            for (const w of this.widgets) {
-              if (w.canvas) {
-                w.canvas.remove()
+            const onRemoved = this.onRemoved
+            this.onRemoved = () => {
+              if (!this.widgets) {
+                return r
               }
-              w.onRemoved?.()
+              for (const w of this.widgets) {
+                if (w.canvas) {
+                  w.canvas.remove()
+                }
+                w.onRemoved?.()
+              }
+              return onRemoved?.()
             }
-            return r
           }
+          this.setSize?.(this.computeSize())
+          return r
         }
 
         break
