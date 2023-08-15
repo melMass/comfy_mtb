@@ -4,19 +4,22 @@ import urllib.request
 import urllib.parse
 import torch
 import json
-from comfy.cli_args import args
-from ..utils import pil2tensor, apply_easing
+from ..utils import pil2tensor, apply_easing, get_server_info
 import io
 import numpy as np
 
 
 def get_image(filename, subfolder, folder_type):
-    log.debug(f"Getting image {filename} from {subfolder} of {folder_type}")
+    log.debug(
+        f"Getting image {filename} from foldertype {folder_type} {f'in subfolder: {subfolder}' if subfolder else ''}"
+    )
     data = {"filename": filename, "subfolder": subfolder, "type": folder_type}
+    base_url, port = get_server_info()
+
     url_values = urllib.parse.urlencode(data)
-    with urllib.request.urlopen(
-        f"http://{args.listen}:{args.port}/view?{url_values}"
-    ) as response:
+    url = f"http://{base_url}:{port}/view?{url_values}"
+    log.debug(f"Fetching image from {url}")
+    with urllib.request.urlopen(url) as response:
         return io.BytesIO(response.read())
 
 
@@ -60,10 +63,18 @@ class GetBatchFromHistory:
             return (torch.zeros(0),)
         frames = []
 
-        with urllib.request.urlopen(
-            f"http://{args.listen}:{args.port}/history"
-        ) as response:
-            return self.load_batch_frames(response, offset, count, frames)
+        base_url, port = get_server_info()
+
+        history_url = f"http://{base_url}:{port}/history"
+        log.debug(f"Fetching history from {history_url}")
+        output = torch.zeros(0)
+        with urllib.request.urlopen(history_url) as response:
+            output = self.load_batch_frames(response, offset, count, frames)
+
+        if output.size(0) == 0:
+            log.warn("No output found in history")
+
+        return (output,)
 
     def load_batch_frames(self, response, offset, count, frames):
         history = json.loads(response.read())
@@ -80,7 +91,7 @@ class GetBatchFromHistory:
                         output_images.append(image_data)
 
         if not output_images:
-            return (torch.zeros(0),)
+            return torch.zeros(0)
 
         # Directly get desired range of images
         start_index = max(len(output_images) - offset - count, 0)
@@ -90,13 +101,11 @@ class GetBatchFromHistory:
         frames = [Image.open(image) for image in selected_images]
 
         if not frames:
-            return (torch.zeros(0),)
+            return torch.zeros(0)
         elif len(frames) != count:
             log.warning(f"Expected {count} images, got {len(frames)} instead")
 
-        output = pil2tensor(frames)
-
-        return (output,)
+        return pil2tensor(frames)
 
 
 class AnyToString:

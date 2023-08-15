@@ -11,6 +11,9 @@ import subprocess
 import threading
 import os
 import math
+import functools
+import socket
+import requests
 
 try:
     from .log import log
@@ -26,7 +29,54 @@ except ImportError:
         log.warn("[comfy mtb] You probably called the file outside a module.")
 
 
+class IPChecker:
+    def __init__(self):
+        self.ips = list(self.get_local_ips())
+        log.debug(f"Found {len(self.ips)} local ips")
+        self.checked_ips = set()
+
+    def get_working_ip(self, test_url_template):
+        for ip in self.ips:
+            if ip not in self.checked_ips:
+                self.checked_ips.add(ip)
+                test_url = test_url_template.format(ip)
+                if self._test_url(test_url):
+                    return ip
+        return None
+
+    @staticmethod
+    def get_local_ips(prefix="192.168."):
+        hostname = socket.gethostname()
+        log.debug(f"Getting local ips for {hostname}")
+        for info in socket.getaddrinfo(hostname, None):
+            # Filter out IPv6 addresses if you only want IPv4
+            log.debug(info)
+            # if info[1] == socket.SOCK_STREAM and
+            if info[0] == socket.AF_INET and info[4][0].startswith(prefix):
+                yield info[4][0]
+
+    def _test_url(self, url):
+        try:
+            response = requests.get(url)
+            return response.status_code == 200
+        except Exception:
+            return False
+
+
 # region MISC Utilities
+@functools.lru_cache(maxsize=1)
+def get_server_info():
+    from comfy.cli_args import args
+
+    ip_checker = IPChecker()
+    base_url = args.listen
+    if base_url == "0.0.0.0":
+        log.debug("Server set to 0.0.0.0, we will try to resolve the host IP")
+        base_url = ip_checker.get_working_ip(f"http://{{}}:{args.port}/history")
+        log.debug(f"Setting ip to {base_url}")
+    return (base_url, args.port)
+
+
 def hex_to_rgb(hex_color):
     try:
         hex_color = hex_color.lstrip("#")
