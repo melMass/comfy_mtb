@@ -81,7 +81,7 @@ class ImageDistortWithUv:
                 "image": ("IMAGE",),
                 "uv_map": ("UV_MAP",),
                 "boundary_mode": (
-                    ["wrap", "reflect", "replicate"],
+                    ["clamp", "wrap", "reflect", "replicate"],
                     {"default": "wrap"},
                 ),
                 "strength": ("FLOAT", {"default": 1.0, "step": 0.05}),
@@ -99,42 +99,61 @@ class ImageDistortWithUv:
     def distort_image_with_uv(
         self, image, uv_map, boundary_mode="wrap", strength=1.0, base_uv_map=None
     ):
+        log.debug(f"[UV Distort] Input image shape {image.shape}")
+        if image.size(0) == 0:
+            log.debug("Input image is empty, returning empty image")
+            return (torch.zeros(0),)
         b, h, w, _ = image.shape
+
+        x = w - 1
+        y = h - 1
 
         # If no base UV map provided, create a default one
         if base_uv_map is None:
             base_uv_map = create_uv_map_tensor(w, h).to(image.device)
 
         # Extract U and V coordinates from the base UV map
-        base_U = base_uv_map[..., 0] * (w - 1)
-        base_V = base_uv_map[..., 1] * (h - 1)
+        base_U = base_uv_map[..., 0] * x
+        base_V = base_uv_map[..., 1] * y
 
         # Extract U and V coordinates from the distortion UV map and apply strength
-        U = strength * uv_map[..., 0] * (w - 1) + (1 - strength) * base_U
-        V = strength * uv_map[..., 1] * (h - 1) + (1 - strength) * base_V
+        U = strength * uv_map[..., 0] * x + (1 - strength) * base_U
+        V = strength * uv_map[..., 1] * y + (1 - strength) * base_V
 
         # Handle boundary conditions
         if boundary_mode == "wrap":
             U = U % w
             V = V % h
         elif boundary_mode == "reflect":
-            U = U % (2 * w)
-            V = V % (2 * h)
-            U = torch.where(U > w, 2 * w - U, U)
-            V = torch.where(V > h, 2 * h - V, V)
+            U = U % (2 * x)
+            V = V % (2 * y)
+            U = torch.where(U > w, 2 * x - U, U)
+            V = torch.where(V > h, 2 * y - V, V)
         elif boundary_mode == "replicate":
-            U = torch.clamp(U, 0, w - 1)
-            V = torch.clamp(V, 0, h - 1)
+            U = torch.clamp(U, 0, x)
+            V = torch.clamp(V, 0, y)
+        elif boundary_mode == "clamp":
+            U = torch.clamp(U, 0, w)
+            V = torch.clamp(V, 0, h)
         else:
             raise ValueError("Invalid boundary_mode")
 
         # Check if any UV coordinates are out of bounds and log
         if torch.any(U >= w) or torch.any(V >= h):
-            log.debug("Input UVs out of bounds, clipping")
+            log.info("Input UVs out of bounds, clipping")
 
         # Calculate the four corner indices for each UV coordinate
         U0, V0 = torch.floor(U).long(), torch.floor(V).long()
-        U1, V1 = U0 + 1, V0 + 1
+        # For replicate mode, if U0/V0 is at the last pixel, we replicate that pixel for U1/V1
+        if boundary_mode == "replicate":
+            U1 = torch.where(U0 < x, U0 + 1, U0)
+            V1 = torch.where(V0 < y, V0 + 1, V0)
+        else:
+            U1, V1 = U0 + 1, V0 + 1
+
+        # Ensure U1, V1 do not go out of bounds
+        U1 = torch.clamp(U1, 0, x)
+        V1 = torch.clamp(V1, 0, y)
 
         # Adjust the bilinear coordinates based on the boundary mode
         if boundary_mode == "wrap":
@@ -144,8 +163,8 @@ class ImageDistortWithUv:
             # This remains unchanged as the coordinates are already reflected above
             pass
         elif boundary_mode == "replicate":
-            U1 = torch.clamp(U1, 0, w - 1)
-            V1 = torch.clamp(V1, 0, h - 1)
+            U1 = torch.clamp(U1, 0, x)
+            V1 = torch.clamp(V1, 0, y)
 
         # Bilinear interpolation weights
         w_U0, w_U1 = (U1.float() - U).unsqueeze(-1), (U - U0.float()).unsqueeze(-1)
