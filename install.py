@@ -23,9 +23,9 @@ executable = Path(sys.executable)
 mode = None
 if os.environ.get("COLAB_GPU"):
     mode = "colab"
-elif "python_embeded" in executable:
+elif "python_embeded" in str(executable):
     mode = "embeded"
-elif ".venv" in executable:
+elif ".venv" in str(executable):
     mode = "venv"
 
 
