@@ -93,6 +93,10 @@ Before proceeding, please be aware of the licenses associated with certain libra
 
 # Comfy Resources
 
+**Misc**
+
+- [Slick ComfyUI by NoCrypt](https://colab.research.google.com/drive/1ZMvLWEiYITmBJngtqeIQToeNuiydwI0z#scrollTo=1fWMaexXS188): A colab notebook with batteries included!
+
 **Guides**:
 - [Official Examples (eng)](https://comfyanonymous.github.io/ComfyUI_examples/)
 - [ComfyUI Community Manual (eng)](https://blenderneko.github.io/ComfyUI-docs/) by @BlenderNeko
