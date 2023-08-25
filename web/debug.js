@@ -7,10 +7,11 @@
  *
  */
 
-import { app } from '/scripts/app.js'
-import * as shared from '/extensions/mtb/comfy_shared.js'
-import { log } from '/extensions/mtb/comfy_shared.js'
-import { MtbWidgets } from '/extensions/mtb/mtb_widgets.js'
+import { app } from '../../scripts/app.js'
+
+import * as shared from './comfy_shared.js'
+import { log } from './comfy_shared.js'
+import { MtbWidgets } from './mtb_widgets.js'
 
 // TODO: respect inputs order...
 

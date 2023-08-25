@@ -7,7 +7,7 @@
  *
  */
 
-import { app } from '/scripts/app.js'
+import { app } from '../../scripts/app.js'
 
 const log = (...args) => {
   if (window.MTB?.TRACE) {

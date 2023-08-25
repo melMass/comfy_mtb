@@ -9,8 +9,8 @@
 
 // forked from pysssss's imageFeed.js
 
-import { api } from '/scripts/api.js'
-import { app } from '/scripts/app.js'
+import { api } from '../../scripts/api.js'
+import { app } from '../../scripts/app.js'
 
 const styles = {
   lighbox: {

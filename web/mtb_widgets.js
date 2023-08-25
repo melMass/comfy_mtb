@@ -7,11 +7,12 @@
  *
  */
 
-import { app } from '/scripts/app.js'
-import parseCss from '/extensions/mtb/extern/parse-css.js'
-import * as shared from '/extensions/mtb/comfy_shared.js'
-import { log } from '/extensions/mtb/comfy_shared.js'
-import { api } from '/scripts/api.js'
+import { app } from '../../scripts/app.js'
+import { api } from '../../scripts/api.js'
+
+import parseCss from './extern/parse-css.js'
+import * as shared from './comfy_shared.js'
+import { log } from './comfy_shared.js'
 
 const newTypes = [, /*'BOOL'*/ 'COLOR', 'BBOX']
 
