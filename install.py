@@ -14,9 +14,10 @@ import signal
 from contextlib import suppress
 from queue import Queue, Empty
 from contextlib import contextmanager
+import shlex
 
 here = Path(__file__).parent
-executable = sys.executable
+executable = Path(sys.executable)
 
 # - detect mode
 mode = None
@@ -153,7 +154,7 @@ def run_command(cmd, ignored_lines_start=None):
         for arg in cmd:
             if isinstance(arg, Path):
                 arg = arg.as_posix()
-            shell_cmd += f"{arg} "
+            shell_cmd += f"{shlex.quote(str(arg))} "
     else:
         raise ValueError(
             "Invalid 'cmd' argument. It must be a string or a list of arguments."
@@ -237,7 +238,7 @@ try:
     import requirements
 except ImportError:
     print_formatted("Installing requirements-parser...", "italic", color="yellow")
-    run_command([sys.executable, "-m", "pip", "install", "requirements-parser"])
+    run_command([executable, "-m", "pip", "install", "requirements-parser"])
     import requirements
 
     print_formatted("Done.", "italic", color="green")
@@ -246,7 +247,7 @@ try:
     from tqdm import tqdm
 except ImportError:
     print_formatted("Installing tqdm...", "italic", color="yellow")
-    run_command([sys.executable, "-m", "pip", "install", "--upgrade", "tqdm"])
+    run_command([executable, "-m", "pip", "install", "--upgrade", "tqdm"])
     from tqdm import tqdm
 
 pip_map = {
@@ -390,7 +391,7 @@ def import_or_install(requirement, dry=False):
             )
         else:
             try:
-                run_command([sys.executable, "-m", "pip", "install", pip_install_name])
+                run_command([executable, "-m", "pip", "install", pip_install_name])
                 print_formatted(
                     f"Package {pip_install_name} installed successfully using pip package name  (import name: '{import_name}')",
                     "bold",
@@ -611,7 +612,7 @@ if __name__ == "__main__":
     #     # check if installed
     #     missing_deps_urls.append(whl_file["browser_download_url"])
 
-    install_cmd = [sys.executable, "-m", "pip", "install"]
+    install_cmd = [executable, "-m", "pip", "install"]
 
     # - Install all deps
     if not args.dry:
