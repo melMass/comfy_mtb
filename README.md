@@ -46,6 +46,11 @@ Before proceeding, please be aware of the licenses associated with certain libra
   <img src="https://github.com/melMass/comfy_mtb/assets/7041726/7c20ac83-31ff-40ea-a1a0-06c2acefb2ef" width=345/>
 
 ## face detection / swapping
+> **Warning**
+> Those nodes were among the first to be implemented they do work, but on windows the installation is still not properly handled for everyone  
+> As alternatives you can use [reactor](https://github.com/Gourieff/comfyui-reactor-node) for face swap and [facerestore](https://github.com/Haidra-Org/hordelib/tree/main/hordelib/nodes/facerestore) for restoration  
+> You can check [this video](https://www.youtube.com/watch?v=FShlpMxbU0E) for a tutorial by Ferniclestix using these alternatives  
+
 - `Face Swap`: Face swap using deepinsight/insightface models (this node used to be called `Roop` in early versions, it does the same, roop is *just* an app that uses those model)
   > **Note**
   > The face index allow you to choose which face to replace as you can see here:  
@@ -54,6 +59,12 @@ Before proceeding, please be aware of the licenses associated with certain libra
 - `Restore Face`: Using [GFPGan](https://github.com/TencentARC/GFPGAN) to restore faces, works great in conjunction with `Face Swap` and supports Comfy native upscalers for the `bg_upscaler`
   
 ## image interpolation (animation)
+> **Warning**
+> **Windows only issue**: This requires tensorflow-gpu that is unfortunately not a thing anymore on Windows since 2.10.1 (unless you use a complex WSL passthrough setup but it's still not "Windows")  
+> Using this old version is quite clunky and require some patching that install.py does automatically, but the main issue is that no wheels are available for python > 3.10
+> Comfy-nightly is already using Python 11 so installing this old tf version won't work there.  
+> You can in any case install the normal up to date tensorflow but that will run on CPU and is much MUCH slower for FILM inference.
+
 - `Load Film Model`: Loads a [FILM](https://github.com/google-research/frame-interpolation) model
 - `Film Interpolation`: Process input frames using [FILM](https://github.com/google-research/frame-interpolation)  
   <img src="https://github.com/melMass/comfy_mtb/assets/7041726/3afd1647-6634-4b92-a34b-51432e6a9834" width=400/>
