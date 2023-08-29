@@ -3,6 +3,13 @@ import numpy as np
 import torch
 from pathlib import Path
 import sys
+
+from typing import List, Optional
+from pytoshop.user import nested_layers
+from pytoshop import enums
+
+# from pytoshop.layers import LayerMask, LayerRecord
+from .log import log
 from typing import List
 import signal
 from contextlib import suppress
@@ -517,3 +524,53 @@ def apply_easing(value, easing_type):
 
 
 # endregion
+
+
+def tensor2pytolayer(
+    tensor: torch.Tensor,
+    name: str,
+    visible: bool = True,
+    opacity: int = 255,
+    group_id: int = 0,
+    blend_mode=enums.BlendMode.normal,
+    x: int = 0,
+    y: int = 0,
+    # channels: int = 3,
+    metadata: dict = {},
+    layer_color=0,
+    color_mode=None,
+    mask: Optional[
+        torch.Tensor
+    ] = None,  # Add the mask parameter with default value as None
+) -> nested_layers.Image:
+    batch_count = tensor.size(0) if len(tensor.shape) > 3 else 1
+    if batch_count > 1:
+        raise ValueError(
+            f"Only one image is supported (batch size is currently {batch_count})"
+        )
+    out_channels = tensor2pil(tensor)[0]
+    arr = np.array(out_channels)
+
+    # If a mask is provided, convert it to numpy array
+    if mask is not None:
+        mask_arr = np.array(tensor2pil(mask)[0])
+    else:
+        mask_arr = np.full_like(arr, 255, dtype=np.uint8)
+
+    channels = [arr[:, :, 0], arr[:, :, 1], arr[:, :, 2], mask_arr[:, :, 0]]
+
+    image = nested_layers.Image(
+        name=name,
+        visible=visible,
+        opacity=opacity,
+        group_id=group_id,
+        blend_mode=blend_mode,
+        top=y,
+        left=x,
+        channels=channels,
+        metadata=metadata,
+        layer_color=layer_color,
+        color_mode=color_mode,
+    )
+
+    return image
