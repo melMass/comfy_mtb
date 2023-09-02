@@ -131,3 +131,10 @@ main {
     font-size: 3em;
     text-align: center;
 }
+
+input {
+    background-color: rgba(0,0,0,0.5);
+    color: white;
+    border: none;
+}
+

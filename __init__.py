@@ -192,6 +192,9 @@ if hasattr(PromptServer, "instance"):
         "LoadFaceAnalysisModel": restore_deps,
     }
 
+    PromptServer.instance.app.router.add_static(
+        "/mtb-assets/", path=(here / "html").as_posix(), name="static"
+    )
     @PromptServer.instance.routes.get("/mtb/status")
     async def get_full_library(request):
         from . import endpoint
