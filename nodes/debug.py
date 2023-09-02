@@ -7,6 +7,64 @@ from typing import Optional
 from pathlib import Path
 
 
+# region processors
+def process_tensor(tensor):
+    log.debug(f"Tensor: {tensor.shape}")
+
+    image = tensor2pil(tensor)
+    b64_imgs = []
+    for im in image:
+        buffered = io.BytesIO()
+        im.save(buffered, format="PNG")
+        b64_imgs.append(
+            "data:image/png;base64,"
+            + base64.b64encode(buffered.getvalue()).decode("utf-8")
+        )
+
+    return {"b64_images": b64_imgs}
+
+
+def process_list(anything):
+    text = []
+    if not anything:
+        return {"text": []}
+
+    first_element = anything[0]
+    if (
+        isinstance(first_element, list)
+        and first_element
+        and isinstance(first_element[0], torch.Tensor)
+    ):
+        text.append(
+            f"List of List of Tensors: {first_element[0].shape} (x{len(anything)})"
+        )
+
+    elif isinstance(first_element, torch.Tensor):
+        text.append(f"List of Tensors: {first_element.shape} (x{len(anything)})")
+
+    return {"text": text}
+
+
+def process_dict(anything):
+    text = []
+    if "samples" in anything:
+        is_empty = "(empty)" if torch.count_nonzero(anything["samples"]) == 0 else ""
+        text.append(f"Latent Samples: {anything['samples'].shape} {is_empty}")
+
+    return {"text": text}
+
+
+def process_bool(anything):
+    return {"text": ["True" if anything else "False"]}
+
+
+def process_text(anything):
+    return {"text": [str(anything)]}
+
+
+# endregion
+
+
 class Debug:
     """Experimental node to debug any Comfy values, support for more types and widgets is planned"""
 
@@ -26,33 +84,23 @@ class Debug:
             "ui": {"b64_images": [], "text": []},
             "result": ("A"),
         }
-        for k, v in kwargs.items():
-            anything = v
-            text = ""
-            if isinstance(anything, torch.Tensor):
-                log.debug(f"Tensor: {anything.shape}")
 
-                # write the images to temp
+        processors = {
+            torch.Tensor: process_tensor,
+            list: process_list,
+            dict: process_dict,
+            bool: process_bool,
+        }
 
-                image = tensor2pil(anything)
-                b64_imgs = []
-                for im in image:
-                    buffered = io.BytesIO()
-                    im.save(buffered, format="PNG")
-                    b64_imgs.append(
-                        "data:image/png;base64,"
-                        + base64.b64encode(buffered.getvalue()).decode("utf-8")
-                    )
+        for anything in kwargs.values():
+            processor = processors.get(type(anything), process_text)
+            processed_data = processor(anything)
 
-                output["ui"]["b64_images"] += b64_imgs
-                log.debug(f"Input {k} contains {len(b64_imgs)} images")
-            elif isinstance(anything, bool):
-                log.debug(f"Input {k} contains boolean: {anything}")
-                output["ui"]["text"] += ["True" if anything else "False"]
-            else:
-                text = str(anything)
-                log.debug(f"Input {k} contains text: {text}")
-                output["ui"]["text"] += [text]
+            for ui_key, ui_value in processed_data.items():
+                output["ui"][ui_key].extend(ui_value)
+            # log.debug(
+            #     f"Processed input {k}, found {len(processed_data.get('b64_images', []))} images and {len(processed_data.get('text', []))} text items."
+            # )
 
         return output
 
