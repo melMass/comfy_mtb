@@ -1,7 +1,13 @@
-from .utils import here, run_command, comfy_mode, import_install
+from .utils import (
+    here,
+    import_install,
+    styles_dir,
+    backup_file,
+)
 from aiohttp import web
 from .log import mklog
-import sys
+import csv
+
 
 endlog = mklog("mtb endpoint")
 
@@ -49,6 +55,32 @@ def ACTIONS_getStyles(style_name=None):
     return {"error": "No styles found"}
 
 
+def ACTIONS_saveStyle(data):
+    # endlog.debug(f"Received Save Styles for {data.keys()}")
+    # endlog.debug(data)
+
+    styles = [f.name for f in styles_dir.iterdir() if f.suffix == ".csv"]
+    target = None
+    rows = []
+    for fp, content in data.items():
+        if fp in styles:
+            endlog.debug(f"Overwriting {fp}")
+            target = styles_dir / fp
+            rows = content
+            break
+
+    if not target:
+        endlog.warning(f"Could not determine the target file for {data.keys()}")
+        return {"error": "Could not determine the target file for the style"}
+
+    backup_file(target)
+
+    with target.open("w", newline="", encoding="utf-8") as file:
+        csv_writer = csv.writer(file, quoting=csv.QUOTE_ALL)
+        for row in rows:
+            csv_writer.writerow(row)
+
+
 async def do_action(request) -> web.Response:
     endlog.debug("Init action request")
     request_data = await request.json()
@@ -82,6 +114,129 @@ def dependencies_button(name, dependencies):
     return f"""
         <button class="dependency-button" onclick="window.mtb_action('installDependency',[{deps}])">Install {name} deps</button>
         """
+
+
+def csv_editor():
+    inputs = [f for f in styles_dir.iterdir() if f.suffix == ".csv"]
+    # rows = {f.stem: list(csv.reader(f.read_text("utf8"))) for f in styles}
+
+    style_files = {}
+    for file in inputs:
+        with open(file, "r", encoding="utf8") as f:
+            parsed = csv.reader(f)
+            style_files[file.name] = []
+            for row in parsed:
+                endlog.debug(f"Adding style {row[0]}")
+                style_files[file.name].append((row[0], row[1], row[2]))
+
+    html_out = """
+            <div id="style-editor">
+             <h1>Style Editor</h1>
+            
+            """
+    for current, styles in style_files.items():
+        current_out = f"<h3>{current}</h3>"
+        table_rows = []
+        for index, style in enumerate(styles):
+            table_rows += (
+                (["<tr>"] + [f"<th>{cell}</th>" for cell in style] + ["</tr>"])
+                if index == 0
+                else (
+                    ["<tr>"]
+                    + [
+                        f"<td><input type='text' value='{cell}'></td>"
+                        if i == 0
+                        else f"<td><textarea name='Text1' cols='40' rows='5'>{cell}</textarea></td>"
+                        for i, cell in enumerate(style)
+                    ]
+                    + ["</tr>"]
+                )
+            )
+        current_out += (
+            f"<table data-id='{current}' data-filename='{current}'>"
+            + "".join(table_rows)
+            + "</table>"
+        )
+        current_out += f"<button data-id='{current}' onclick='saveTableData(this.getAttribute(\"data-id\"))'>Save {current}</button>"
+
+        html_out += add_foldable_region(current, current_out)
+
+    html_out += "</div>"
+    html_out += """<script src='/mtb-assets/js/saveTableData.js'></script>"""
+
+    return html_out
+
+
+def render_tab_view(**kwargs):
+    tab_headers = []
+    tab_contents = []
+
+    for idx, (tab_name, content) in enumerate(kwargs.items()):
+        active_class = "active" if idx == 0 else ""
+        tab_headers.append(
+            f"<button class='tablinks {active_class}' onclick=\"openTab(event, '{tab_name}')\">{tab_name}</button>"
+        )
+        tab_contents.append(
+            f"<div id='{tab_name}' class='tabcontent {active_class}'>{content}</div>"
+        )
+
+    headers_str = "\n".join(tab_headers)
+    contents_str = "\n".join(tab_contents)
+
+    return f"""
+<div class='tab-container'>
+    <div class='tab'>
+        {headers_str}
+    </div>
+    {contents_str}
+    </div>
+    <script src='/mtb-assets/js/tabSwitch.js'></script>
+    """
+
+
+def add_foldable_region(title, content):
+    symbol_id = f"{title}-symbol"
+    return f"""
+    <div class='foldable'>
+        <div class='foldable-title' onclick="toggleFoldable('{title}', '{symbol_id}')">
+            <span id='{symbol_id}' class='foldable-symbol'>&#9655;</span>
+            {title}
+        </div>
+        <div id='{title}' class='foldable-content'>
+            {content}
+        </div>
+    </div>
+    <script src='/mtb-assets/js/foldable.js'></script>
+    """
+
+
+def add_split_pane(left_content, right_content, vertical=True):
+    orientation = "vertical" if vertical else "horizontal"
+    return f"""
+    <div class="split-pane {orientation}">
+        <div id="leftPane">
+            {left_content}
+        </div>
+        <div id="resizer"></div>
+        <div id="rightPane">
+            {right_content}
+        </div>
+    </div>
+    <script>
+        initSplitPane({str(vertical).lower()});
+    </script>
+    <script src='/mtb-assets/js/splitPane.js'></script>
+    """
+
+
+def add_dropdown(title, options):
+    option_str = "\n".join([f"<option value='{opt}'>{opt}</option>" for opt in options])
+    return f"""
+    <select>
+        <option disabled selected>{title}</option>
+        {option_str}
+    </select>
+    """
 
 
 def render_table(table_dict, sort=True, title=None):
