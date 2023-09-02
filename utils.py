@@ -3,7 +3,7 @@ import numpy as np
 import torch
 from pathlib import Path
 import sys
-from typing import List
+from typing import List, Optional
 import signal
 from contextlib import suppress
 from queue import Queue, Empty
@@ -14,6 +14,8 @@ import math
 import functools
 import socket
 import requests
+import shutil
+import uuid
 
 try:
     from .log import log
@@ -64,6 +66,33 @@ class IPChecker:
 
 
 # region MISC Utilities
+def backup_file(
+    fp: Path,
+    target: Optional[Path] = None,
+    backup_dir: str = ".bak",
+    suffix: Optional[str] = None,
+    prefix: Optional[str] = None,
+):
+    if not fp.exists():
+        raise FileNotFoundError(f"No file found at {fp}")
+
+    backup_directory = target or fp.parent / backup_dir
+    backup_directory.mkdir(parents=True, exist_ok=True)
+
+    stem = fp.stem
+
+    if suffix or prefix:
+        new_stem = f"{prefix or ''}{stem}{suffix or ''}"
+    else:
+        new_stem = f"{stem}_{uuid.uuid4()}"
+
+    backup_file_path = backup_directory / f"{new_stem}{fp.suffix}"
+
+    # Perform the backup
+    shutil.copy(fp, backup_file_path)
+    log.debug(f"File backed up to {backup_file_path}")
+
+
 @functools.lru_cache(maxsize=1)
 def get_server_info():
     from comfy.cli_args import args
@@ -218,6 +247,8 @@ here = Path(__file__).parent.resolve()
 
 # - Construct the absolute path to the ComfyUI directory
 comfy_dir = here.parent.parent
+
+styles_dir = comfy_dir / "styles"
 
 # - Construct the path to the font file
 font_path = here / "font.ttf"

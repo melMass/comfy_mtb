@@ -192,6 +192,32 @@ if hasattr(PromptServer, "instance"):
         "LoadFaceAnalysisModel": restore_deps,
     }
 
+    PromptServer.instance.app.router.add_static(
+        "/mtb-assets/", path=(here / "html").as_posix()
+    )
+
+    @PromptServer.instance.routes.get("/mtb/manage")
+    async def manage(request):
+        from . import endpoint
+
+        reload(endpoint)
+
+        endlog.debug("Initializing Manager")
+        if "text/html" in request.headers.get("Accept", ""):
+            csv_editor = endpoint.csv_editor()
+
+            tabview = endpoint.render_tab_view(Styles=csv_editor)
+            return web.Response(
+                text=endpoint.render_base_template("MTB", tabview),
+                content_type="text/html",
+            )
+
+        return web.json_response(
+            {
+                "message": "manage only has a POST api for now",
+            }
+        )
+
     @PromptServer.instance.routes.get("/mtb/status")
     async def get_full_library(request):
         from . import endpoint
@@ -255,6 +281,7 @@ if hasattr(PromptServer, "instance"):
             # # Return an HTML page
             html_response = """
             <div class="flex-container menu">
+                <a href="/mtb/manage">manage</a>
                 <a href="/mtb/debug">debug</a>
                 <a href="/mtb/status">status</a>
             </div>            
