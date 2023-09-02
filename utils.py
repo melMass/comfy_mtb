@@ -181,6 +181,7 @@ reqs_map = {
     "basicsr": "basicsr==1.4.2",
     "rembg": "rembg==2.0.50",
     "qrcode": "qrcode[pil]",
+    "requirements": "requirements-parser==0.5.0",
 }
 
 

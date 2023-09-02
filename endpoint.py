@@ -1,4 +1,4 @@
-from .utils import here, run_command, comfy_mode
+from .utils import here, run_command, comfy_mode, import_install
 from aiohttp import web
 from .log import mklog
 import sys
@@ -6,8 +6,9 @@ import sys
 endlog = mklog("mtb endpoint")
 
 # - ACTIONS
-import requirements
+import platform
 
+import_install("requirements")
 
 
 def ACTIONS_installDependency(dependency_names=None):
@@ -15,8 +16,8 @@ def ACTIONS_installDependency(dependency_names=None):
         return {"error": "No dependency name provided"}
     endlog.debug(f"Received Install Dependency request for {dependency_names}")
     reqs = []
-    if comfy_mode == "embeded":
-        reqs = list(requirements.parse((here / "reqs_portable.txt").read_text()))
+    if platform.system() == "Windows":
+        reqs = list(requirements.parse((here / "reqs_windows.txt").read_text()))
     else:
         reqs = list(requirements.parse((here / "reqs.txt").read_text()))
     print([x.specs for x in reqs])
