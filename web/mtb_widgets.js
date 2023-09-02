@@ -16,6 +16,36 @@ import { log } from './comfy_shared.js'
 
 const newTypes = [, /*'BOOL'*/ 'COLOR', 'BBOX']
 
+const withFont = (ctx, font, cb) => {
+  const oldFont = ctx.font
+  ctx.font = font
+  cb()
+  ctx.font = oldFont
+}
+
+const calculateTextDimensions = (ctx, value, width, fontSize = 16) => {
+  const words = value.split(' ')
+  const lines = []
+  let currentLine = ''
+  for (const word of words) {
+    const testLine = currentLine.length === 0 ? word : `${currentLine} ${word}`
+    const testWidth = ctx.measureText(testLine).width
+    if (testWidth > width) {
+      lines.push(currentLine)
+      currentLine = word
+    } else {
+      currentLine = testLine
+    }
+  }
+  if (lines.length === 0) lines.push(value)
+  const textHeight = (lines.length + 1) * fontSize
+  const maxLineWidth = lines.reduce(
+    (maxWidth, line) => Math.max(maxWidth, ctx.measureText(line).width),
+    0
+  )
+  return { textHeight, maxLineWidth }
+}
+
 export const MtbWidgets = {
   BBOX: (key, val) => {
     /** @type {import("./types/litegraph").IWidget} */
@@ -317,46 +347,22 @@ export const MtbWidgets = {
         // const [cw, ch] = this.computeSize(widgetWidth)
         shared.offsetDOMWidget(this, ctx, node, widgetWidth, widgetY, height)
       },
-      computeSize: function (width) {
-        const value = this.inputEl.innerHTML
-        if (!value) {
+      computeSize(width) {
+        if (!this.value) {
           return [32, 32]
         }
         if (!width) {
-          log(`No width ${this.parent.size}`)
+          console.debug(`No width ${this.parent.size}`)
         }
-
-        const oldFont = app.ctx.font
-        app.ctx.font = `${fontSize}px monospace`
-
-        const words = value.split(' ')
-        const lines = []
-        let currentLine = ''
-        for (const word of words) {
-          const testLine =
-            currentLine.length === 0 ? word : `${currentLine} ${word}`
-
-          const testWidth = app.ctx.measureText(testLine).width
-
-          if (testWidth > width) {
-            lines.push(currentLine)
-            currentLine = word
-          } else {
-            currentLine = testLine
-          }
-        }
-        app.ctx.font = oldFont
-        if (lines.length === 0) lines.push(currentLine)
-
-        const textHeight = (lines.length + 1) * fontSize
-
-        const maxLineWidth = lines.reduce(
-          (maxWidth, line) =>
-            Math.max(maxWidth, app.ctx.measureText(line).width),
-          0
+        let dimensions
+        withFont(app.ctx, `${fontSize}px monospace`, () => {
+          dimensions = calculateTextDimensions(app.ctx, this.value, width)
+        })
+        const widgetWidth = Math.max(
+          width || this.width || 32,
+          dimensions.maxLineWidth
         )
-        const widgetWidth = Math.max(width || this.width || 32, maxLineWidth)
-        const widgetHeight = textHeight * 1.5
+        const widgetHeight = dimensions.textHeight * 1.5
         return [widgetWidth, widgetHeight]
       },
       onRemoved: function () {
@@ -364,25 +370,23 @@ export const MtbWidgets = {
           this.inputEl.remove()
         }
       },
-    }
-
-    Object.defineProperty(w, 'value', {
-      get() {
+      get value() {
         return this.inputEl.innerHTML
       },
-      set(value) {
-        this.inputEl.innerHTML = value
+      set value(val) {
+        this.inputEl.innerHTML = val
         this.parent?.setSize?.(this.parent?.computeSize())
       },
-    })
+    }
 
     w.inputEl = document.createElement('p')
-    w.inputEl.style.textAlign = 'center'
-    w.inputEl.style.fontSize = `${fontSize}px`
-    w.inputEl.style.color = 'var(--input-text)'
-    w.inputEl.style.lineHeight = 0
-
-    w.inputEl.style.fontFamily = 'monospace'
+    w.inputEl.style = `
+      text-align: center;
+      font-size: ${fontSize}px;
+      color: var(--input-text);
+      line-height: 0;
+      font-family: monospace;
+    `
     w.value = val
     document.body.appendChild(w.inputEl)
 
