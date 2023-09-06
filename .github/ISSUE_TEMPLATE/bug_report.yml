@@ -42,7 +42,7 @@ body:
       label: Expected behavior
       description: A clear description of what you expected to happen.
 
- - type: dropdown
+  - type: dropdown
     id: os
     attributes:
       label: Operating System
@@ -55,7 +55,7 @@ body:
     validations:
       required: true
       
- - type: dropdown
+  - type: dropdown
     id: comfy_mode
     attributes:
       label: Comfy Mode
