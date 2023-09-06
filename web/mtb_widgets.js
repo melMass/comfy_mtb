@@ -517,12 +517,7 @@ const mtb_widgets = {
 
         this.onRemoved = function () {
           // When removing this node we need to remove the input from the DOM
-          for (const w of this.widgets) {
-            if (w.canvas) {
-              w.canvas.remove()
-            }
-            w.onRemoved?.()
-          }
+          shared.cleanupNode(this)
         }
         return r
       }
@@ -657,15 +652,7 @@ const mtb_widgets = {
             }
             const onRemoved = this.onRemoved
             this.onRemoved = () => {
-              if (!this.widgets) {
-                return r
-              }
-              for (const w of this.widgets) {
-                if (w.canvas) {
-                  w.canvas.remove()
-                }
-                w.onRemoved?.()
-              }
+              shared.cleanupNode(this)
               return onRemoved?.()
             }
           }
@@ -738,12 +725,7 @@ const mtb_widgets = {
           })
 
           this.onRemoved = () => {
-            for (const w of this.widgets) {
-              if (w.canvas) {
-                w.canvas.remove()
-              }
-              w.onRemoved?.()
-            }
+            shared.cleanupNode(this)
             app.canvas.setDirty(true)
           }
 
