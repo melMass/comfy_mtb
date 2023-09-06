@@ -2,7 +2,9 @@ name: 🐞 Bug Report
 title: "[bug] "
 description: Report a bug
 labels: ["type: 🐛 bug", "status: 🧹 needs triage"]
-
+assignees:
+  - melMass
+  
 body:
   - type: markdown
     attributes:
@@ -40,16 +42,30 @@ body:
       label: Expected behavior
       description: A clear description of what you expected to happen.
 
-  - type: textarea
-    id: info
+ - type: dropdown
+    id: os
     attributes:
-      label: Platform and versions
-      description: "informations about the environment you run Comfy in"
-      render: sh
-      placeholder: |
-        - OS: [e.g. Linux]
-        - Comfy Mode [e.g. custom env, standalone, google colab]
-
+      label: Operating System
+      description: What OS are you using?
+      options:
+        - Windows (Default)
+        - Linux
+        - Mac
+      default: 0
+    validations:
+      required: true
+      
+ - type: dropdown
+    id: comfy_mode
+    attributes:
+      label: Comfy Mode
+      description: What flavor of Comfy do you use?
+      options:
+        - Comfy Portable (embed) (Default)
+        - In a custom virtual env (venv, virtualenv, conda...)
+        - Google Colab
+        - Other (online services, containers etc..)
+      default: 0
     validations:
       required: true
 
