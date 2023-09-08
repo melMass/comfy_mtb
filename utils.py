@@ -1,21 +1,22 @@
-from PIL import Image
-import numpy as np
-import torch
-from pathlib import Path
-import sys
-from typing import List, Optional, Union
-import signal
-from contextlib import suppress
-from queue import Queue, Empty
-import subprocess
-import threading
-import os
-import math
 import functools
-import socket
-import requests
+import math
+import os
 import shutil
+import signal
+import socket
+import subprocess
+import sys
+import threading
 import uuid
+from contextlib import suppress
+from pathlib import Path
+from queue import Empty, Queue
+from typing import List, Optional, Union
+
+import numpy as np
+import requests
+import torch
+from PIL import Image
 
 try:
     from .log import log
@@ -31,6 +32,17 @@ except ImportError:
         log.warn("[comfy mtb] You probably called the file outside a module.")
 
 
+# region SANITY_CHECK Utilities
+
+
+def make_report():
+    pass
+
+
+# endregion
+
+
+# region SERVER Utilities
 class IPChecker:
     def __init__(self):
         self.ips = list(self.get_local_ips())
@@ -65,6 +77,22 @@ class IPChecker:
             return False
 
 
+@functools.lru_cache(maxsize=1)
+def get_server_info():
+    from comfy.cli_args import args
+
+    ip_checker = IPChecker()
+    base_url = args.listen
+    if base_url == "0.0.0.0":
+        log.debug("Server set to 0.0.0.0, we will try to resolve the host IP")
+        base_url = ip_checker.get_working_ip(f"http://{{}}:{args.port}/history")
+        log.debug(f"Setting ip to {base_url}")
+    return (base_url, args.port)
+
+
+# endregion
+
+
 # region MISC Utilities
 def backup_file(
     fp: Path,
@@ -91,19 +119,6 @@ def backup_file(
     # Perform the backup
     shutil.copy(fp, backup_file_path)
     log.debug(f"File backed up to {backup_file_path}")
-
-
-@functools.lru_cache(maxsize=1)
-def get_server_info():
-    from comfy.cli_args import args
-
-    ip_checker = IPChecker()
-    base_url = args.listen
-    if base_url == "0.0.0.0":
-        log.debug("Server set to 0.0.0.0, we will try to resolve the host IP")
-        base_url = ip_checker.get_working_ip(f"http://{{}}:{args.port}/history")
-        log.debug(f"Setting ip to {base_url}")
-    return (base_url, args.port)
 
 
 def hex_to_rgb(hex_color):
@@ -243,7 +258,7 @@ elif ".venv" in sys.executable:
     comfy_mode = "venv"
 
 # - Get the absolute path of the parent directory of the current script
-here = Path(__file__).parent.resolve()
+here = Path(__file__).parent.absolute()
 
 # - Construct the absolute path to the ComfyUI directory
 comfy_dir = here.parent.parent
@@ -275,7 +290,7 @@ PIL_FILTER_MAP = {
 # endregion
 
 
-# region TENSOR UTILITIES
+# region TENSOR Utilities
 def tensor2pil(image: torch.Tensor) -> List[Image.Image]:
     batch_count = image.size(0) if len(image.shape) > 3 else 1
     if batch_count > 1:
@@ -324,9 +339,8 @@ def download_antelopev2():
     antelopev2_url = "https://drive.google.com/uc?id=18wEUfMNohBJ4K3Ly5wpTejPfDzp-8fI8"
 
     try:
-        import gdown
-
         import folder_paths
+        import gdown
 
         log.debug("Loading antelopev2 model")
 
