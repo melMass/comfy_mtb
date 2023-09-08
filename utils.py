@@ -3,7 +3,7 @@ import numpy as np
 import torch
 from pathlib import Path
 import sys
-from typing import List, Optional
+from typing import List, Optional, Union
 import signal
 from contextlib import suppress
 from queue import Queue, Empty
@@ -291,14 +291,14 @@ def tensor2pil(image: torch.Tensor) -> List[Image.Image]:
     ]
 
 
-def pil2tensor(image: Image.Image | List[Image.Image]) -> torch.Tensor:
+def pil2tensor(image: Union[Image.Image, List[Image.Image]]) -> torch.Tensor:
     if isinstance(image, list):
         return torch.cat([pil2tensor(img) for img in image], dim=0)
 
     return torch.from_numpy(np.array(image).astype(np.float32) / 255.0).unsqueeze(0)
 
 
-def np2tensor(img_np: np.ndarray | List[np.ndarray]) -> torch.Tensor:
+def np2tensor(img_np: Union[np.ndarray, List[np.ndarray]]) -> torch.Tensor:
     if isinstance(img_np, list):
         return torch.cat([np2tensor(img) for img in img_np], dim=0)
 
