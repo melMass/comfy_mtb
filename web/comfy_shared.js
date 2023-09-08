@@ -30,7 +30,7 @@ export const cleanupNode = (node) => {
     return
   }
 
-  for (const w of this.widgets) {
+  for (const w of node.widgets) {
     if (w.canvas) {
       w.canvas.remove()
     }
