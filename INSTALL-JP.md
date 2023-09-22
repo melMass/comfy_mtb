@@ -52,7 +52,7 @@ python scripts/download_models.py
 1. ComfyUIで使用しているPython環境であることを確認してください。
 2. 以下のコマンドを実行して、必要な依存関係をインストールします：
   ```bash
-  pip install -r comfy_mtb/reqs.txt
+  pip install -r comfy_mtb/requirements.txt
   ```
 
 </details> 
@@ -78,7 +78,7 @@ ComfyUI with localtunnel (Recommended Way)**ヘッダーのすぐ後（コード
 !python custom_nodes/comfy_mtb/scripts/download_models.py -y
 
 # install the dependencies
-!pip install -r custom_nodes/comfy_mtb/reqs.txt -f https://download.openmmlab.com/mmcv/dist/cu118/torch2.0/index.html
+!pip install -r custom_nodes/comfy_mtb/requirements.txt -f https://download.openmmlab.com/mmcv/dist/cu118/torch2.0/index.html
 ```
 これを実行した後、colabがランタイムを再起動する必要があると文句を言ったら、それを実行し、それ以前のセルは再実行せず、localtunnelを実行するセルだけを再実行してください。(最初に`%cd ComfyUI`のセルを追加する必要があるかもしれません...)
 

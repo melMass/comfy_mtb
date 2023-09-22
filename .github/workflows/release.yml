@@ -98,7 +98,7 @@ jobs:
         id: cache
         with:
           path: ${{ env.archive_name }}.zip
-          key: ${{ env.archive_name }}-${{ hashFiles('reqs.txt') }}
+          key: ${{ env.archive_name }}-${{ hashFiles('requirements.txt') }}
       - name: 📦 Unzip wheels
         shell: bash
         run: |

@@ -5,3 +5,4 @@ tensorflow
 facexlib==0.3.0
 insightface==0.7.3
 basicsr==1.4.2
+rich==13.5.3

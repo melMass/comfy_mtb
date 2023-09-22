@@ -49,7 +49,7 @@ python scripts/download_models.py
 1. 确保您处于用于 ComfyUI 的 Python 环境中。
 2. 运行以下命令安装所需的依赖项：
   ```bash
-  pip install -r comfy_mtb/reqs.txt
+  pip install -r comfy_mtb/requirements.txt
   ```
 
 </details>
@@ -77,7 +77,7 @@ python scripts/download_models.py
 !python custom_nodes/comfy_mtb/scripts/download_models.py -y
 
 # install the dependencies
-!pip install -r custom_nodes/comfy_mtb/reqs.txt -f https://download.openmmlab.com/mmcv/dist/cu118/torch2.0/index.html
+!pip install -r custom_nodes/comfy_mtb/requirements.txt -f https://download.openmmlab.com/mmcv/dist/cu118/torch2.0/index.html
 ```
 
 如果运行后 colab 抱怨需要重新启动运行时，请重新启动，然后不要重新运行之前的单元格，只运行运行本地隧道的单元格。(可能需要先添加一个包含 `%cd ComfyUI` 的单元格）

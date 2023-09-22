@@ -430,11 +430,11 @@ def get_github_assets(tag=None):
 
 # Install dependencies from requirements.txt
 def install_dependencies(dry=False):
-    parsed_requirements = get_requirements(here / "reqs.txt")
+    parsed_requirements = get_requirements(here / "requirements.txt")
     if not parsed_requirements:
         return
     print_formatted(
-        "Installing dependencies from reqs.txt...", "italic", color="yellow"
+        "Installing dependencies from requirements.txt...", "italic", color="yellow"
     )
 
     for requirement in parsed_requirements:
@@ -535,7 +535,7 @@ if __name__ == "__main__":
 
     print_formatted("Checking environment...", "italic", color="yellow")
     missing_deps = []
-    if parsed_requirements := get_requirements(here / "reqs.txt"):
+    if parsed_requirements := get_requirements(here / "requirements.txt"):
         for requirement in parsed_requirements:
             installed, pip_name, pip_spec, import_name = try_import(requirement)
             if not installed:
@@ -619,7 +619,7 @@ if __name__ == "__main__":
         if platform.system() == "Windows":
             wheel_cmd = install_cmd + ["-r", (here / "reqs_windows.txt")]
         else:
-            wheel_cmd = install_cmd + ["-r", (here / "reqs.txt")]
+            wheel_cmd = install_cmd + ["-r", (here / "requirements.txt")]
 
         run_command(wheel_cmd)
         print_formatted(

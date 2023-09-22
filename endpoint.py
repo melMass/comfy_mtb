@@ -25,7 +25,7 @@ def ACTIONS_installDependency(dependency_names=None):
     if platform.system() == "Windows":
         reqs = list(requirements.parse((here / "reqs_windows.txt").read_text()))
     else:
-        reqs = list(requirements.parse((here / "reqs.txt").read_text()))
+        reqs = list(requirements.parse((here / "requirements.txt").read_text()))
     print([x.specs for x in reqs])
     print(
         "\n".join([f"{x.line} {''.join(x.specs[0] if x.specs else '')}" for x in reqs])
