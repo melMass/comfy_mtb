@@ -13,6 +13,7 @@ from pathlib import Path
 from queue import Empty, Queue
 from typing import List, Optional, Union
 
+import folder_paths
 import numpy as np
 import requests
 import torch
@@ -261,7 +262,7 @@ elif ".venv" in sys.executable:
 here = Path(__file__).parent.absolute()
 
 # - Construct the absolute path to the ComfyUI directory
-comfy_dir = here.parent.parent
+comfy_dir = Path(folder_paths.base_path)
 
 styles_dir = comfy_dir / "styles"
 
@@ -396,7 +397,7 @@ def create_uv_map_tensor(width=512, height=512):
 # region ANIMATION Utilities
 def apply_easing(value, easing_type):
     if value < 0 or value > 1:
-        raise ValueError("The value should be between 0 and 1.")
+        raise ValueError(f"The value should be between 0 and 1. (value is {value})")
 
     if easing_type == "Linear":
         return value
