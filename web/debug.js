@@ -27,6 +27,15 @@ app.registerExtension({
   name: 'mtb.Debug',
   async beforeRegisterNodeDef(nodeType, nodeData, app) {
     if (nodeData.name === 'Debug (mtb)') {
+      const onNodeCreated = nodeType.prototype.onNodeCreated
+      nodeType.prototype.onNodeCreated = function () {
+        const r = onNodeCreated
+          ? onNodeCreated.apply(this, arguments)
+          : undefined
+        this.addInput(`anything_1`, '*')
+        return r
+      }
+
       const onConnectionsChange = nodeType.prototype.onConnectionsChange
       nodeType.prototype.onConnectionsChange = function (
         type,

@@ -1,10 +1,13 @@
-from ..utils import tensor2pil
-from ..log import log
-import io, base64
-import torch
-import folder_paths
-from typing import Optional
+import base64
+import io
 from pathlib import Path
+from typing import Optional
+
+import folder_paths
+import torch
+
+from ..log import log
+from ..utils import tensor2pil
 
 
 # region processors
@@ -71,18 +74,18 @@ class Debug:
     @classmethod
     def INPUT_TYPES(cls):
         return {
-            "required": {"anything_1": ("*")},
+            "required": {"output_to_console": ("BOOLEAN", {"default": False})},
         }
 
-    RETURN_TYPES = ("STRING",)
+    RETURN_TYPES = ()
     FUNCTION = "do_debug"
     CATEGORY = "mtb/debug"
     OUTPUT_NODE = True
 
-    def do_debug(self, **kwargs):
+    def do_debug(self, output_to_console, **kwargs):
         output = {
             "ui": {"b64_images": [], "text": []},
-            "result": ("A"),
+            # "result": ("A"),
         }
 
         processors = {
@@ -91,6 +94,8 @@ class Debug:
             dict: process_dict,
             bool: process_bool,
         }
+        if output_to_console:
+            print("bouh!")
 
         for anything in kwargs.values():
             processor = processors.get(type(anything), process_text)
