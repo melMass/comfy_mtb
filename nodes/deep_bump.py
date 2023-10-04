@@ -1,23 +1,46 @@
-import onnxruntime as ort
-import numpy as np
 import pathlib
-import onnxruntime as ort
+import tempfile
+from pathlib import Path
+
 import numpy as np
-from .. import utils as utils_inference
-from ..log import log
+import onnxruntime as ort
+import torch
+from PIL import Image
+
+from ..log import mklog
+from ..utils import (
+    models_dir,
+    np2tensor,
+    pil2tensor,
+    tensor2pil,
+    tiles_infer,
+    tiles_merge,
+    tiles_split,
+)
 
 # Disable MS telemetry
 ort.disable_telemetry_events()
+log = mklog(__name__)
 
 
 # - COLOR to NORMALS
-def color_to_normals(color_img, overlap, progress_callback):
+def color_to_normals(color_img, overlap, progress_callback, save_temp=False):
     """Computes a normal map from the given color map. 'color_img' must be a numpy array
     in C,H,W format (with C as RGB). 'overlap' must be one of 'SMALL', 'MEDIUM', 'LARGE'.
     """
+    temp_dir = Path(tempfile.mkdtemp()) if save_temp else None
 
     # Remove alpha & convert to grayscale
-    img = np.mean(color_img[:3], axis=0, keepdimss=True)
+    img = np.mean(color_img[:3], axis=0, keepdims=True)
+
+    if temp_dir:
+        Image.fromarray((img[0] * 255).astype(np.uint8)).save(
+            temp_dir / "grayscale_img.png"
+        )
+
+    log.debug(
+        f"Converting color image to grayscale by taking the mean over color channels: {img.shape}"
+    )
 
     # Split image in tiles
     log.debug("DeepBump Color → Normals : tilling")
@@ -28,32 +51,54 @@ def color_to_normals(color_img, overlap, progress_callback):
         "LARGE": tile_size // 2,
     }
     stride_size = tile_size - overlaps[overlap]
-    tiles, paddings = utils_inference.tiles_split(
+    tiles, paddings = tiles_split(
         img, (tile_size, tile_size), (stride_size, stride_size)
     )
+    if temp_dir:
+        for i, tile in enumerate(tiles):
+            Image.fromarray((tile[0] * 255).astype(np.uint8)).save(
+                temp_dir / f"tile_{i}.png"
+            )
 
     # Load model
     log.debug("DeepBump Color → Normals : loading model")
-    addon_path = str(pathlib.Path(__file__).parent.absolute())
-    ort_session = ort.InferenceSession(f"{addon_path}/models/deepbump256.onnx")
+    ort_session = ort.InferenceSession(
+        (models_dir / "deepbump" / "deepbump256.onnx").as_posix()
+    )
 
     # Predict normal map for each tile
     log.debug("DeepBump Color → Normals : generating")
-    pred_tiles = utils_inference.tiles_infer(
-        tiles, ort_session, progress_callback=progress_callback
-    )
+    pred_tiles = tiles_infer(tiles, ort_session, progress_callback=progress_callback)
+
+    if temp_dir:
+        for i, pred_tile in enumerate(pred_tiles):
+            Image.fromarray((pred_tile.transpose(1, 2, 0) * 255).astype(np.uint8)).save(
+                temp_dir / f"pred_tile_{i}.png"
+            )
 
     # Merge tiles
     log.debug("DeepBump Color → Normals : merging")
-    pred_img = utils_inference.tiles_merge(
+    pred_img = tiles_merge(
         pred_tiles,
         (stride_size, stride_size),
         (3, img.shape[1], img.shape[2]),
         paddings,
     )
 
+    if temp_dir:
+        Image.fromarray((pred_img.transpose(1, 2, 0) * 255).astype(np.uint8)).save(
+            temp_dir / "merged_img.png"
+        )
+
     # Normalize each pixel to unit vector
-    pred_img = utils_inference.normalize(pred_img)
+    pred_img = normalize(pred_img)
+
+    if temp_dir:
+        Image.fromarray((pred_img.transpose(1, 2, 0) * 255).astype(np.uint8)).save(
+            temp_dir / "final_img.png"
+        )
+
+        log.debug(f"Debug images saved in {temp_dir}")
 
     return pred_img
 
@@ -278,25 +323,38 @@ class DeepBump:
         normals_to_curvature_blur_radius="SMALL",
         normals_to_height_seamless=True,
     ):
-        image = utils_inference.tensor2pil(image)
+        images = tensor2pil(image)
+        out_images = []
 
-        in_img = np.transpose(image, (2, 0, 1)) / 255
+        for image in images:
+            log.debug(f"Input image shape: {image}")
 
-        log.debug(f"Input image shape: {in_img.shape}")
+            in_img = np.transpose(image, (2, 0, 1)) / 255
+            log.debug(f"transposed for deep image shape: {in_img.shape}")
+            out_img = None
 
-        # Apply processing
-        if mode == "Color to Normals":
-            out_img = color_to_normals(in_img, color_to_normals_overlap, None)
-        if mode == "Normals to Curvature":
-            out_img = normals_to_curvature(
-                in_img, normals_to_curvature_blur_radius, None
-            )
-        if mode == "Normals to Height":
-            out_img = normals_to_height(in_img, normals_to_height_seamless, None)
+            # Apply processing
+            if mode == "Color to Normals":
+                out_img = color_to_normals(in_img, color_to_normals_overlap, None)
+            if mode == "Normals to Curvature":
+                out_img = normals_to_curvature(
+                    in_img, normals_to_curvature_blur_radius, None
+                )
+            if mode == "Normals to Height":
+                out_img = normals_to_height(in_img, normals_to_height_seamless, None)
 
-        out_img = (np.transpose(out_img, (1, 2, 0)) * 255).astype(np.uint8)
-
-        return (utils_inference.pil2tensor(out_img),)
+            if out_img is not None:
+                log.debug(f"Output image shape: {out_img.shape}")
+                out_images.append(
+                    torch.from_numpy(
+                        np.transpose(out_img, (1, 2, 0)).astype(np.float32)
+                    ).unsqueeze(0)
+                )
+            else:
+                log.error("No out img... This should not happen")
+        for outi in out_images:
+            log.debug(f"Shape fed to utils: {outi.shape}")
+        return (torch.cat(out_images, dim=0),)
 
 
 __nodes__ = [DeepBump]
