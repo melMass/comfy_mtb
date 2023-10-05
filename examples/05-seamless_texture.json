@@ -1,0 +1,905 @@
+{
+  "last_node_id": 97,
+  "last_link_id": 179,
+  "nodes": [
+    {
+      "id": 6,
+      "type": "CLIPTextEncode",
+      "pos": [
+        -1165.8749246009997,
+        30
+      ],
+      "size": [
+        422.84503173828125,
+        164.31304931640625
+      ],
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "link": 3
+        }
+      ],
+      "outputs": [
+        {
+          "name": "CONDITIONING",
+          "type": "CONDITIONING",
+          "links": [
+            4,
+            158
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CLIPTextEncode"
+      },
+      "widgets_values": [
+        "Closeup texture of rocks"
+      ],
+      "color": "#432",
+      "bgcolor": "#653",
+      "shape": 1
+    },
+    {
+      "id": 7,
+      "type": "CLIPTextEncode",
+      "pos": [
+        -1175.8749246009997,
+        250
+      ],
+      "size": [
+        425.27801513671875,
+        180.6060791015625
+      ],
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "link": 5
+        }
+      ],
+      "outputs": [
+        {
+          "name": "CONDITIONING",
+          "type": "CONDITIONING",
+          "links": [
+            6
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CLIPTextEncode"
+      },
+      "widgets_values": [
+        "((drawing, cartoon, painting, sketch, blur, depth of field, dof))"
+      ],
+      "color": "#432",
+      "bgcolor": "#653",
+      "shape": 1
+    },
+    {
+      "id": 89,
+      "type": "Reroute",
+      "pos": [
+        350,
+        803
+      ],
+      "size": [
+        75,
+        26
+      ],
+      "flags": {},
+      "order": 9,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "",
+          "type": "*",
+          "link": 176
+        }
+      ],
+      "outputs": [
+        {
+          "name": "",
+          "type": "IMAGE",
+          "links": [
+            167
+          ]
+        }
+      ],
+      "properties": {
+        "showOutputText": false,
+        "horizontal": false
+      }
+    },
+    {
+      "id": 4,
+      "type": "CheckpointLoaderSimple",
+      "pos": [
+        -1740,
+        236
+      ],
+      "size": [
+        315,
+        98
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "outputs": [
+        {
+          "name": "MODEL",
+          "type": "MODEL",
+          "links": [
+            170
+          ],
+          "slot_index": 0
+        },
+        {
+          "name": "CLIP",
+          "type": "CLIP",
+          "links": [
+            3,
+            5
+          ],
+          "slot_index": 1
+        },
+        {
+          "name": "VAE",
+          "type": "VAE",
+          "links": [],
+          "slot_index": 2
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CheckpointLoaderSimple"
+      },
+      "widgets_values": [
+        "revAnimated_v122.safetensors"
+      ],
+      "shape": 1
+    },
+    {
+      "id": 63,
+      "type": "SaveImage",
+      "pos": [
+        1315,
+        18
+      ],
+      "size": [
+        539.2050170898438,
+        617.2159423828125
+      ],
+      "flags": {},
+      "order": 13,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 115
+        }
+      ],
+      "title": "Normal",
+      "properties": {},
+      "widgets_values": [
+        "Normal"
+      ],
+      "shape": 1
+    },
+    {
+      "id": 67,
+      "type": "SaveImage",
+      "pos": [
+        2095,
+        22
+      ],
+      "size": [
+        539.2050170898438,
+        617.2159423828125
+      ],
+      "flags": {},
+      "order": 16,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 119
+        }
+      ],
+      "title": "Curvature",
+      "properties": {},
+      "widgets_values": [
+        "Curvature"
+      ],
+      "shape": 1
+    },
+    {
+      "id": 69,
+      "type": "SaveImage",
+      "pos": [
+        1560,
+        1290
+      ],
+      "size": [
+        539.2050170898438,
+        617.2159423828125
+      ],
+      "flags": {},
+      "order": 17,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 121
+        }
+      ],
+      "title": "Depth",
+      "properties": {},
+      "widgets_values": [
+        "Height"
+      ],
+      "shape": 1
+    },
+    {
+      "id": 91,
+      "type": "Model Patch Seamless (mtb)",
+      "pos": [
+        -1150,
+        -146
+      ],
+      "size": [
+        430.8000183105469,
+        78
+      ],
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "link": 170
+        }
+      ],
+      "outputs": [
+        {
+          "name": "Original Model (passthrough)",
+          "type": "MODEL",
+          "links": null,
+          "shape": 3
+        },
+        {
+          "name": "Patched Model",
+          "type": "MODEL",
+          "links": [
+            169
+          ],
+          "shape": 3,
+          "slot_index": 1
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "Model Patch Seamless (mtb)"
+      },
+      "widgets_values": [
+        true
+      ],
+      "color": "#232",
+      "bgcolor": "#353"
+    },
+    {
+      "id": 93,
+      "type": "PreviewImage",
+      "pos": [
+        1115,
+        -597
+      ],
+      "size": [
+        451.3526306152344,
+        478.3444519042969
+      ],
+      "flags": {},
+      "order": 12,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 179
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "PreviewImage"
+      }
+    },
+    {
+      "id": 43,
+      "type": "VAELoader",
+      "pos": [
+        -598.2757622278747,
+        577.3595309932109
+      ],
+      "size": [
+        387.48089599609375,
+        70.60645294189453
+      ],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "outputs": [
+        {
+          "name": "VAE",
+          "type": "VAE",
+          "links": [
+            174
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "VAELoader"
+      },
+      "widgets_values": [
+        "vae-ft-mse-840000-ema-pruned.safetensors"
+      ],
+      "shape": 1
+    },
+    {
+      "id": 97,
+      "type": "Image Tile Offset (mtb)",
+      "pos": [
+        617,
+        -598
+      ],
+      "size": [
+        315,
+        58
+      ],
+      "flags": {},
+      "order": 10,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "link": 178
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            179
+          ],
+          "shape": 3,
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "Image Tile Offset (mtb)"
+      },
+      "widgets_values": [
+        2
+      ],
+      "color": "#232",
+      "bgcolor": "#353"
+    },
+    {
+      "id": 96,
+      "type": "Vae Decode (mtb)",
+      "pos": [
+        -52,
+        40
+      ],
+      "size": [
+        315,
+        126
+      ],
+      "flags": {},
+      "order": 7,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "samples",
+          "type": "LATENT",
+          "link": 173
+        },
+        {
+          "name": "vae",
+          "type": "VAE",
+          "link": 174
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            175,
+            176,
+            178
+          ],
+          "shape": 3,
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "Vae Decode (mtb)"
+      },
+      "widgets_values": [
+        true,
+        false,
+        512
+      ],
+      "color": "#232",
+      "bgcolor": "#353"
+    },
+    {
+      "id": 46,
+      "type": "SaveImage",
+      "pos": [
+        533,
+        25
+      ],
+      "size": [
+        539.2050170898438,
+        617.2159423828125
+      ],
+      "flags": {},
+      "order": 8,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 175
+        }
+      ],
+      "title": "Albedo",
+      "properties": {},
+      "widgets_values": [
+        "Albedo"
+      ],
+      "shape": 1
+    },
+    {
+      "id": 74,
+      "type": "EmptyLatentImage",
+      "pos": [
+        -1075.8749246009997,
+        480
+      ],
+      "size": [
+        315,
+        106
+      ],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "outputs": [
+        {
+          "name": "LATENT",
+          "type": "LATENT",
+          "links": [
+            132
+          ],
+          "shape": 3,
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "EmptyLatentImage"
+      },
+      "widgets_values": [
+        768,
+        768,
+        1
+      ],
+      "color": "#323",
+      "bgcolor": "#535",
+      "shape": 1
+    },
+    {
+      "id": 62,
+      "type": "Deep Bump (mtb)",
+      "pos": [
+        727,
+        801
+      ],
+      "size": [
+        315,
+        130
+      ],
+      "flags": {},
+      "order": 11,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "link": 167
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            115,
+            118,
+            122
+          ],
+          "shape": 3,
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "Deep Bump (mtb)"
+      },
+      "widgets_values": [
+        "Color to Normals",
+        "SMALL",
+        "SMALLEST",
+        true
+      ],
+      "color": "#232",
+      "bgcolor": "#353",
+      "shape": 1
+    },
+    {
+      "id": 66,
+      "type": "Deep Bump (mtb)",
+      "pos": [
+        1626,
+        808
+      ],
+      "size": [
+        315,
+        130
+      ],
+      "flags": {},
+      "order": 14,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "link": 118
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            119
+          ],
+          "shape": 3,
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "Deep Bump (mtb)"
+      },
+      "widgets_values": [
+        "Normals to Curvature",
+        "SMALL",
+        "SMALLEST",
+        true
+      ],
+      "color": "#232",
+      "bgcolor": "#353",
+      "shape": 1
+    },
+    {
+      "id": 68,
+      "type": "Deep Bump (mtb)",
+      "pos": [
+        1185,
+        1288
+      ],
+      "size": [
+        315,
+        130
+      ],
+      "flags": {},
+      "order": 15,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "link": 122
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            121
+          ],
+          "shape": 3,
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "Deep Bump (mtb)"
+      },
+      "widgets_values": [
+        "Normals to Height",
+        "SMALL",
+        "SMALLEST",
+        true
+      ],
+      "color": "#232",
+      "bgcolor": "#353",
+      "shape": 1
+    },
+    {
+      "id": 3,
+      "type": "KSampler",
+      "pos": [
+        -518.2757622278748,
+        47.359530993211024
+      ],
+      "size": [
+        315,
+        474
+      ],
+      "flags": {},
+      "order": 6,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "link": 169
+        },
+        {
+          "name": "positive",
+          "type": "CONDITIONING",
+          "link": 4
+        },
+        {
+          "name": "negative",
+          "type": "CONDITIONING",
+          "link": 6
+        },
+        {
+          "name": "latent_image",
+          "type": "LATENT",
+          "link": 132
+        }
+      ],
+      "outputs": [
+        {
+          "name": "LATENT",
+          "type": "LATENT",
+          "links": [
+            173
+          ],
+          "slot_index": 0
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "KSampler"
+      },
+      "widgets_values": [
+        1001,
+        "fixed",
+        28,
+        8,
+        "dpmpp_2m",
+        "normal",
+        1
+      ],
+      "color": "#222",
+      "bgcolor": "#000",
+      "shape": 1
+    }
+  ],
+  "links": [
+    [
+      3,
+      4,
+      1,
+      6,
+      0,
+      "CLIP"
+    ],
+    [
+      4,
+      6,
+      0,
+      3,
+      1,
+      "CONDITIONING"
+    ],
+    [
+      5,
+      4,
+      1,
+      7,
+      0,
+      "CLIP"
+    ],
+    [
+      6,
+      7,
+      0,
+      3,
+      2,
+      "CONDITIONING"
+    ],
+    [
+      115,
+      62,
+      0,
+      63,
+      0,
+      "IMAGE"
+    ],
+    [
+      118,
+      62,
+      0,
+      66,
+      0,
+      "IMAGE"
+    ],
+    [
+      119,
+      66,
+      0,
+      67,
+      0,
+      "IMAGE"
+    ],
+    [
+      121,
+      68,
+      0,
+      69,
+      0,
+      "IMAGE"
+    ],
+    [
+      122,
+      62,
+      0,
+      68,
+      0,
+      "IMAGE"
+    ],
+    [
+      132,
+      74,
+      0,
+      3,
+      3,
+      "LATENT"
+    ],
+    [
+      158,
+      6,
+      0,
+      86,
+      0,
+      "*"
+    ],
+    [
+      167,
+      89,
+      0,
+      62,
+      0,
+      "IMAGE"
+    ],
+    [
+      169,
+      91,
+      1,
+      3,
+      0,
+      "MODEL"
+    ],
+    [
+      170,
+      4,
+      0,
+      91,
+      0,
+      "MODEL"
+    ],
+    [
+      173,
+      3,
+      0,
+      96,
+      0,
+      "LATENT"
+    ],
+    [
+      174,
+      43,
+      0,
+      96,
+      1,
+      "VAE"
+    ],
+    [
+      175,
+      96,
+      0,
+      46,
+      0,
+      "IMAGE"
+    ],
+    [
+      176,
+      96,
+      0,
+      89,
+      0,
+      "*"
+    ],
+    [
+      178,
+      96,
+      0,
+      97,
+      0,
+      "IMAGE"
+    ],
+    [
+      179,
+      97,
+      0,
+      93,
+      0,
+      "IMAGE"
+    ]
+  ],
+  "groups": [
+    {
+      "title": "Seamless Diffusion",
+      "bounding": [
+        -1752,
+        -392,
+        1658,
+        1102
+      ],
+      "color": "#3f789e",
+      "font_size": 76,
+      "locked": false
+    },
+    {
+      "title": "Seamless Check",
+      "bounding": [
+        421,
+        -795,
+        1374,
+        763
+      ],
+      "color": "#3f789e",
+      "font_size": 76,
+      "locked": false
+    }
+  ],
+  "config": {},
+  "extra": {},
+  "version": 0.4
+}

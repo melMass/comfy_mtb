@@ -1,4 +1,3 @@
-import pathlib
 import tempfile
 from pathlib import Path
 
@@ -8,15 +7,8 @@ import torch
 from PIL import Image
 
 from ..log import mklog
-from ..utils import (
-    models_dir,
-    np2tensor,
-    pil2tensor,
-    tensor2pil,
-    tiles_infer,
-    tiles_merge,
-    tiles_split,
-)
+from ..utils import (models_dir, tensor2pil, tiles_infer, tiles_merge,
+                     tiles_split)
 
 # Disable MS telemetry
 ort.disable_telemetry_events()
@@ -306,7 +298,7 @@ class DeepBump:
                         "LARGEST",
                     ],
                 ),
-                "normals_to_height_seamless": ("BOOLEAN", {"default": False}),
+                "normals_to_height_seamless": ("BOOLEAN", {"default": True}),
             },
         }
 

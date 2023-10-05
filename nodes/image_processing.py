@@ -1,17 +1,19 @@
-import torch
-from skimage.filters import gaussian
-from skimage.util import compare_images
+import itertools
+import json
+import math
+import os
+
+import cv2
+import folder_paths
 import numpy as np
+import torch
 import torch.nn.functional as F
 from PIL import Image
-from ..utils import tensor2pil, pil2tensor, tensor2np
-import torch
-import folder_paths
 from PIL.PngImagePlugin import PngInfo
-import json
-import os
-import math
+from skimage.filters import gaussian
+from skimage.util import compare_images
 
+from ..utils import pil2tensor, tensor2np, tensor2pil
 
 # try:
 #     from cv2.ximgproc import guidedFilter
@@ -177,7 +179,7 @@ class ColorCorrect:
         return (image,)
 
 
-class ImageCompare:
+class ImageCompare_:
     """Compare two images and return a difference image"""
 
     @classmethod
@@ -213,7 +215,7 @@ class ImageCompare:
 import requests
 
 
-class LoadImageFromUrl:
+class LoadImageFromUrl_:
     """Load an image from the given URL"""
 
     @classmethod
@@ -239,7 +241,7 @@ class LoadImageFromUrl:
         return (pil2tensor(image),)
 
 
-class Blur:
+class Blur_:
     """Blur an image using a Gaussian filter."""
 
     @classmethod
@@ -501,7 +503,7 @@ class ImageResizeFactor:
         return (resized_image,)
 
 
-class SaveImageGrid:
+class SaveImageGrid_:
     """Save all the images in the input batch as a grid of images."""
 
     def __init__(self):
@@ -603,15 +605,64 @@ class SaveImageGrid:
         return {"ui": {"images": results}}
 
 
+class ImageTileOffset:
+    """Mimics an old photoshop technique to check for seamless textures"""
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "image": ("IMAGE",),
+                "tiles": ("INT", {"default": 2}),
+            }
+        }
+
+    CATEGORY = "mtb/generate"
+
+    RETURN_TYPES = ("IMAGE",)
+
+    FUNCTION = "tile_image"
+
+    def tile_image(self, image: torch.Tensor, tiles: int = 2):
+        if tiles < 1:
+            raise ValueError("The number of tiles must be at least 1.")
+
+        batch_size, height, width, channels = image.shape
+        tile_height = height // tiles
+        tile_width = width // tiles
+
+        output_image = torch.zeros_like(image)
+
+        for i, j in itertools.product(range(tiles), range(tiles)):
+            start_h = i * tile_height
+            end_h = start_h + tile_height
+            start_w = j * tile_width
+            end_w = start_w + tile_width
+
+            tile = image[:, start_h:end_h, start_w:end_w, :]
+
+            output_start_h = (i + 1) % tiles * tile_height
+            output_start_w = (j + 1) % tiles * tile_width
+            output_end_h = output_start_h + tile_height
+            output_end_w = output_start_w + tile_width
+
+            output_image[
+                :, output_start_h:output_end_h, output_start_w:output_end_w, :
+            ] = tile
+
+        return (output_image,)
+
+
 __nodes__ = [
     ColorCorrect,
-    ImageCompare,
-    Blur,
+    ImageCompare_,
+    ImageTileOffset,
+    Blur_,
     # DeglazeImage,
     MaskToImage,
     ColoredImage,
     ImagePremultiply,
     ImageResizeFactor,
-    SaveImageGrid,
-    LoadImageFromUrl,
+    SaveImageGrid_,
+    LoadImageFromUrl_,
 ]
