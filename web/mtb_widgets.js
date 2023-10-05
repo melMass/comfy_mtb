@@ -425,13 +425,10 @@ export const MtbWidgets = {
         console.log(size)
       },
       computeSize: function (width) {
-        const value = this.inputEl.innerHTML
-        if (!value) {
-          return [32, 32]
-        }
         if (!width) {
-          log(`No width ${this.parent.size}`)
+          return [128, 128]
         }
+        return [width, width]
       },
     }
     log('Creating canvas')
