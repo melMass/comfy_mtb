@@ -26,6 +26,7 @@
     "Image Premultiply (mtb)": "Premultiply image with mask",
     "Image Remove Background Rembg (mtb)": "Removes the background from the input using Rembg.",
     "Image Resize Factor (mtb)": "Extracted mostly from WAS Node Suite, with a few edits (most notably multiple image support) and less features.",
+    "Image Tile Offset (mtb)": "Mimics an old photoshop technique to check for seamless textures",
     "Image To Uv (mtb)": "Turn an image back into a UV map. (Shallow converter)",
     "Int To Bool (mtb)": "Basic int to bool conversion",
     "Int To Number (mtb)": "Node addon for the WAS Suite. Converts a \"comfy\" INT to a NUMBER.",
@@ -38,6 +39,7 @@
     "Load Image From Url (mtb)": "Load an image from the given URL",
     "Load Image Sequence (mtb)": "Load an image sequence from a folder. The current frame is used to determine which image to load.\n\n    Usually used in conjunction with the `Primitive` node set to increment to load a sequence of images from a folder.\n    Use -1 to load all matching frames as a batch.\n    ",
     "Mask To Image (mtb)": "Converts a mask (alpha) to an RGB image with a color and background",
+    "Model Patch Seamless (mtb)": "Experimental patcher to enable the circular padding mode of the sd model layers, requires a custom VAE",
     "Qr Code (mtb)": "Basic QR Code generator",
     "Restore Face (mtb)": "Uses GFPGan to restore faces",
     "Save Gif (mtb)": "Save the images from the batch as a GIF",
@@ -56,5 +58,6 @@
     "Uv Map (mtb)": "Generates a UV Map tensor given a widht and height",
     "Uv Remove Seams (mtb)": "Blends values near the UV borders to mitigate visible seams.",
     "Uv Tile (mtb)": "Tiles the UV map based on the specified number of tiles.",
-    "Uv To Image (mtb)": "Converts the UV map to an image. (Shallow converter)"
+    "Uv To Image (mtb)": "Converts the UV map to an image. (Shallow converter)",
+    "Vae Decode (mtb)": "Wrapper for the 2 core decoders (nomarl and tiled) but also adding the sd seamless hack, taken from: FlyingFireCo/tiled_ksampler"
 }
