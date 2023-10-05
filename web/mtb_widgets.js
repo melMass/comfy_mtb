@@ -877,6 +877,30 @@ const mtb_widgets = {
 
         break
       }
+      case 'Stack Images (mtb)': {
+        const onNodeCreated = nodeType.prototype.onNodeCreated
+        nodeType.prototype.onNodeCreated = function () {
+          const r = onNodeCreated
+            ? onNodeCreated.apply(this, arguments)
+            : undefined
+          this.addInput(`image_1`, 'IMAGE')
+          return r
+        }
+
+        const onConnectionsChange = nodeType.prototype.onConnectionsChange
+        nodeType.prototype.onConnectionsChange = function (
+          type,
+          index,
+          connected,
+          link_info
+        ) {
+          const r = onConnectionsChange
+            ? onConnectionsChange.apply(this, arguments)
+            : undefined
+          shared.dynamic_connection(this, index, connected, 'image_', 'IMAGE')
+        }
+        break
+      }
       case 'Save Tensors (mtb)': {
         const onDrawBackground = nodeType.prototype.onDrawBackground
         nodeType.prototype.onDrawBackground = function (ctx, canvas) {

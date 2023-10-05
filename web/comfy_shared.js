@@ -115,6 +115,7 @@ export const dynamic_connection = (
     // make inputs sequential again
     for (let i = 0; i < node.inputs.length; i++) {
       node.inputs[i].label = `${connectionPrefix}${i + 1}`
+      node.inputs[i].name = `${connectionPrefix}${i + 1}`
     }
   }
 
