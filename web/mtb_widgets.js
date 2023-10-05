@@ -12,8 +12,8 @@ import { api } from '../../scripts/api.js'
 
 import parseCss from './extern/parse-css.js'
 import * as shared from './comfy_shared.js'
-import { o3d_to_three, make_wireframe } from '/extensions/mtb/geometry_nodes.js'
-import * as THREE from '/extensions/mtb/extern/three.module.js'
+import { o3d_to_three, make_wireframe } from './geometry_nodes.js'
+import * as THREE from './extern/three.module.js'
 
 import { log } from './comfy_shared.js'
 

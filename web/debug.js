@@ -12,7 +12,7 @@ import { app } from '../../scripts/app.js'
 import * as shared from './comfy_shared.js'
 import { log } from './comfy_shared.js'
 import { MtbWidgets } from './mtb_widgets.js'
-import { o3d_to_three } from '/extensions/mtb/geometry_nodes.js'
+import { o3d_to_three } from './geometry_nodes.js'
 
 // TODO: respect inputs order...
 
