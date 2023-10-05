@@ -7,7 +7,7 @@
  *
  */
 
-import { app } from '/scripts/app.js'
+import { app } from '../../scripts/app.js'
 
 export const log = (...args) => {
   if (window.MTB?.DEBUG) {
@@ -17,6 +17,30 @@ export const log = (...args) => {
 
 //- WIDGET UTILS
 export const CONVERTED_TYPE = 'converted-widget'
+
+export const hasWidgets = (node) => {
+  if (!node.widgets || !node.widgets?.[Symbol.iterator]) {
+    return false
+  }
+  return true
+}
+
+export const cleanupNode = (node) => {
+  if (!hasWidgets(node)) {
+    return
+  }
+
+  for (const w of node.widgets) {
+    if (w.canvas) {
+      w.canvas.remove()
+    }
+    if (w.inputEl) {
+      w.inputEl.remove()
+    }
+    // calls the widget remove callback
+    w.onRemoved?.()
+  }
+}
 
 export function offsetDOMWidget(
   widget,

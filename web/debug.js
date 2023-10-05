@@ -7,18 +7,36 @@
  *
  */
 
-import { app } from '/scripts/app.js'
-import * as shared from '/extensions/mtb/comfy_shared.js'
-import { log } from '/extensions/mtb/comfy_shared.js'
-import { MtbWidgets } from '/extensions/mtb/mtb_widgets.js'
+import { app } from '../../scripts/app.js'
+
+import * as shared from './comfy_shared.js'
+import { log } from './comfy_shared.js'
+import { MtbWidgets } from './mtb_widgets.js'
 import { o3d_to_three } from '/extensions/mtb/geometry_nodes.js'
 
 // TODO: respect inputs order...
 
+function escapeHtml(unsafe) {
+  return unsafe
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;')
+}
 app.registerExtension({
   name: 'mtb.Debug',
   async beforeRegisterNodeDef(nodeType, nodeData, app) {
     if (nodeData.name === 'Debug (mtb)') {
+      const onNodeCreated = nodeType.prototype.onNodeCreated
+      nodeType.prototype.onNodeCreated = function () {
+        const r = onNodeCreated
+          ? onNodeCreated.apply(this, arguments)
+          : undefined
+        this.addInput(`anything_1`, '*')
+        return r
+      }
+
       const onConnectionsChange = nodeType.prototype.onConnectionsChange
       nodeType.prototype.onConnectionsChange = function (
         type,
@@ -66,7 +84,7 @@ app.registerExtension({
         if (message.text) {
           for (const txt of message.text) {
             const w = this.addCustomWidget(
-              MtbWidgets.DEBUG_STRING(`${prefix}_${widgetI}`, txt)
+              MtbWidgets.DEBUG_STRING(`${prefix}_${widgetI}`, escapeHtml(txt))
             )
             w.parent = this
             widgetI++
@@ -82,7 +100,6 @@ app.registerExtension({
           }
           // this.onResize?.(this.size);
           // this.resize?.(this.size)
-          this.setSize(this.computeSize())
         }
 
         if (message.geometry) {
@@ -94,8 +111,9 @@ app.registerExtension({
             w.parent = this
             widgetI++
           }
-          this.setSize(this.computeSize())
         }
+
+        this.setSize(this.computeSize())
 
         this.onRemoved = function () {
           // When removing this node we need to remove the input from the DOM

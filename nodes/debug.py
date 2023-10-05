@@ -1,12 +1,78 @@
-from ..utils import tensor2pil
-from ..log import log
-import io, base64
-import torch
-import folder_paths
-from typing import Optional
+import base64
+import io
 from pathlib import Path
-from .geo_tools import mesh_to_json
+from typing import Optional
+
+import folder_paths
+import torch
+
+from ..log import log
+from ..utils import tensor2pil
+
+
+# region processors
+def process_tensor(tensor):
+    log.debug(f"Tensor: {tensor.shape}")
+
+    image = tensor2pil(tensor)
+    b64_imgs = []
+    for im in image:
+        buffered = io.BytesIO()
+        im.save(buffered, format="PNG")
+        b64_imgs.append(
+            "data:image/png;base64,"
+            + base64.b64encode(buffered.getvalue()).decode("utf-8")
+        )
+
+    return {"b64_images": b64_imgs}
+
+
+def process_list(anything):
+    text = []
+    if not anything:
+        return {"text": []}
+
+    first_element = anything[0]
+    if (
+        isinstance(first_element, list)
+        and first_element
+        and isinstance(first_element[0], torch.Tensor)
+    ):
+        text.append(
+            f"List of List of Tensors: {first_element[0].shape} (x{len(anything)})"
+        )
+
+    elif isinstance(first_element, torch.Tensor):
+        text.append(f"List of Tensors: {first_element.shape} (x{len(anything)})")
+
+    return {"text": text}
+
+
+def process_dict(anything):
+    text = []
+    if "samples" in anything:
+        is_empty = "(empty)" if torch.count_nonzero(anything["samples"]) == 0 else ""
+        text.append(f"Latent Samples: {anything['samples'].shape} {is_empty}")
+
+    return {"text": text}
+
+
+def process_bool(anything):
+    return {"text": ["True" if anything else "False"]}
+
+
+def process_text(anything):
+    return {"text": [str(anything)]}
+
+
+def process_geometry(anything):
+    return {"geometry": [mesh_to_json(anything)]}
+
+
 import open3d as o3d
+
+# endregion
+from .geo_tools import mesh_to_json
 
 
 class Debug:
@@ -15,49 +81,47 @@ class Debug:
     @classmethod
     def INPUT_TYPES(cls):
         return {
-            "required": {"anything_1": ("*")},
+            "required": {"output_to_console": ("BOOLEAN", {"default": False})},
         }
 
-    RETURN_TYPES = ("STRING",)
+    RETURN_TYPES = ()
     FUNCTION = "do_debug"
     CATEGORY = "mtb/debug"
     OUTPUT_NODE = True
 
-    def do_debug(self, **kwargs):
+    def do_debug(self, output_to_console, **kwargs):
         output = {
             "ui": {"b64_images": [], "text": [], "geometry": []},
-            "result": ("A"),
+            # "result": ("A"),
         }
-        for k, v in kwargs.items():
-            anything = v
-            text = ""
-            if isinstance(anything, torch.Tensor):
-                log.debug(f"Tensor: {anything.shape}")
 
-                # write the images to temp
+        processors = {
+            torch.Tensor: process_tensor,
+            list: process_list,
+            dict: process_dict,
+            bool: process_bool,
+            o3d.geometry.Geometry: process_geometry,
+        }
+        if output_to_console:
+            print("bouh!")
 
-                image = tensor2pil(anything)
-                b64_imgs = []
-                for im in image:
-                    buffered = io.BytesIO()
-                    im.save(buffered, format="PNG")
-                    b64_imgs.append(
-                        "data:image/png;base64,"
-                        + base64.b64encode(buffered.getvalue()).decode("utf-8")
-                    )
+        for anything in kwargs.values():
+            processor = processors.get(type(anything))
+            if processor is None:
+                if isinstance(anything, o3d.geometry.Geometry):
+                    processor = process_geometry
+                else:
+                    processor = process_text
+            log.debug(
+                f"Processing: {anything} with processor: {processor.__name__} for type {type(anything)}"
+            )
+            processed_data = processor(anything)
 
-                output["ui"]["b64_images"] += b64_imgs
-                log.debug(f"Input {k} contains {len(b64_imgs)} images")
-            elif isinstance(anything, bool):
-                log.debug(f"Input {k} contains boolean: {anything}")
-                output["ui"]["text"] += ["True" if anything else "False"]
-            elif isinstance(anything, o3d.geometry.Geometry):
-                log.debug(f"Input {k} contains geometry")
-                output["ui"]["geometry"] += [mesh_to_json(anything)]
-            else:
-                text = str(anything)
-                log.debug(f"Input {k} contains text: {text}")
-                output["ui"]["text"] += [text]
+            for ui_key, ui_value in processed_data.items():
+                output["ui"][ui_key].extend(ui_value)
+            # log.debug(
+            #     f"Processed input {k}, found {len(processed_data.get('b64_images', []))} images and {len(processed_data.get('text', []))} text items."
+            # )
 
         return output
 

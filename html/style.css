@@ -18,7 +18,7 @@ a {
 }
 
 table {
-
+    width: 100%;
     border-collapse: collapse;
 }
 
@@ -119,7 +119,7 @@ main {
     justify-content: center;
     padding: 1em;
     margin: 0;
-    height: 80%;
+    /* height: 80%; */
 }
 
 .flex-container {
@@ -130,4 +130,99 @@ main {
 .menu {
     font-size: 3em;
     text-align: center;
+}
+
+input, button, textarea {
+    background-color: rgba(0,0,0,0.5);
+    color: white;
+    border: none;
+}
+
+button:hover {
+    background-color: rgba(0,0,0,0.3);
+
+}
+button {
+    padding: 14px 16px;
+
+}
+/* -STYLES EDITOR */
+
+#style-editor {
+    display: flex;
+    flex-direction: column;
+    width:100%;
+    
+}
+
+#style-editor > table {
+    /* background-color: red; */
+    width:100%;
+}
+#style-editor input, #style-editor textarea {
+    /* background-color: blue; */
+    width:100%;
+}
+
+#style-editor td{
+    width: 33.33%;
+}
+
+/* -TABS */
+
+.tab {
+    overflow: hidden;
+    width: 100%;
+    display: flex;
+    flex-direction: row;
+
+}
+
+.tab-container{
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.tab button {
+    background-color: transparent;
+    color:white;
+    float: left;
+    border: none;
+    outline: none;
+    cursor: pointer;
+    padding: 14px 16px;
+    transition: 0.3s;
+    width:100%;
+    font-size: 1.5em;
+}
+
+.tab button.active {
+    background-color: #2e2e2e;
+}
+
+.tabcontent {
+    display: none;
+}
+
+.tabcontent.active {
+    display: block;
+}
+
+
+
+.foldable-title {
+    cursor: pointer;
+    font-weight: bold;
+    user-select: none;
+}
+
+.foldable-symbol {
+    margin-right: 10px;
+}
+
+.foldable-content {
+    display: none;
+    flex-direction: column;
+    margin-left: 20px;
 }

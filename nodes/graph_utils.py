@@ -1,12 +1,14 @@
-from ..log import log
-from PIL import Image
-import urllib.request
-import urllib.parse
-import torch
-import json
-from ..utils import pil2tensor, apply_easing, get_server_info
 import io
+import json
+import urllib.parse
+import urllib.request
+
 import numpy as np
+import torch
+from PIL import Image
+
+from ..log import log
+from ..utils import apply_easing, get_server_info, pil2tensor
 
 
 def get_image(filename, subfolder, folder_type):
@@ -214,6 +216,7 @@ class FitNumber:
     FUNCTION = "set_range"
     RETURN_TYPES = ("FLOAT",)
     CATEGORY = "mtb/math"
+    DESCRIPTION = "Fit the input float using a source and target range"
 
     def set_range(
         self,
