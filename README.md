@@ -25,15 +25,26 @@ Before proceeding, please be aware of the licenses associated with certain libra
   - [image interpolation (animation)](#image-interpolation-animation)
   - [image ops](#image-ops)
   - [latent utils](#latent-utils)
-  - [misc utils](#misc-utils)
   - [textures](#textures)
+  - [misc utils](#misc-utils)
+
 - [Comfy Resources](#comfy-resources)
 
 
 # Node List
 
 ## Animation
-- `Animation Builder`: Convenient way to manage basic animation maths at the core of many of my workflows
+- `Animation Builder`: Convenient way to manage basic animation maths at the core of many of my workflows (both worflows for the following GIFs are in the [examples](https://github.com/melMass/comfy_mtb/wiki/Examples))  
+
+  **[Example lerping two conditions (blue car -> yellow car)](https://github.com/melMass/comfy_mtb/blob/main/examples/03-animation_builder-condition-lerp.json)**
+  
+  <img width=300 src="https://user-images.githubusercontent.com/7041726/260258970-d6d66d96-fb34-40d0-9038-cbabf0714c5d.gif"/>  
+  
+
+  **[Example using image transforms a feedback for a fake deforum effect](https://github.com/melMass/comfy_mtb/blob/main/examples/04-animation_builder-deforum.json)**
+  
+  <img width=300 src="https://user-images.githubusercontent.com/7041726/260261504-303a1037-60d3-4b31-a589-b15d549752f6.gif"/>
+  
 - `Batch Float`: Generates a batch of float values with interpolation.
 - `Batch Shape`: Generates a batch of 2D shapes with optional shading (experimental).
 - `Batch Transform`: Transform a batch of images using a batch of keyframes.  
@@ -60,10 +71,8 @@ Before proceeding, please be aware of the licenses associated with certain libra
 > As alternatives you can use [reactor](https://github.com/Gourieff/comfyui-reactor-node) for face swap and [facerestore](https://github.com/Haidra-Org/hordelib/tree/main/hordelib/nodes/facerestore) for restoration  
 > You can check [this video](https://www.youtube.com/watch?v=FShlpMxbU0E) for a tutorial by Ferniclestix using these alternatives  
 
-- `Face Swap`: Face swap using deepinsight/insightface models (this node used to be called `Roop` in early versions, it does the same, roop is *just* an app that uses those model)
-  > **Note**
-  > The face index allow you to choose which face to replace as you can see here:  
-  <img  width=320 src="https://github.com/melMass/comfy_mtb/assets/7041726/2e9d6066-c466-4a01-bd6c-315f7f1e8b42"/>
+- `Face Swap`: Face swap using deepinsight/insightface models (this node used to be called `Roop` in early versions, it does the same, roop is *just* an app that uses those model)  
+  <img  width=320 src="https://user-images.githubusercontent.com/7041726/260261217-54e33446-183f-4dda-88b3-d38a1e6de980.gif"/>
 - `Load Face Swap Model`: Load an insightface model for face swapping
 - `Restore Face`: Using [GFPGan](https://github.com/TencentARC/GFPGAN) to restore faces, works great in conjunction with `Face Swap` and supports Comfy native upscalers for the `bg_upscaler`
   
@@ -82,7 +91,8 @@ Before proceeding, please be aware of the licenses associated with certain libra
 
 - `Load Film Model`: Loads a [FILM](https://github.com/google-research/frame-interpolation) model
 - `Film Interpolation`: Process input frames using [FILM](https://github.com/google-research/frame-interpolation)  
-  <img width=400 src="https://github.com/melMass/comfy_mtb/assets/7041726/3afd1647-6634-4b92-a34b-51432e6a9834"/>
+  <img width=400 src="https://github.com/melMass/comfy_mtb/assets/7041726/3afd1647-6634-4b92-a34b-51432e6a9834"/>  
+  <img width=400 src="https://user-images.githubusercontent.com/7041726/260259079-c0f04a63-960c-43a7-ba78-a45cd5ac7514.gif"/>
 - `Export to Prores (experimental)`: Exports the input frames to a ProRes 4444 mov file. This is using ffmpeg stdin to send raw numpy arrays, used with `Film Interpolation` and very simple for now but could be expanded upon.
 
 ## image ops
@@ -101,11 +111,11 @@ Before proceeding, please be aware of the licenses associated with certain libra
 - `Latent Lerp`: Linear interpolation (blend) between two latent 
 
 ## textures
-- `Model Patch Seamless`: Use the [seamless diffusion "hack"](https://gitlab.com/-/snippets/2395088) to patch any model to infere seamless images
+- `Model Patch Seamless`: Use the [seamless diffusion "hack"](https://gitlab.com/-/snippets/2395088) to patch any model to infere seamless images, check the [examples](https://github.com/melMass/comfy_mtb/wiki/Examples) to see how to use all those textures node together  
   <img width=500 src="https://user-images.githubusercontent.com/7041726/272970506-9db516b5-45d2-4389-b904-b3a94660f24c.png"/>
 - `DeepBump`: Normal & height maps generation from single pictures  
   <img width=500 src="https://user-images.githubusercontent.com/7041726/272970715-7e4477f6-8e18-4839-9864-83d07d6690a1.png"/>
-- `Image Tile Offset`: Mimics an old photoshop technique to check for seamless textures by offsetting tiles of the image.
+- `Image Tile Offset`: Mimics an old photoshop technique to check for seamless textures by offsetting tiles of the image.  
   <img width=600 src="https://github.com/melMass/comfy_mtb/assets/7041726/cbcc51fb-922f-433f-acf1-c6c6c2a7ffc4" />
 
 ## misc utils
