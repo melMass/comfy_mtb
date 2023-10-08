@@ -32,6 +32,15 @@ Before proceeding, please be aware of the licenses associated with certain libra
 
 # Node List
 
+## Animation
+- `Animation Builder`: Convenient way to manage basic animation maths at the core of many of my workflows
+- `Batch Float`: Generates a batch of float values with interpolation.
+- `Batch Shape`: Generates a batch of 2D shapes with optional shading (experimental).
+- `Batch Transform`: Transform a batch of images using a batch of keyframes.  
+  <img width=400 src="https://github.com/melMass/comfy_mtb/assets/7041726/3f217de1-79aa-49b0-a66a-35cf29dd8f01"/>
+- `Export With Ffmpeg`: Export with FFmpeg, it used to be export to Proress and is still tailored for YUV
+- `Fit Number` : Fit the input float using a source and target range, you can also control the interpolation curve from a list of presets (default to linear)
+  
 ## bbox
 - `Bounding Box`: BBox constructor (custom type),
 - `BBox From Mask`: From a mask extract the bounding box
@@ -43,7 +52,7 @@ Before proceeding, please be aware of the licenses associated with certain libra
 - `RGB to HSV`: -,
 - `HSV to RGB`: -,
 - `Color Correct`: Basic color correction tools  
-  <img src="https://github.com/melMass/comfy_mtb/assets/7041726/7c20ac83-31ff-40ea-a1a0-06c2acefb2ef" width=345/>
+  <img src="https://github.com/melMass/comfy_mtb/assets/7041726/7c20ac83-31ff-40ea-a1a0-06c2acefb2ef" width=400/>
 
 ## face detection / swapping
 > **Warning**
@@ -54,20 +63,26 @@ Before proceeding, please be aware of the licenses associated with certain libra
 - `Face Swap`: Face swap using deepinsight/insightface models (this node used to be called `Roop` in early versions, it does the same, roop is *just* an app that uses those model)
   > **Note**
   > The face index allow you to choose which face to replace as you can see here:  
-  <img src="https://github.com/melMass/comfy_mtb/assets/7041726/2e9d6066-c466-4a01-bd6c-315f7f1e8b42" width=320/>
+  <img  width=320 src="https://github.com/melMass/comfy_mtb/assets/7041726/2e9d6066-c466-4a01-bd6c-315f7f1e8b42"/>
 - `Load Face Swap Model`: Load an insightface model for face swapping
 - `Restore Face`: Using [GFPGan](https://github.com/TencentARC/GFPGAN) to restore faces, works great in conjunction with `Face Swap` and supports Comfy native upscalers for the `bg_upscaler`
   
 ## image interpolation (animation)
 > **Warning**
+> The FILM nodes will be deprecated at some point after 0.2.0, [Fannovel16](https://github.com/Fannovel16/ComfyUI-Frame-Interpolation)'s interpolation nodes implement it and they rely on a pytorch implementation of FILM
+> which solves the issues related to the ones included in mtb. They will probably remain available if your system meet the requirements and ignored otherwise.
+
+<details><summary>Why?</summary>
+  
 > **Windows only issue**: This requires tensorflow-gpu that is unfortunately not a thing anymore on Windows since 2.10.1 (unless you use a complex WSL passthrough setup but it's still not "Windows")  
 > Using this old version is quite clunky and require some patching that install.py does automatically, but the main issue is that no wheels are available for python > 3.10
 > Comfy-nightly is already using Python 11 so installing this old tf version won't work there.  
 > You can in any case install the normal up to date tensorflow but that will run on CPU and is much MUCH slower for FILM inference.
+</details>
 
 - `Load Film Model`: Loads a [FILM](https://github.com/google-research/frame-interpolation) model
 - `Film Interpolation`: Process input frames using [FILM](https://github.com/google-research/frame-interpolation)  
-  <img src="https://github.com/melMass/comfy_mtb/assets/7041726/3afd1647-6634-4b92-a34b-51432e6a9834" width=400/>
+  <img width=400 src="https://github.com/melMass/comfy_mtb/assets/7041726/3afd1647-6634-4b92-a34b-51432e6a9834"/>
 - `Export to Prores (experimental)`: Exports the input frames to a ProRes 4444 mov file. This is using ffmpeg stdin to send raw numpy arrays, used with `Film Interpolation` and very simple for now but could be expanded upon.
 
 ## image ops
@@ -85,8 +100,16 @@ Before proceeding, please be aware of the licenses associated with certain libra
 ## latent utils
 - `Latent Lerp`: Linear interpolation (blend) between two latent 
 
+## textures
+- `Model Patch Seamless`: Use the [seamless diffusion "hack"](https://gitlab.com/-/snippets/2395088) to patch any model to infere seamless images
+  <img width=500 src="https://user-images.githubusercontent.com/7041726/272970506-9db516b5-45d2-4389-b904-b3a94660f24c.png"/>
+- `DeepBump`: Normal & height maps generation from single pictures  
+  <img width=500 src="https://user-images.githubusercontent.com/7041726/272970715-7e4477f6-8e18-4839-9864-83d07d6690a1.png"/>
+- `Image Tile Offset`: Mimics an old photoshop technique to check for seamless textures by offsetting tiles of the image.
+  <img width=600 src="https://github.com/melMass/comfy_mtb/assets/7041726/cbcc51fb-922f-433f-acf1-c6c6c2a7ffc4" />
 
 ## misc utils
+- `Any To String`: Tries to take any input and convert it to a string.
 - `Concat Images`: Takes two image stream and merge them as a batch of images supported by other Comfy pipelines.
 - `Image Resize Factor`: **Deprecated**, I since discovered the builtin image resize.
 - `Text To Image`: Utils to convert text to image using a font
@@ -97,10 +120,8 @@ Before proceeding, please be aware of the licenses associated with certain libra
 - `Save Tensors`: Debug node that will probably be removed in the future
 - `Int to Number`: Supplement for WASSuite number nodes
 - `Smart Step`: A very basic tool to control the steps (start/stop) of the `KAdvancedSampler` using percentage
+- `Load Image From Url`: Load an image from the given URL
 
-## textures
-
-- `DeepBump`: Normal & height maps generation from single pictures
 
 # Comfy Resources
 
