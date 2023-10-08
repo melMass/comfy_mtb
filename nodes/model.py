@@ -49,6 +49,8 @@ class VaeDecode_:
 
 
 class ModelPatchSeamless:
+    """Uses the stable diffusion 'hack' to infer seamless images by setting the model layers padding mode to circular (experimental)"""
+
     @classmethod
     def INPUT_TYPES(cls):
         return {

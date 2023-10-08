@@ -1,6 +1,9 @@
 {
     "Animation Builder (mtb)": "Convenient way to manage basic animation maths at the core of many of my workflows",
     "Any To String (mtb)": "Tries to take any input and convert it to a string",
+    "Batch Float (mtb)": "Generates a batch of float values with interpolation",
+    "Batch Shape (mtb)": "Generates a batch of 2D shapes with optional shading (experimental)",
+    "Batch Transform (mtb)": "Transform a batch of images using a batch of keyframes",
     "Bbox (mtb)": "The bounding box (BBOX) custom type used by other nodes",
     "Bbox From Mask (mtb)": "From a mask extract the bounding box",
     "Blur (mtb)": "Blur an image using a Gaussian filter.",
@@ -20,8 +23,10 @@
     "Image Premultiply (mtb)": "Premultiply image with mask",
     "Image Remove Background Rembg (mtb)": "Removes the background from the input using Rembg.",
     "Image Resize Factor (mtb)": "Extracted mostly from WAS Node Suite, with a few edits (most notably multiple image support) and less features.",
+    "Image Tile Offset (mtb)": "Mimics an old photoshop technique to check for seamless textures",
     "Int To Bool (mtb)": "Basic int to bool conversion",
     "Int To Number (mtb)": "Node addon for the WAS Suite. Converts a \"comfy\" INT to a NUMBER.",
+    "Interpolate Clip Sequential (mtb)": null,
     "Latent Lerp (mtb)": "Linear interpolation (blend) between two latent vectors",
     "Load Face Analysis Model (mtb)": "Loads a face analysis model",
     "Load Face Enhance Model (mtb)": "Loads a GFPGan or RestoreFormer model for face enhancement.",
@@ -30,6 +35,7 @@
     "Load Image From Url (mtb)": "Load an image from the given URL",
     "Load Image Sequence (mtb)": "Load an image sequence from a folder. The current frame is used to determine which image to load.\n\n    Usually used in conjunction with the `Primitive` node set to increment to load a sequence of images from a folder.\n    Use -1 to load all matching frames as a batch.\n    ",
     "Mask To Image (mtb)": "Converts a mask (alpha) to an RGB image with a color and background",
+    "Model Patch Seamless (mtb)": "Uses the stable diffusion 'hack' to infer seamless images by setting the model layers padding mode to circular (experimental)",
     "Qr Code (mtb)": "Basic QR Code generator",
     "Restore Face (mtb)": "Uses GFPGan to restore faces",
     "Save Gif (mtb)": "Save the images from the batch as a GIF",
@@ -37,10 +43,12 @@
     "Save Image Sequence (mtb)": "Save an image sequence to a folder. The current frame is used to determine which image to save.\n\n    This is merely a wrapper around the `save_images` function with formatting for the output folder and filename.\n    ",
     "Save Tensors (mtb)": "Save torch tensors (image, mask or latent) to disk, useful to debug things outside comfy",
     "Smart Step (mtb)": "Utils to control the steps start/stop of the KAdvancedSampler in percentage",
+    "Stack Images (mtb)": "Stack the input images horizontally or vertically",
     "String Replace (mtb)": "Basic string replacement",
     "Styles Loader (mtb)": "Load csv files and populate a dropdown from the rows (\u00e0 la A111)",
     "Text To Image (mtb)": "Utils to convert text to image using a font\n\n\n    The tool looks for any .ttf file in the Comfy folder hierarchy.\n    ",
     "Transform Image (mtb)": "Save torch tensors (image, mask or latent) to disk, useful to debug things outside comfy\n\n\n    it return a tensor representing the transformed images with the same shape as the input tensor\n    ",
     "Uncrop (mtb)": "Uncrops an image to a given bounding box\n\n    The bounding box can be given as a tuple of (x, y, width, height) or as a BBOX type\n    The BBOX input takes precedence over the tuple input",
-    "Unsplash Image (mtb)": "Unsplash Image given a keyword and a size"
+    "Unsplash Image (mtb)": "Unsplash Image given a keyword and a size",
+    "Vae Decode (mtb)": "Wrapper for the 2 core decoders but also adding the sd seamless hack, taken from: FlyingFireCo/tiled_ksampler"
 }
