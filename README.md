@@ -37,8 +37,8 @@ mtb add a few widgets like `COLOR`
 
 <img alt="color widget preview" src="https://github.com/melMass/comfy_mtb/assets/7041726/cff7e66a-4cc4-4866-b35b-10af0bb2d110" width=450>
 
-A few nodes have the concept of "dynamic" inputs:
-<img alt="dynamic inputs" src="https://github.com/melMass/comfy_mtb/assets/7041726/10b3976e-b212-4968-91eb-f34c02bb80c3" width=450/>
+A few nodes have the concept of "dynamic" inputs:  
+<img alt="dynamic inputs" width=450  src="https://github.com/melMass/comfy_mtb/assets/7041726/10b3976e-b212-4968-91eb-f34c02bb80c3" />
 
 
 # Node List
