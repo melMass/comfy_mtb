@@ -1,18 +1,16 @@
-from .utils import (
-    here,
-    import_install,
-    styles_dir,
-    backup_file,
-)
-from aiohttp import web
-from .log import mklog
 import csv
 
+from aiohttp import web
+
+from .log import mklog
+from .utils import backup_file, here, import_install, reqs_map, run_command, styles_dir
 
 endlog = mklog("mtb endpoint")
 
 # - ACTIONS
 import platform
+import sys
+from pathlib import Path
 
 import_install("requirements")
 
@@ -21,21 +19,28 @@ def ACTIONS_installDependency(dependency_names=None):
     if dependency_names is None:
         return {"error": "No dependency name provided"}
     endlog.debug(f"Received Install Dependency request for {dependency_names}")
-    reqs = []
-    if platform.system() == "Windows":
-        reqs = list(requirements.parse((here / "reqs_windows.txt").read_text()))
-    else:
-        reqs = list(requirements.parse((here / "reqs.txt").read_text()))
-    print([x.specs for x in reqs])
-    print(
-        "\n".join([f"{x.line} {''.join(x.specs[0] if x.specs else '')}" for x in reqs])
-    )
-    for dependency_name in dependency_names:
-        for req in reqs:
-            if req.name == dependency_name:
-                endlog.debug(f"Dependency {dependency_name} installed")
-                break
-    return {"success": True}
+    # reqs = []
+    resolved_names = [reqs_map.get(name, name) for name in dependency_names]
+    try:
+        run_command([Path(sys.executable), "-m", "pip", "install"] + resolved_names)
+        return {"success": True}
+
+    except Exception as e:
+        return {"error": f"Failed to install dependencies: {e}"}
+
+    # if platform.system() == "Windows":
+    #     reqs = list(requirements.parse((here / "reqs_windows.txt").read_text()))
+    # else:
+    #     reqs = list(requirements.parse((here / "reqs.txt").read_text()))
+    # print([x.specs for x in reqs])
+    # print(
+    #     "\n".join([f"{x.line} {''.join(x.specs[0] if x.specs else '')}" for x in reqs])
+    # )
+    # for dependency_name in dependency_names:
+    #     for req in reqs:
+    #         if req.name == dependency_name:
+    #             endlog.debug(f"Dependency {dependency_name} installed")
+    #             break
 
 
 def ACTIONS_getStyles(style_name=None):

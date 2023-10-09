@@ -1,0 +1,6 @@
+qrcode[pil]
+onnxruntime-gpu
+requirements-parser
+# opencv-contrib
+rembg
+imageio_ffmpeg

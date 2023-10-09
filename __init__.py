@@ -13,20 +13,31 @@ import os
 os.environ["TF_FORCE_GPU_ALLOW_GROWTH"] = "true"
 os.environ["TF_GPU_ALLOCATOR"] = "cuda_malloc_async"
 
-import traceback
-from .log import log, blue_text, cyan_text, get_summary, get_label
-from .utils import here
-from .utils import comfy_dir
-import importlib
-import os
 import ast
+import contextlib
+import importlib
 import json
+import logging
+import os
+import shutil
+import traceback
+from importlib import reload
+
+from aiohttp import web
+from server import PromptServer
+
+import nodes
+
+from .endpoint import endlog
+from .log import blue_text, cyan_text, get_label, get_summary, log
+from .utils import comfy_dir, here
 
 NODE_CLASS_MAPPINGS = {}
 NODE_DISPLAY_NAME_MAPPINGS = {}
 NODE_CLASS_MAPPINGS_DEBUG = {}
+WEB_DIRECTORY = "./web"
 
-__version__ = "0.1.4"
+__version__ = "0.2.0"
 
 
 def extract_nodes_from_source(filename):
@@ -85,7 +96,7 @@ def load_nodes():
                 nodes_failed.extend(extract_nodes_from_source(filename))
 
     if errors:
-        log.info(
+        log.debug(
             f"Some nodes failed to load:\n\t"
             + "\n\t".join(errors)
             + "\n\n"
@@ -100,48 +111,9 @@ def load_nodes():
 web_extensions_root = comfy_dir / "web" / "extensions"
 web_mtb = web_extensions_root / "mtb"
 
-if web_mtb.exists():
-    log.debug(f"Web extensions folder found at {web_mtb}")
-    if not os.path.islink(web_mtb.as_posix()):
-        log.warn(
-            f"Web extensions folder at {web_mtb} is not a symlink, if updating please delete it before"
-        )
+if web_mtb.exists() and hasattr(nodes, "EXTENSION_WEB_DIRS"):
+    shutil.rmtree(web_mtb)
 
-
-elif web_extensions_root.exists():
-    web_tgt = here / "web"
-    src = web_tgt.as_posix()
-    dst = web_mtb.as_posix()
-    try:
-        if os.name == "nt":
-            import _winapi
-
-            _winapi.CreateJunction(src, dst)
-        else:
-            os.symlink(web_tgt.as_posix(), web_mtb.as_posix())
-
-    except OSError:
-        log.warn(f"Failed to create symlink to {web_mtb}, trying to copy it")
-        try:
-            import shutil
-
-            shutil.copytree(web_tgt, web_mtb)
-            log.info(f"Successfully copied {web_tgt} to {web_mtb}")
-        except Exception as e:
-            log.warn(
-                f"Failed to symlink and copy {web_tgt} to {web_mtb}. Please copy the folder manually."
-            )
-            log.warn(e)
-
-    except Exception as e:
-        log.warn(
-            f"Failed to create symlink to {web_mtb}. Please copy the folder manually."
-        )
-        log.warn(e)
-else:
-    log.warn(
-        f"Comfy root probably not found automatically, please copy the folder {web_mtb} manually in the web/extensions folder of ComfyUI"
-    )
 
 # - REGISTER NODES
 nodes, failed = load_nodes()
@@ -166,7 +138,7 @@ for node_class in nodes:
                 )
             )
 
-log.info(
+log.debug(
     f"Loaded the following nodes:\n\t"
     + "\n\t".join(
         f"{cyan_text(k)}: {blue_text(get_summary(doc)) if doc else '-'}"
@@ -174,19 +146,25 @@ log.info(
     )
 )
 
+log.info(f"loaded {cyan_text(len(nodes))} nodes successfuly")
+if failed:
+    with contextlib.suppress(Exception):
+        base_url, port = utils.get_server_info()
+        log.info(
+            f"Some nodes ({len(failed)}) could not be loaded. This can be ignored, but go to http://{base_url}:{port}/mtb if you want more information."
+        )
+
+
 # - ENDPOINT
-from server import PromptServer
-from .log import log
-from aiohttp import web
-from importlib import reload
-import logging
-from .endpoint import endlog
+
 
 if hasattr(PromptServer, "instance"):
     restore_deps = ["basicsr"]
-    swap_deps = ["insightface", "onnxruntime"]
-
+    onnx_deps = ["onnxruntime"]
+    swap_deps = ["insightface"] + onnx_deps
     node_dependency_mapping = {
+        "QrCode": ["qrcode"],
+        "DeepBump": onnx_deps,
         "FaceSwap": swap_deps,
         "LoadFaceSwapModel": swap_deps,
         "LoadFaceAnalysisModel": restore_deps,

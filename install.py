@@ -1,20 +1,17 @@
-import requests
-import os
-import ast
 import argparse
-import sys
-import subprocess
-from importlib import import_module
+import ast
+import os
 import platform
-from pathlib import Path
-import sys
-import stat
-import threading
-import signal
-from contextlib import suppress
-from queue import Queue, Empty
-from contextlib import contextmanager
 import shlex
+import stat
+import subprocess
+import sys
+from contextlib import contextmanager, suppress
+from importlib import import_module
+from pathlib import Path
+from queue import Empty, Queue
+
+import requests
 
 here = Path(__file__).parent
 executable = Path(sys.executable)
@@ -137,12 +134,6 @@ def print_formatted(text, *formats, color=None, background=None, **kwargs):
 
 
 # region utils
-def enqueue_output(out, queue):
-    for char in iter(lambda: out.read(1), b""):
-        queue.put(char)
-    out.close()
-
-
 def run_command(cmd, ignored_lines_start=None):
     if ignored_lines_start is None:
         ignored_lines_start = []
@@ -150,86 +141,49 @@ def run_command(cmd, ignored_lines_start=None):
     if isinstance(cmd, str):
         shell_cmd = cmd
     elif isinstance(cmd, list):
-        shell_cmd = ""
-        for arg in cmd:
-            if isinstance(arg, Path):
-                arg = arg.as_posix()
-            shell_cmd += f"{shlex.quote(str(arg))} "
+        shell_cmd = " ".join(
+            arg.as_posix() if isinstance(arg, Path) else shlex.quote(str(arg))
+            for arg in cmd
+        )
     else:
         raise ValueError(
             "Invalid 'cmd' argument. It must be a string or a list of arguments."
         )
 
-    process = subprocess.Popen(
+    try:
+        _run_command(shell_cmd, ignored_lines_start)
+    except subprocess.CalledProcessError as e:
+        print(f"Command failed with return code: {e.returncode}", file=sys.stderr)
+        print(e.stderr.strip(), file=sys.stderr)
+
+    except KeyboardInterrupt:
+        print("Command execution interrupted.")
+
+
+def _run_command(shell_cmd, ignored_lines_start):
+    print_formatted(f"Running {shell_cmd}", "bold")
+    result = subprocess.run(
         shell_cmd,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
-        universal_newlines=True,
+        text=True,
         shell=True,
+        check=True,
     )
 
-    # Create separate threads to read standard output and standard error streams
-    stdout_queue = Queue()
-    stderr_queue = Queue()
-    stdout_thread = threading.Thread(
-        target=enqueue_output, args=(process.stdout, stdout_queue)
-    )
-    stderr_thread = threading.Thread(
-        target=enqueue_output, args=(process.stderr, stderr_queue)
-    )
-    stdout_thread.daemon = True
-    stderr_thread.daemon = True
-    stdout_thread.start()
-    stderr_thread.start()
+    stdout_lines = result.stdout.strip().split("\n")
+    stderr_lines = result.stderr.strip().split("\n")
 
-    interrupted = False
+    # Print stdout, skipping ignored lines
+    for line in stdout_lines:
+        if not any(line.startswith(ign) for ign in ignored_lines_start):
+            print(line)
 
-    def signal_handler(signum, frame):
-        nonlocal interrupted
-        interrupted = True
-        print("Command execution interrupted.")
+    # Print stderr
+    for line in stderr_lines:
+        print(line, file=sys.stderr)
 
-    # Register the signal handler for keyboard interrupts (SIGINT)
-    signal.signal(signal.SIGINT, signal_handler)
-
-    stdout_buffer = ""
-    stderr_buffer = ""
-
-    # Process output from both streams until the process completes or interrupted
-    while not interrupted and (
-        process.poll() is None or not stdout_queue.empty() or not stderr_queue.empty()
-    ):
-        with suppress(Empty):
-            stdout_char = stdout_queue.get_nowait()
-            stdout_buffer += stdout_char
-            if stdout_char == "\n":
-                if not any(
-                    stdout_buffer.startswith(ign) for ign in ignored_lines_start
-                ):
-                    print(stdout_buffer.strip())
-                stdout_buffer = ""
-        with suppress(Empty):
-            stderr_char = stderr_queue.get_nowait()
-            stderr_buffer += stderr_char
-            if stderr_char == "\n":
-                print(stderr_buffer.strip())
-                stderr_buffer = ""
-
-    # Print any remaining content in buffers
-    if stdout_buffer and not any(
-        stdout_buffer.startswith(ign) for ign in ignored_lines_start
-    ):
-        print(stdout_buffer.strip())
-    if stderr_buffer:
-        print(stderr_buffer.strip())
-
-    return_code = process.returncode
-
-    if return_code == 0 and not interrupted:
-        print("Command executed successfully!")
-    else:
-        if not interrupted:
-            print(f"Command failed with return code: {return_code}")
+    print("Command executed successfully!")
 
 
 # endregion
@@ -255,6 +209,8 @@ pip_map = {
     "opencv-contrib": "cv2",
     "tb-nightly": "tensorboard",
     "protobuf": "google.protobuf",
+    "qrcode[pil]": "qrcode",
+    "requirements-parser": "requirements"
     # Add more mappings as needed
 }
 
@@ -441,16 +397,13 @@ def install_dependencies(dry=False):
         import_or_install(requirement, dry=dry)
 
 
-if __name__ == "__main__":
+def main():
     full = False
     if len(sys.argv) == 1:
         print_formatted(
-            "No arguments provided, doing a full install/update...",
-            "italic",
-            color="yellow",
+            "mtb doesn't need an install script anymore.", "italic", color="yellow"
         )
-
-        full = True
+        return
 
     # Parse command-line arguments
     parser = argparse.ArgumentParser(description="Comfy_mtb install script")
@@ -612,22 +565,26 @@ if __name__ == "__main__":
     #     # check if installed
     #     missing_deps_urls.append(whl_file["browser_download_url"])
 
-    install_cmd = [executable, "-m", "pip", "install"]
+    # install_cmd = [executable, "-m", "pip", "install"]
 
     # - Install all deps
-    if not args.dry:
-        if platform.system() == "Windows":
-            wheel_cmd = install_cmd + ["-r", (here / "reqs_windows.txt")]
-        else:
-            wheel_cmd = install_cmd + ["-r", (here / "reqs.txt")]
+    # if not args.dry:
+    #     if platform.system() == "Windows":
+    #         wheel_cmd = install_cmd + ["-r", (here / "reqs_windows.txt")]
+    #     else:
+    #         wheel_cmd = install_cmd + ["-r", (here / "reqs.txt")]
 
-        run_command(wheel_cmd)
-        print_formatted(
-            "✅ Successfully installed all dependencies.", "italic", color="green"
-        )
-    else:
-        print_formatted(
-            f"Would have run the following command:\n\t{apply_color(' '.join(install_cmd),'cyan')}",
-            "italic",
-            color="yellow",
-        )
+    #     run_command(wheel_cmd)
+    #     print_formatted(
+    #         "✅ Successfully installed all dependencies.", "italic", color="green"
+    #     )
+    # else:
+    #     print_formatted(
+    #         f"Would have run the following command:\n\t{apply_color(' '.join(install_cmd),'cyan')}",
+    #         "italic",
+    #         color="yellow",
+    #     )
+
+
+if __name__ == "__main__":
+    main()
