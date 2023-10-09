@@ -244,4 +244,31 @@ class FitNumber:
         return (res,)
 
 
-__nodes__ = [StringReplace, FitNumber, GetBatchFromHistory, AnyToString]
+class ConcatImages:
+    """Add images to batch"""
+
+    RETURN_TYPES = ("IMAGE",)
+    FUNCTION = "concatenate_tensors"
+    CATEGORY = "mtb/image"
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {"reverse": ("BOOLEAN", {"default": False})},
+        }
+
+    def concatenate_tensors(self, reverse, **kwargs):
+        tensors = tuple(kwargs.values())
+        batch_sizes = [tensor.size(0) for tensor in tensors]
+
+        concatenated = torch.cat(tensors, dim=0)
+
+        # Update the batch size in the concatenated tensor
+        concatenated_size = list(concatenated.size())
+        concatenated_size[0] = sum(batch_sizes)
+        concatenated = concatenated.view(*concatenated_size)
+
+        return (concatenated,)
+
+
+__nodes__ = [StringReplace, FitNumber, GetBatchFromHistory, AnyToString, ConcatImages]

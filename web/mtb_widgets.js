@@ -877,7 +877,8 @@ const mtb_widgets = {
 
         break
       }
-      case 'Stack Images (mtb)': {
+      case 'Stack Images (mtb)':
+      case 'Concat Images (mtb)': {
         shared.setupDynamicConnections(nodeType, 'image', 'IMAGE')
 
         break

@@ -1,16 +1,18 @@
-from typing import List
-from pathlib import Path
-import os
 import glob
-import folder_paths
-from ..log import log
-import torch
-from frame_interpolation.eval import util, interpolator
-import numpy as np
+import os
+from pathlib import Path
+from typing import List
+
 import comfy
-import comfy.utils
-import tensorflow as tf
 import comfy.model_management as model_management
+import comfy.utils
+import folder_paths
+import numpy as np
+import tensorflow as tf
+import torch
+from frame_interpolation.eval import interpolator, util
+
+from ..log import log
 
 
 class LoadFilmModel:
@@ -114,41 +116,4 @@ class FilmInterpolation:
         return (out_tensors,)
 
 
-class ConcatImages:
-    """Add images to batch"""
-
-    RETURN_TYPES = ("IMAGE",)
-    FUNCTION = "concat_images"
-    CATEGORY = "mtb/image"
-
-    @classmethod
-    def INPUT_TYPES(cls):
-        return {
-            "required": {
-                "imageA": ("IMAGE",),
-                "imageB": ("IMAGE",),
-            },
-        }
-
-    @classmethod
-    def concatenate_tensors(cls, A: torch.Tensor, B: torch.Tensor):
-        # Get the batch sizes of A and B
-        batch_size_A = A.size(0)
-        batch_size_B = B.size(0)
-
-        # Concatenate the tensors along the batch dimension
-        concatenated = torch.cat((A, B), dim=0)
-
-        # Update the batch size in the concatenated tensor
-        concatenated_size = list(concatenated.size())
-        concatenated_size[0] = batch_size_A + batch_size_B
-        concatenated = concatenated.view(*concatenated_size)
-
-        return concatenated
-
-    def concat_images(self, imageA: torch.Tensor, imageB: torch.Tensor):
-        log.debug(f"Concatenating A ({imageA.shape}) and B ({imageB.shape})")
-        return (self.concatenate_tensors(imageA, imageB),)
-
-
-__nodes__ = [LoadFilmModel, FilmInterpolation, ConcatImages]
+__nodes__ = [LoadFilmModel, FilmInterpolation]
