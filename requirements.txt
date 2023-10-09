@@ -4,3 +4,5 @@ requirements-parser
 # opencv-contrib
 rembg
 imageio_ffmpeg
+rich
+rich_argparse
