@@ -112,7 +112,11 @@ web_extensions_root = comfy_dir / "web" / "extensions"
 web_mtb = web_extensions_root / "mtb"
 
 if web_mtb.exists() and hasattr(nodes, "EXTENSION_WEB_DIRS"):
-    shutil.rmtree(web_mtb)
+    if os.path.islink(web_mtb):
+        os.unlink(web_mtb)
+
+    else:
+        shutil.rmtree(web_mtb)
 
 
 # - REGISTER NODES
