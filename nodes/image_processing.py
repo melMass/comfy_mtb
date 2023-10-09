@@ -13,6 +13,7 @@ from PIL.PngImagePlugin import PngInfo
 from skimage.filters import gaussian
 from skimage.util import compare_images
 
+from ..log import log
 from ..utils import pil2tensor, tensor2np, tensor2pil
 
 # try:
@@ -318,22 +319,26 @@ class MaskToImage:
     FUNCTION = "render_mask"
 
     def render_mask(self, mask, color, background):
-        mask = tensor2np(mask)
-        mask = Image.fromarray(mask).convert("L")
+        masks = tensor2np(mask)
+        images = []
+        for m in masks:
+            _mask = Image.fromarray(m).convert("L")
 
-        image = Image.new("RGBA", mask.size, color=color)
-        # apply the mask
-        image = Image.composite(
-            image, Image.new("RGBA", mask.size, color=background), mask
-        )
+            log.debug(f"Converted mask to PIL Image format, size: {_mask.size}")
 
-        # image = ImageChops.multiply(image, mask)
-        # apply over background
-        # image = Image.alpha_composite(Image.new("RGBA", image.size, color=background), image)
+            image = Image.new("RGBA", _mask.size, color=color)
+            # apply the mask
+            image = Image.composite(
+                image, Image.new("RGBA", _mask.size, color=background), _mask
+            )
 
-        image = pil2tensor(image.convert("RGB"))
+            # image = ImageChops.multiply(image, mask)
+            # apply over background
+            # image = Image.alpha_composite(Image.new("RGBA", image.size, color=background), image)
 
-        return (image,)
+            images.append(image.convert("RGB"))
+
+        return (pil2tensor(images),)
 
 
 class ColoredImage:
@@ -381,19 +386,13 @@ class ImagePremultiply:
 
     CATEGORY = "mtb/image"
     RETURN_TYPES = ("IMAGE",)
+    RETURN_NAMES = ("RGBA",)
     FUNCTION = "premultiply"
 
     def premultiply(self, image, mask, invert):
         images = tensor2pil(image)
-        if invert:
-            masks = tensor2pil(mask)  # .convert("L")
-        else:
-            masks = tensor2pil(1.0 - mask)
-
-        single = False
-        if len(mask) == 1:
-            single = True
-
+        masks = tensor2pil(mask) if invert else tensor2pil(1.0 - mask)
+        single = len(mask) == 1
         masks = [x.convert("L") for x in masks]
 
         out = []
