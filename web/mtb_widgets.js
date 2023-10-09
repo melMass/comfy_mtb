@@ -878,27 +878,17 @@ const mtb_widgets = {
         break
       }
       case 'Stack Images (mtb)': {
-        const onNodeCreated = nodeType.prototype.onNodeCreated
-        nodeType.prototype.onNodeCreated = function () {
-          const r = onNodeCreated
-            ? onNodeCreated.apply(this, arguments)
-            : undefined
-          this.addInput(`image_1`, 'IMAGE')
-          return r
-        }
+        shared.setupDynamicConnections(nodeType, 'image', 'IMAGE')
 
-        const onConnectionsChange = nodeType.prototype.onConnectionsChange
-        nodeType.prototype.onConnectionsChange = function (
-          type,
-          index,
-          connected,
-          link_info
-        ) {
-          const r = onConnectionsChange
-            ? onConnectionsChange.apply(this, arguments)
-            : undefined
-          shared.dynamic_connection(this, index, connected, 'image_', 'IMAGE')
-        }
+        break
+      }
+      case 'Batch Float Assemble (mtb)': {
+        shared.setupDynamicConnections(nodeType, 'floats', 'FLOATS')
+        break
+      }
+      case 'Batch Merge (mtb)': {
+        shared.setupDynamicConnections(nodeType, 'batches', 'IMAGE')
+
         break
       }
       case 'Save Tensors (mtb)': {

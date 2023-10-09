@@ -19,6 +19,29 @@ def hex_to_rgb(hex_color, bgr=False):
     return tuple(int(hex_color[i : i + 2], 16) for i in (0, 2, 4))
 
 
+class BatchMake:
+    """Simply duplicates the input frame as a batch"""
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "image": ("IMAGE",),
+                "count": ("INT", {"default": 1}),
+            }
+        }
+
+    RETURN_TYPES = ("IMAGE",)
+    FUNCTION = "generate_batch"
+    CATEGORY = "mtb/batch"
+
+    def generate_batch(self, image: torch.Tensor, count):
+        if len(image.shape) == 3:
+            image = image.unsqueeze(0)
+
+        return (image.repeat(count, 1, 1, 1),)
+
+
 class BatchShape:
     """Generates a batch of 2D shapes with optional shading (experimental)"""
 
@@ -110,6 +133,60 @@ class BatchShape:
             res.append(canvas)
 
         return (pil2tensor(res),)
+
+
+class BatchFloatFill:
+    """Fills a batch float with a single value until it reaches the target length"""
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "floats": ("FLOATS",),
+                "direction": (["head", "tail"], {"default": "tail"}),
+                "value": ("FLOAT", {"default": 0.0}),
+                "count": ("INT", {"default": 1}),
+            }
+        }
+
+    FUNCTION = "fill_floats"
+    RETURN_TYPES = ("FLOATS",)
+    CATEGORY = "mtb/batch"
+
+    def fill_floats(self, floats, direction, value, count):
+        size = len(floats)
+        if size > count:
+            raise ValueError(f"Size ({size}) is less then target count ({count})")
+
+        rem = count - size
+        if direction == "tail":
+            floats = floats + [value] * rem
+        else:
+            floats = [value] * rem + floats
+        return (floats,)
+
+
+class BatchFloatAssemble:
+    """Assembles mutiple batches of floats into a single stream (batch)"""
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {"required": {"reverse": ("BOOLEAN", {"default": False})}}
+
+    FUNCTION = "assemble_floats"
+    RETURN_TYPES = ("FLOATS",)
+    CATEGORY = "mtb/batch"
+
+    def assemble_floats(self, reverse, **kwargs):
+        res = []
+        if reverse:
+            for x in reversed(kwargs.values()):
+                res += x
+        else:
+            for x in kwargs.values():
+                res += x
+
+        return (res,)
 
 
 class BatchFloat:
@@ -257,4 +334,11 @@ class Batch2dTransform:
         return (torch.cat(res, dim=0),)
 
 
-__nodes__ = [BatchFloat, Batch2dTransform, BatchShape]
+__nodes__ = [
+    BatchFloat,
+    Batch2dTransform,
+    BatchShape,
+    BatchMake,
+    BatchFloatAssemble,
+    BatchFloatFill,
+]

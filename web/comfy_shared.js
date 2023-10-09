@@ -92,7 +92,27 @@ export function getWidgetType(config) {
   }
   return { type, linkType }
 }
+export const setupDynamicConnections = (nodeType, prefix, inputType) => {
+  const onNodeCreated = nodeType.prototype.onNodeCreated
+  nodeType.prototype.onNodeCreated = function () {
+    const r = onNodeCreated ? onNodeCreated.apply(this, arguments) : undefined
+    this.addInput(`${prefix}_1`, inputType)
+    return r
+  }
 
+  const onConnectionsChange = nodeType.prototype.onConnectionsChange
+  nodeType.prototype.onConnectionsChange = function (
+    type,
+    index,
+    connected,
+    link_info
+  ) {
+    const r = onConnectionsChange
+      ? onConnectionsChange.apply(this, arguments)
+      : undefined
+    dynamic_connection(this, index, connected, `${prefix}_`, inputType)
+  }
+}
 export const dynamic_connection = (
   node,
   index,
