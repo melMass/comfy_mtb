@@ -43,7 +43,7 @@ __version__ = "0.2.0"
 def extract_nodes_from_source(filename):
     source_code = ""
 
-    with open(filename, "r") as file:
+    with open(filename, "r", encoding="utf8") as file:
         source_code = file.read()
 
     nodes = []
