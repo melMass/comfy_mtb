@@ -12,6 +12,9 @@ import tensorflow as tf
 import torch
 from frame_interpolation.eval import interpolator, util
 
+from utils import get_model_path
+
+from ..errors import ModelNotFound
 from ..log import log
 
 
@@ -20,10 +23,9 @@ class LoadFilmModel:
 
     @staticmethod
     def get_models() -> List[Path]:
-        models_path = os.path.join(folder_paths.models_dir, "FILM/*")
-        models = glob.glob(models_path)
-        models = [Path(x) for x in models if x.endswith(".onnx") or x.endswith(".pth")]
-        return models
+        models_paths = get_model_path("FILM").iterdir()
+
+        return [x for x in models_paths if x.suffix in [".onnx", ".pth"]]
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -41,7 +43,10 @@ class LoadFilmModel:
     CATEGORY = "mtb/frame iterpolation"
 
     def load_model(self, film_model: str):
-        model_path = Path(folder_paths.models_dir) / "FILM" / film_model
+        model_path = get_model_path("FILM", film_model)
+        if not model_path or not model_path.exists():
+            raise ModelNotFound(f"FILM ({model_path})")
+
         if not (model_path / "saved_model.pb").exists():
             model_path = model_path / "saved_model"
 

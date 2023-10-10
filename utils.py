@@ -1,17 +1,14 @@
+import contextlib
 import functools
 import math
 import os
 import shlex
 import shutil
-import signal
 import socket
 import subprocess
 import sys
-import threading
 import uuid
-from contextlib import suppress
 from pathlib import Path
-from queue import Empty, Queue
 from typing import List, Optional, Union
 
 import folder_paths
@@ -506,12 +503,11 @@ def download_antelopev2():
     antelopev2_url = "https://drive.google.com/uc?id=18wEUfMNohBJ4K3Ly5wpTejPfDzp-8fI8"
 
     try:
-        import folder_paths
         import gdown
 
         log.debug("Loading antelopev2 model")
 
-        dest = Path(folder_paths.models_dir) / "insightface"
+        dest = get_model_path("insightface")
         archive = dest / "antelopev2.zip"
         final_path = dest / "models" / "antelopev2"
         if not final_path.exists():
@@ -536,6 +532,33 @@ def download_antelopev2():
             f"Could not load or download antelopev2 model, download it manually from {antelopev2_url}"
         )
         raise e
+
+
+def get_model_path(fam, model=None):
+    log.debug(f"Requesting {fam} with model {model}")
+    res = None
+    if model:
+        res = folder_paths.get_full_path(fam, model)
+    else:
+        # this one can raise errors...
+        with contextlib.suppress(KeyError):
+            res = folder_paths.get_folder_paths(fam)
+
+    if res:
+        if isinstance(res, list):
+            if len(res) > 1:
+                log.warning(
+                    f"Found multiple match, we will pick the first {res[0]}\n{res}"
+                )
+            res = res[0]
+        res = Path(res)
+        log.debug(f"Resolved model path from folder_paths: {res}")
+    else:
+        res = models_dir / fam
+        if model:
+            res /= model
+
+    return res
 
 
 # endregion

@@ -1,21 +1,20 @@
-from gfpgan import GFPGANer
-import cv2
-import numpy as np
 import os
 from pathlib import Path
-import folder_paths
-from ..utils import pil2tensor, np2tensor, tensor2np
+from typing import Tuple
 
-from basicsr.utils import imwrite
-
-
-from PIL import Image
-import torch
-from ..log import NullWriter, log
-from comfy import model_management
 import comfy
 import comfy.utils
-from typing import Tuple
+import cv2
+import folder_paths
+import numpy as np
+import torch
+from basicsr.utils import imwrite
+from comfy import model_management
+from gfpgan import GFPGANer
+from PIL import Image
+
+from ..log import NullWriter, log
+from ..utils import get_model_path, np2tensor, pil2tensor, tensor2np
 
 
 class LoadFaceEnhanceModel:
@@ -26,11 +25,12 @@ class LoadFaceEnhanceModel:
 
     @classmethod
     def get_models_root(cls):
-        fr = Path(folder_paths.models_dir) / "face_restore"
+        fr = get_model_path("face_restore")
+        # fr = Path(folder_paths.models_dir) / "face_restore"
         if fr.exists():
             return (fr, None)
 
-        um = Path(folder_paths.models_dir) / "upscale_models"
+        um = get_model_path("upscale_models")
         return (fr, um) if um.exists() else (None, None)
 
     @classmethod

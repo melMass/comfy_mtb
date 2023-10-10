@@ -1,14 +1,15 @@
 import tempfile
 from pathlib import Path
 
+import folder_paths
 import numpy as np
 import onnxruntime as ort
 import torch
 from PIL import Image
 
+from ..errors import ModelNotFound
 from ..log import mklog
-from ..utils import (models_dir, tensor2pil, tiles_infer, tiles_merge,
-                     tiles_split)
+from ..utils import get_model_path, tensor2pil, tiles_infer, tiles_merge, tiles_split
 
 # Disable MS telemetry
 ort.disable_telemetry_events()
@@ -54,9 +55,11 @@ def color_to_normals(color_img, overlap, progress_callback, save_temp=False):
 
     # Load model
     log.debug("DeepBump Color → Normals : loading model")
-    ort_session = ort.InferenceSession(
-        (models_dir / "deepbump" / "deepbump256.onnx").as_posix()
-    )
+    model = get_model_path("deepbump", "deepbump256.onnx")
+    if not model or not model.exists():
+        raise ModelNotFound(f"deepbump ({model})")
+
+    ort_session = ort.InferenceSession(model)
 
     # Predict normal map for each tile
     log.debug("DeepBump Color → Normals : generating")
