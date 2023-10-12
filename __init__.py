@@ -112,11 +112,15 @@ web_extensions_root = comfy_dir / "web" / "extensions"
 web_mtb = web_extensions_root / "mtb"
 
 if web_mtb.exists() and hasattr(nodes, "EXTENSION_WEB_DIRS"):
-    if os.path.islink(web_mtb):
-        os.unlink(web_mtb)
-
-    else:
-        shutil.rmtree(web_mtb)
+    try:
+        if web_mtb.is_symlink():
+            web_mtb.unlink()
+        else:
+            shutil.rmtree(web_mtb)
+    except Exception as e:
+        log.warning(
+            f"Failed to remove web mtb directory: {e}\nPlease manually remove it from disk ({web_mtb}) and restart the server."
+        )
 
 
 # - REGISTER NODES
