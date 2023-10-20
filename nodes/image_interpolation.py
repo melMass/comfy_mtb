@@ -12,10 +12,9 @@ import tensorflow as tf
 import torch
 from frame_interpolation.eval import interpolator, util
 
-from utils import get_model_path
-
 from ..errors import ModelNotFound
 from ..log import log
+from ..utils import get_model_path
 
 
 class LoadFilmModel:
