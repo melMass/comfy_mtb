@@ -1,9 +1,9 @@
-import torch
-from ..utils import tensor2pil, pil2tensor, tensor2np, np2tensor
-from PIL import Image, ImageFilter, ImageDraw, ImageChops
 import numpy as np
+import torch
+from PIL import Image, ImageChops, ImageDraw, ImageFilter
 
 from ..log import log
+from ..utils import np2tensor, pil2tensor, tensor2np, tensor2pil
 
 
 class Bbox:
@@ -32,7 +32,7 @@ class Bbox:
     CATEGORY = "mtb/crop"
 
     def do_crop(self, x, y, width, height):  # bbox
-        return (x, y, width, height)
+        return ((x, y, width, height),)
         # return bbox
 
 
