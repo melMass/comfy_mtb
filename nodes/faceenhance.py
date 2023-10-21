@@ -8,7 +8,6 @@ import cv2
 import folder_paths
 import numpy as np
 import torch
-from basicsr.utils import imwrite
 from comfy import model_management
 from gfpgan import GFPGANer
 from PIL import Image
@@ -247,16 +246,16 @@ class RestoreFace:
         ):
             face_id = idx + 1
             file = self.get_step_image_path("cropped_faces", face_id)
-            imwrite(cropped_face, file)
+            cv2.imwrite(file, cropped_face)
 
             file = self.get_step_image_path("cropped_faces_restored", face_id)
-            imwrite(restored_face, file)
+            cv2.imwrite(file, restored_face)
 
             file = self.get_step_image_path("cropped_faces_compare", face_id)
 
             # save comparison image
             cmp_img = np.concatenate((cropped_face, restored_face), axis=1)
-            imwrite(cmp_img, file)
+            cv2.imwrite(file, cmp_img)
 
 
 __nodes__ = [RestoreFace, LoadFaceEnhanceModel]

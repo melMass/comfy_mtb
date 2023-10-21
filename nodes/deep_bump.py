@@ -1,7 +1,6 @@
 import tempfile
 from pathlib import Path
 
-import folder_paths
 import numpy as np
 import onnxruntime as ort
 import torch
