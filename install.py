@@ -268,24 +268,6 @@ def download_file(url, file_name):
                 progress_bar.update(len(chunk))
 
 
-def get_requirements(path: Path):
-    with open(path.resolve(), "r") as requirements_file:
-        requirements_txt = requirements_file.read()
-
-    try:
-        parsed_requirements = requirements.parse(requirements_txt)
-    except AttributeError:
-        print_formatted(
-            f"Failed to parse {path}. Please make sure the file is correctly formatted.",
-            "bold",
-            color="red",
-        )
-
-        return
-
-    return parsed_requirements
-
-
 def try_import(requirement):
     dependency = requirement.name.strip()
     import_name = pip_map.get(dependency, dependency)
@@ -365,29 +347,8 @@ def get_github_assets(tag=None):
     return tag_data, tag_name
 
 
-# Install dependencies from requirements.txt
-def install_dependencies(dry=False):
-    parsed_requirements = get_requirements(here / "reqs.txt")
-    if not parsed_requirements:
-        return
-    print_formatted(
-        "Installing dependencies from reqs.txt...", "italic", color="yellow"
-    )
-
-    for requirement in parsed_requirements:
-        import_or_install(requirement, dry=dry)
-
-
 # endregion
 
-try:
-    import requirements
-except ImportError:
-    print_formatted("Installing requirements-parser...", "italic", color="yellow")
-    run_command([executable, "-m", "pip", "install", "requirements-parser"])
-    import requirements
-
-    print_formatted("Done.", "italic", color="green")
 
 try:
     from tqdm import tqdm
@@ -398,10 +359,15 @@ except ImportError:
 
 
 def main():
-    full = False
     if len(sys.argv) == 1:
         print_formatted(
             "mtb doesn't need an install script anymore.", "italic", color="yellow"
+        )
+        return
+    if all(arg not in ("-p", "--path") for arg in sys.argv):
+        print(
+            "This script is only used for and edge case of remote installs on some cloud providers, unrecognized arguments:",
+            sys.argv[1:],
         )
         return
 
@@ -438,7 +404,6 @@ def main():
                     f"Directory {repo_dir} already exists, we will update it..."
                 )
                 run_command(["git", "pull", "-C", repo_dir])
-        # os.chdir(clone_dir)
         here = clone_dir
         full = True
 
