@@ -1,14 +1,49 @@
-from ..utils import tensor2np, PIL_FILTER_MAP
-import uuid
-import folder_paths
-from ..log import log
-import comfy.model_management as model_management
+import json
 import subprocess
-import torch
+import uuid
 from pathlib import Path
+from typing import List, Optional
+
+import comfy.model_management as model_management
+import folder_paths
 import numpy as np
+import torch
+from comfy.model_management import get_torch_device
 from PIL import Image
-from typing import Optional, List
+
+from ..log import log
+from ..utils import PIL_FILTER_MAP, audioInputDir, tensor2np
+
+try:
+    import librosa
+except ImportError:
+    log.warning("librosa not installed. I/O Audio features will not be available.")
+
+
+class LoadAudio_:
+    """Load an audio file from the input folder (supports upload)"""
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "audio": ("AUDIO_UPLOAD",),
+                "sample_rate": ("INT", {"default": 44100}),
+            }
+        }
+
+    RETURN_TYPES = ("AUDIO",)
+    RETURN_NAMES = ("audio",)
+    FUNCTION = "load_audio"
+    CATEGORY = "mtb/audio"
+
+    def load_audio(self, audio: str, sample_rate: int):
+        log.debug(f"Audio file: {audio}")
+        audio_file_path = audioInputDir / audio
+        log.debug(f"Loading audio file: {audio_file_path}")
+        audio_data, _ = librosa.load(audio_file_path.as_posix(), sr=sample_rate)
+        audio_tensor = torch.from_numpy(audio_data).to(get_torch_device())
+        return (audio_tensor.unsqueeze(0).float(),)
 
 
 class ExportWithFfmpeg:
@@ -27,7 +62,8 @@ class ExportWithFfmpeg:
                     ["prores_ks", "libx264", "libx265"],
                     {"default": "prores_ks"},
                 ),
-            }
+            },
+            "hidden": {"prompt": "PROMPT", "extra_pnginfo": "EXTRA_PNGINFO"},
         }
 
     RETURN_TYPES = ("VIDEO",)
@@ -42,9 +78,21 @@ class ExportWithFfmpeg:
         prefix: str,
         format: str,
         codec: str,
+        prompt=None,
+        extra_pnginfo=None,
     ):
+        metadata = {}
         if images.size(0) == 0:
             return ("",)
+
+        if extra_pnginfo is not None:
+            metadata["extra"] = {}
+            for x in extra_pnginfo:
+                metadata["extra"][x] = json.dumps(extra_pnginfo[x])
+
+        if prompt is not None:
+            metadata["prompt"] = json.dumps(prompt)
+
         output_dir = Path(folder_paths.get_output_directory())
         pix_fmt = "rgb48le" if codec == "prores_ks" else "yuv420p"
         file_ext = format
@@ -61,6 +109,15 @@ class ExportWithFfmpeg:
         height, width, _ = frames[0].shape
 
         out_path = (output_dir / file_id).as_posix()
+
+        metadata_cmd = []
+
+        if metadata:
+            for k, v in metadata.items():
+                metadata_cmd += [
+                    "-metadata:s:v",
+                    f"{k}='{v if isinstance(v,str) else json.dumps(v)}'",
+                ]
 
         # Prepare the FFmpeg command
         command = [
@@ -80,6 +137,7 @@ class ExportWithFfmpeg:
             "-",
             "-c:v",
             codec,
+            *metadata_cmd,
             "-r",
             str(fps),
             "-y",
@@ -192,4 +250,4 @@ class SaveGif:
         return {"ui": {"gif": results}}
 
 
-__nodes__ = [SaveGif, ExportWithFfmpeg]
+__nodes__ = [SaveGif, ExportWithFfmpeg, LoadAudio_]

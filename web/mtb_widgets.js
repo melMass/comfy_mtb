@@ -14,7 +14,7 @@ import parseCss from './extern/parse-css.js'
 import * as shared from './comfy_shared.js'
 import { log } from './comfy_shared.js'
 
-const newTypes = [, /*'BOOL'*/ 'COLOR', 'BBOX']
+const newTypes = [, /*'BOOL'*/ 'COLOR', 'BBOX', 'AUDIO_UPLOAD']
 
 const withFont = (ctx, font, cb) => {
   const oldFont = ctx.font
@@ -44,6 +44,54 @@ const calculateTextDimensions = (ctx, value, width, fontSize = 16) => {
     0
   )
   return { textHeight, maxLineWidth }
+}
+function addPlaybackWidget(node, name, url) {
+  let isTick = true
+  const audio = new Audio(url)
+  const slider = node.addWidget(
+    'slider',
+    'loading',
+    0,
+    (v) => {
+      if (!isTick) {
+        audio.currentTime = v
+      }
+      isTick = false
+    },
+    {
+      min: 0,
+      max: 0,
+    }
+  )
+
+  const button = node.addWidget('button', `Play ${name}`, 'play', () => {
+    try {
+      if (audio.paused) {
+        audio.play()
+        button.name = `Pause ${name}`
+      } else {
+        audio.pause()
+        button.name = `Play ${name}`
+      }
+    } catch (error) {
+      alert(error)
+    }
+    app.canvas.setDirty(true)
+  })
+  audio.addEventListener('timeupdate', () => {
+    isTick = true
+    slider.value = audio.currentTime
+    app.canvas.setDirty(true)
+  })
+  audio.addEventListener('ended', () => {
+    button.name = `Play ${name}`
+    app.canvas.setDirty(true)
+  })
+  audio.addEventListener('loadedmetadata', () => {
+    slider.options.max = audio.duration
+    slider.name = `(${audio.duration})`
+    app.canvas.setDirty(true)
+  })
 }
 
 export const MtbWidgets = {
@@ -392,6 +440,119 @@ export const MtbWidgets = {
 
     return w
   },
+
+  AUDIO_UPLOAD: function (name, val) {
+    const w = {
+      name,
+      type: 'audio_upload',
+      value: val,
+      draw: function (ctx, node, widgetWidth, widgetY, height) {
+        const [cw, ch] = this.computeSize(widgetWidth)
+        shared.offsetDOMWidget(this, ctx, node, widgetWidth, widgetY, ch)
+      },
+      computeSize: function (width) {
+        if (width) {
+          return [width, 64]
+        }
+        return [128, 128]
+      },
+      onRemoved: function () {
+        if (this.inputEl) {
+          this.inputEl.remove()
+        }
+      },
+    }
+
+    const uploadFile = async (file, node) => {
+      try {
+        const body = new FormData()
+        body.append('name', 'loadAudio')
+        body.append('args', file)
+        const loadAudio = await api.fetchApi('/mtb/actions', {
+          method: 'POST',
+          body,
+        })
+
+        if (loadAudio.status === 200) {
+          const { result } = await loadAudio.json()
+          console.log('received from server', result)
+          console.log(
+            `Getting file /mtb/audio?filename=${encodeURIComponent(
+              result.name
+            )}`
+          )
+
+          w.value = result.name
+          addPlaybackWidget(
+            node,
+            result.name,
+            `/mtb/audio?filename=${encodeURIComponent(result.name)}`
+          )
+        } else {
+          alert(loadAudio.status + ' -' + loadAudio.statusText)
+        }
+        // if (resp.status === 200) {
+        //   const { name } = await resp.json()
+        //   pathWidget.value = name
+        //   addPlaybackWidget(
+        //     node,
+        //     name,
+        //     `/samplediffusion/audio?filename=${encodeURIComponent(name)}`
+        //   )
+        // } else {
+        //   alert(resp.status + ' - ' + resp.statusText)
+        // }
+      } catch (error) {
+        alert(error)
+        throw error
+      }
+    }
+
+    w.inputEl = document.createElement('div')
+    const hidden_input = document.createElement('input')
+    const label = document.createElement('label')
+
+    const uniqueId = 'input_' + Date.now()
+    Object.assign(hidden_input, {
+      type: 'file',
+      accept: 'audio/mpeg,audio/wav,audio/x-wav',
+      id: uniqueId,
+      style: `
+      width: 0.1px;
+      height: 0.1px;
+      opacity: 0;
+      overflow: hidden;
+      position: absolute;
+      z-index: -1;
+
+      `,
+      onchange: async () => {
+        if (hidden_input.files.length) {
+          console.log(hidden_input.files[0])
+          await uploadFile(hidden_input.files[0], this)
+        }
+      },
+    })
+
+    Object.assign(label, {
+      htmlFor: uniqueId,
+    })
+    label.textContent = 'Upload Audio File'
+    label.style = `
+    font-size: 1.25em;
+    font-weight: 700;
+    font-family: monospace;
+    padding:0.5em;
+    border-radius: 5px;
+    color: white;
+    background-color: #1e1e1e;
+    display: inline-block;
+    `
+    document.body.appendChild(w.inputEl)
+    w.inputEl.appendChild(hidden_input)
+    w.inputEl.appendChild(label)
+    return w
+  },
 }
 
 /**
@@ -475,6 +636,20 @@ const mtb_widgets = {
           minHeight: 30,
         }
       },
+      AUDIO_UPLOAD: (node, inputName, inputData, app) => {
+        console.debug('Registering audio')
+        return {
+          widget: node.addCustomWidget(
+            MtbWidgets.AUDIO_UPLOAD.bind(node)(
+              inputName,
+              inputData[1]?.default || ''
+            )
+          ),
+          minWidth: 150,
+          minHeight: 30,
+        }
+      },
+
       // BBOX: (node, inputName, inputData, app) => {
       //     console.debug("Registering bbox")
       //     return {
@@ -887,7 +1062,8 @@ const mtb_widgets = {
 
         break
       }
-      case 'Batch Float Assemble (mtb)': {
+      case 'Batch Float Assemble (mtb)':
+      case 'Plot Batch Float (mtb)': {
         shared.setupDynamicConnections(nodeType, 'floats', 'FLOATS')
         break
       }

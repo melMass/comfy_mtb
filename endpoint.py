@@ -3,7 +3,16 @@ import csv
 from aiohttp import web
 
 from .log import mklog
-from .utils import backup_file, here, import_install, reqs_map, run_command, styles_dir
+from .utils import (
+    audioInputDir,
+    backup_file,
+    comfy_dir,
+    here,
+    import_install,
+    reqs_map,
+    run_command,
+    styles_dir,
+)
 
 endlog = mklog("mtb endpoint")
 
@@ -13,6 +22,29 @@ import sys
 from pathlib import Path
 
 import_install("requirements")
+
+
+def ACTIONS_loadAudio(args):
+    if not audioInputDir.exists():
+        audioInputDir.mkdir()
+
+    endlog.debug(f"Received Load Audio request for {args}")
+
+    if not args.file:
+        return web.Response(status=400)
+
+    filename = args.filename
+    if not filename:
+        return web.Response(status=400)
+
+    target = audioInputDir / filename
+    if target.exists():
+        target.unlink()
+
+    with target.open("wb") as f:
+        f.write(args.file.read())
+
+    return {"name": filename}
 
 
 def ACTIONS_installDependency(dependency_names=None):
@@ -88,7 +120,7 @@ def ACTIONS_saveStyle(data):
 
 async def do_action(request) -> web.Response:
     endlog.debug("Init action request")
-    request_data = await request.json()
+    request_data = await request.post()
     name = request_data.get("name")
     args = request_data.get("args")
 
@@ -100,14 +132,33 @@ async def do_action(request) -> web.Response:
     if callable(method):
         result = method(args) if args else method()
         endlog.debug(f"Action result: {result}")
-        return web.json_response({"result": result})
+        return web.json_response({"result": result}, status=200)
 
     available_methods = [
         attr[len("ACTIONS_") :] for attr in globals() if attr.startswith("ACTIONS_")
     ]
 
     return web.json_response(
-        {"error": "Invalid method name.", "available_methods": available_methods}
+        {"error": "Invalid method name.", "available_methods": available_methods},
+        status=400,
+    )
+
+
+async def get_audio(request):
+    name = request.rel_url.query.get("filename")
+    if not name:
+        return web.json_response(
+            {"error": "No filename provided as url query."}, status=400
+        )
+
+    target = audioInputDir / name
+    if not target.exists():
+        return web.json_response(
+            {"error": f"File {name} (in {audioInputDir}) not found..."}, status=404
+        )
+
+    return web.FileResponse(
+        target, headers={"Content-Disposition": f'filename="{name}"'}
     )
 
 
