@@ -179,10 +179,10 @@ class FitNumber:
             "required": {
                 "value": ("FLOAT", {"default": 0, "forceInput": True}),
                 "clamp": ("BOOLEAN", {"default": False}),
-                "source_min": ("FLOAT", {"default": 0.0}),
-                "source_max": ("FLOAT", {"default": 1.0}),
-                "target_min": ("FLOAT", {"default": 0.0}),
-                "target_max": ("FLOAT", {"default": 1.0}),
+                "source_min": ("FLOAT", {"default": 0.0, "step": 0.01}),
+                "source_max": ("FLOAT", {"default": 1.0, "step": 0.01}),
+                "target_min": ("FLOAT", {"default": 0.0, "step": 0.01}),
+                "target_max": ("FLOAT", {"default": 1.0, "step": 0.01}),
                 "easing": (
                     [
                         "Linear",
@@ -228,18 +228,17 @@ class FitNumber:
         target_max: float,
         easing: str,
     ):
-        normalized_value = (value - source_min) / (source_max - source_min)
+        if source_min == source_max:
+            normalized_value = 0
+        else:
+            normalized_value = (value - source_min) / (source_max - source_min)
+        if clamp:
+            normalized_value = max(min(normalized_value, 1), 0)
 
         eased_value = apply_easing(normalized_value, easing)
 
         # - Convert the eased value to the target range
         res = target_min + (target_max - target_min) * eased_value
-
-        if clamp:
-            if target_min > target_max:
-                res = max(min(res, target_min), target_max)
-            else:
-                res = max(min(res, target_max), target_min)
 
         return (res,)
 
@@ -271,4 +270,10 @@ class ConcatImages:
         return (concatenated,)
 
 
-__nodes__ = [StringReplace, FitNumber, GetBatchFromHistory, AnyToString, ConcatImages]
+__nodes__ = [
+    StringReplace,
+    FitNumber,
+    GetBatchFromHistory,
+    AnyToString,
+    ConcatImages,
+]

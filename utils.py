@@ -585,9 +585,6 @@ def create_uv_map_tensor(width=512, height=512):
 
 # region ANIMATION Utilities
 def apply_easing(value, easing_type):
-    if value < 0 or value > 1:
-        raise ValueError(f"The value should be between 0 and 1. (value is {value})")
-
     if easing_type == "Linear":
         return value
 
