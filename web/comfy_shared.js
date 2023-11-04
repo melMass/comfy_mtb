@@ -118,7 +118,8 @@ export const dynamic_connection = (
   index,
   connected,
   connectionPrefix = 'input_',
-  connectionType = 'PSDLAYER'
+  connectionType = 'PSDLAYER',
+  nameArray = []
 ) => {
   // remove all non connected inputs
   if (!connected && node.inputs.length > 1) {
@@ -134,23 +135,24 @@ export const dynamic_connection = (
 
     // make inputs sequential again
     for (let i = 0; i < node.inputs.length; i++) {
-      node.inputs[i].label = `${connectionPrefix}${i + 1}`
-      node.inputs[i].name = `${connectionPrefix}${i + 1}`
+      const name =
+        i < nameArray.length ? nameArray[i] : `${connectionPrefix}${i + 1}`
+      node.inputs[i].label = name
+      node.inputs[i].name = name
     }
   }
 
   // add an extra input
   if (node.inputs[node.inputs.length - 1].link != undefined) {
-    log(
-      `Adding input ${node.inputs.length + 1} (${connectionPrefix}${
-        node.inputs.length + 1
-      })`
-    )
+    const nextIndex = node.inputs.length
+    const name =
+      nextIndex < nameArray.length
+        ? nameArray[nextIndex]
+        : `${connectionPrefix}${nextIndex + 1}`
 
-    node.addInput(
-      `${connectionPrefix}${node.inputs.length + 1}`,
-      connectionType
-    )
+    log(`Adding input ${nextIndex + 1} (${name})`)
+
+    node.addInput(name, connectionType)
   }
 }
 

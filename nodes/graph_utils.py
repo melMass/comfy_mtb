@@ -170,6 +170,52 @@ class StringReplace:
         return (string,)
 
 
+class MTB_MathExpression:
+    """Node to evaluate a simple math expression string"""
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "expression": ("STRING", {"default": "", "multiline": True}),
+            }
+        }
+
+    FUNCTION = "eval_expression"
+    RETURN_TYPES = ("FLOAT", "INT")
+    RETURN_NAMES = ("result (float)", "result (int)")
+    CATEGORY = "mtb/math"
+    DESCRIPTION = "evaluate a simple math expression string (!! Fallsback to eval)"
+
+    def eval_expression(self, expression, **kwargs):
+        import math
+        from ast import literal_eval
+
+        for key, value in kwargs.items():
+            print(f"Replacing placeholder <{key}> with value {value}")
+            expression = expression.replace(f"<{key}>", str(value))
+
+        result = -1
+        try:
+            result = literal_eval(expression)
+        except SyntaxError as e:
+            raise ValueError(
+                f"The expression syntax is wrong '{expression}': {e}"
+            ) from e
+
+        except ValueError:
+            try:
+                expression = expression.replace("^", "**")
+                result = eval(expression)
+            except Exception as e:
+                # Handle any other exceptions and provide a meaningful error message
+                raise ValueError(
+                    f"Error evaluating expression '{expression}': {e}"
+                ) from e
+
+        return (result, int(result))
+
+
 class FitNumber:
     """Fit the input float using a source and target range"""
 
@@ -276,4 +322,5 @@ __nodes__ = [
     GetBatchFromHistory,
     AnyToString,
     ConcatImages,
+    MTB_MathExpression,
 ]
