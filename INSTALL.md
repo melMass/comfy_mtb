@@ -4,7 +4,6 @@
     - [ComfyUI Manager](#comfyui-manager)
     - [Virtual Env](#virtual-env)
   - [Models Download](#models-download)
-    - [Web Extensions](#web-extensions)
   - [Old installation method (MANUAL)](#old-installation-method-manual)
     - [Dependencies](#dependencies)
 
@@ -35,11 +34,6 @@ then follow the prompt or just press enter to download every models.
   python scripts/download_models.py -y
   ```
 
-### Web Extensions
-
-On first run the script [tries to symlink](https://github.com/melMass/comfy_mtb/blob/d982b69a58c05ccead9c49370764beaa4549992a/__init__.py#L45-L61) the [web extensions](https://github.com/melMass/comfy_mtb/tree/main/web) to your comfy `web/extensions` folder. In case it fails you can manually copy the mtb folder to `ComfyUI/web/extensions` it only provides a color widget for now shared by a few nodes:  
-
-<img alt="color widget preview" src="https://github.com/melMass/comfy_mtb/assets/7041726/cff7e66a-4cc4-4866-b35b-10af0bb2d110" width=450>
 
 ## Old installation method (MANUAL)
 ### Dependencies

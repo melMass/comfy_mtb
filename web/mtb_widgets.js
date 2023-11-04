@@ -494,6 +494,10 @@ const mtb_widgets = {
   async beforeRegisterNodeDef(nodeType, nodeData, app) {
     // const rinputs = nodeData.input?.required
 
+    if (!nodeData.name.endsWith('(mtb)')) {
+      return
+    }
+
     let has_custom = false
     if (nodeData.input && nodeData.input.required) {
       for (const i of Object.keys(nodeData.input.required)) {
@@ -889,6 +893,50 @@ const mtb_widgets = {
       }
       case 'Batch Merge (mtb)': {
         shared.setupDynamicConnections(nodeType, 'batches', 'IMAGE')
+
+        break
+      }
+      case 'Math Expression (mtb)': {
+        const onNodeCreated = nodeType.prototype.onNodeCreated
+        nodeType.prototype.onNodeCreated = function () {
+          const r = onNodeCreated
+            ? onNodeCreated.apply(this, arguments)
+            : undefined
+          this.addInput(`x`, '*')
+          return r
+        }
+
+        const onConnectionsChange = nodeType.prototype.onConnectionsChange
+        nodeType.prototype.onConnectionsChange = function (
+          type,
+          index,
+          connected,
+          link_info
+        ) {
+          const r = onConnectionsChange
+            ? onConnectionsChange.apply(this, arguments)
+            : undefined
+          shared.dynamic_connection(this, index, connected, 'var_', '*', [
+            'x',
+            'y',
+            'z',
+          ])
+
+          //- infer type
+          if (link_info) {
+            const fromNode = this.graph._nodes.find(
+              (otherNode) => otherNode.id == link_info.origin_id
+            )
+            const type = fromNode.outputs[link_info.origin_slot].type
+            this.inputs[index].type = type
+            // this.inputs[index].label = type.toLowerCase()
+          }
+          //- restore dynamic input
+          if (!connected) {
+            this.inputs[index].type = '*'
+            this.inputs[index].label = `number_${index + 1}`
+          }
+        }
 
         break
       }

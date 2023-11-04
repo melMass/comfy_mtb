@@ -1,9 +1,11 @@
-from ..utils import here
-from ..log import log
-import folder_paths
-from pathlib import Path
-import shutil
 import csv
+import shutil
+from pathlib import Path
+
+import folder_paths
+
+from ..log import log
+from ..utils import here
 
 
 class InterpolateClipSequential:
@@ -157,7 +159,13 @@ class StylesLoader:
                     parsed = csv.reader(f)
                     for row in parsed:
                         log.debug(f"Adding style {row[0]}")
-                        cls.options[row[0]] = (row[1], row[2])
+                        try:
+                            cls.options[row[0]] = (row[1], row[2])
+                        except Exception:
+                            log.warning(
+                                f"There was an error while parsing {file}, make sure it respects A1111 format, i.e 3 columns name, positive, negative"
+                            )
+                            continue
 
         else:
             log.debug(f"Using cached styles (count: {len(cls.options)})")

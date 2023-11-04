@@ -22,6 +22,18 @@ from ..utils import pil2tensor, tensor2np, tensor2pil
 #     log.warning("cv2.ximgproc.guidedFilter not found, use opencv-contrib-python")
 
 
+def gaussian_kernel(kernel_size: int, sigma_x: float, sigma_y: float, device=None):
+    x, y = torch.meshgrid(
+        torch.linspace(-1, 1, kernel_size, device=device),
+        torch.linspace(-1, 1, kernel_size, device=device),
+        indexing="ij",
+    )
+    d_x = x * x / (2.0 * sigma_x * sigma_x)
+    d_y = y * y / (2.0 * sigma_y * sigma_y)
+    g = torch.exp(-(d_x + d_y))
+    return g / g.sum()
+
+
 class ColorCorrect:
     """Various color correction methods"""
 
@@ -273,6 +285,78 @@ class Blur_:
         return (torch.from_numpy(image),)
 
 
+class Sharpen_:
+    """Sharpens an image using a Gaussian kernel."""
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "image": ("IMAGE",),
+                "sharpen_radius": (
+                    "INT",
+                    {"default": 1, "min": 1, "max": 31, "step": 1},
+                ),
+                "sigma_x": (
+                    "FLOAT",
+                    {"default": 1.0, "min": 0.1, "max": 10.0, "step": 0.1},
+                ),
+                "sigma_y": (
+                    "FLOAT",
+                    {"default": 1.0, "min": 0.1, "max": 10.0, "step": 0.1},
+                ),
+                "alpha": (
+                    "FLOAT",
+                    {"default": 1.0, "min": 0.0, "max": 5.0, "step": 0.1},
+                ),
+            },
+        }
+
+    RETURN_TYPES = ("IMAGE",)
+    FUNCTION = "do_sharp"
+    CATEGORY = "mtb/image processing"
+
+    def do_sharp(
+        self,
+        image: torch.Tensor,
+        sharpen_radius: int,
+        sigma_x: float,
+        sigma_y: float,
+        alpha: float,
+    ):
+        if sharpen_radius == 0:
+            return (image,)
+
+        channels = image.shape[3]
+
+        kernel_size = 2 * sharpen_radius + 1
+        kernel = gaussian_kernel(kernel_size, sigma_x, sigma_y) * -(alpha * 10)
+
+        # Modify center of kernel to make it a sharpening kernel
+        center = kernel_size // 2
+        kernel[center, center] = kernel[center, center] - kernel.sum() + 1.0
+
+        kernel = kernel.repeat(channels, 1, 1).unsqueeze(1)
+        tensor_image = image.permute(0, 3, 1, 2)
+
+        tensor_image = F.pad(
+            tensor_image,
+            (sharpen_radius, sharpen_radius, sharpen_radius, sharpen_radius),
+            "reflect",
+        )
+        sharpened = F.conv2d(tensor_image, kernel, padding=center, groups=channels)
+
+        # Remove padding
+        sharpened = sharpened[
+            :, :, sharpen_radius:-sharpen_radius, sharpen_radius:-sharpen_radius
+        ]
+
+        sharpened = sharpened.permute(0, 2, 3, 1)
+        result = torch.clamp(sharpened, 0, 1)
+
+        return (result,)
+
+
 # https://github.com/lllyasviel/AdverseCleaner/blob/main/clean.py
 # def deglaze_np_img(np_img):
 #     y = np_img.copy()
@@ -354,7 +438,11 @@ class ColoredImage:
                 "color": ("COLOR",),
                 "width": ("INT", {"default": 512, "min": 16, "max": 8160}),
                 "height": ("INT", {"default": 512, "min": 16, "max": 8160}),
-            }
+            },
+            "optional": {
+                "foreground_image": ("IMAGE",),
+                "foreground_mask": ("MASK",),
+            },
         }
 
     CATEGORY = "mtb/generate"
@@ -363,12 +451,46 @@ class ColoredImage:
 
     FUNCTION = "render_img"
 
-    def render_img(self, color, width, height):
-        image = Image.new("RGB", (width, height), color=color)
+    def render_img(
+        self, color, width, height, foreground_image=None, foreground_mask=None
+    ):
+        image = Image.new("RGBA", (width, height), color=color)
+        output = []
+        if foreground_image is not None:
+            if foreground_mask is None:
+                fg_images = tensor2pil(foreground_image)
+                for img in fg_images:
+                    if image.size != img.size:
+                        raise ValueError(
+                            f"Dimension mismatch: image {image.size}, img {img.size}"
+                        )
 
-        image = pil2tensor(image)
+                    if img.mode != "RGBA":
+                        raise ValueError(
+                            f"Foreground image must be in 'RGBA' mode when no mask is provided, got {img.mode}"
+                        )
 
-        return (image,)
+                    output.append(Image.alpha_composite(image, img).convert("RGB"))
+
+            elif foreground_image.size[0] != foreground_mask.size[0]:
+                raise ValueError("Foreground image and mask must have same batch size")
+            else:
+                fg_images = tensor2pil(foreground_image)
+                fg_masks = tensor2pil(foreground_mask)
+                output.extend(
+                    Image.composite(
+                        fg_image.convert("RGBA"),
+                        image,
+                        fg_mask,
+                    ).convert("RGB")
+                    for fg_image, fg_mask in zip(fg_images, fg_masks)
+                )
+        elif foreground_mask is not None:
+            log.warn("Mask ignored because no foreground image is given")
+
+        output = pil2tensor(output)
+
+        return (output,)
 
 
 class ImagePremultiply:
@@ -664,4 +786,5 @@ __nodes__ = [
     ImageResizeFactor,
     SaveImageGrid_,
     LoadImageFromUrl_,
+    Sharpen_,
 ]
