@@ -200,7 +200,7 @@ class BatchFloat:
             "required": {
                 "mode": (
                     ["Single", "Steps"],
-                    {"default": "Single"},
+                    {"default": "Steps"},
                 ),
                 "count": ("INT", {"default": 1}),
                 "min": ("FLOAT", {"default": 0.0}),
@@ -411,25 +411,17 @@ class BatchShake:
                 "position_amount_x": ("FLOAT", {"default": 1.0}),
                 "position_amount_y": ("FLOAT", {"default": 1.0}),
                 "rotation_amount": ("FLOAT", {"default": 10.0}),
-                "frequency": ("FLOAT", {"default": 1.0}),
-                "frequency_divider": ("FLOAT", {"default": 1.0}),
-                "octaves": ("INT", {"default": 2}),
+                "frequency": ("FLOAT", {"default": 1.0, "min": 0.005}),
+                "frequency_divider": ("FLOAT", {"default": 1.0, "min": 0.005}),
+                "octaves": ("INT", {"default": 1, "min": 1}),
                 "seed": ("INT", {"default": 0}),
-            }
+            },
         }
 
     RETURN_TYPES = ("IMAGE", "FLOATS", "FLOATS", "FLOATS")
     RETURN_NAMES = ("image", "pos_x", "pos_y", "rot")
     FUNCTION = "apply_shake"
     CATEGORY = "mtb/batch"
-
-    def rehash(self, seed, octaves):
-        np.random.seed(seed)
-        self.position_offset = np.random.uniform(-1e3, 1e3, 3)
-        self.rotation_offset = np.random.uniform(-1e3, 1e3, 3)
-        self.noise_pattern = self.generate_fractal_noise_2d(
-            (512, 512), (32, 32), octaves
-        )
 
     # def interpolant(self, t):
     # return t * t * t * (t * (t * 6 - 15) + 10)
@@ -456,8 +448,7 @@ class BatchShake:
         Raises:
             ValueError: If shape is not a multiple of res.
         """
-        if interpolant is None:
-            interpolant = DEFAULT_INTERPOLANT
+        interpolant = interpolant or DEFAULT_INTERPOLANT
         delta = (res[0] / shape[0], res[1] / shape[1])
         d = (shape[0] // res[0], shape[1] // res[1])
         grid = (
@@ -521,8 +512,8 @@ class BatchShake:
             ValueError: If shape is not a multiple of
                 (lacunarity**(octaves-1)*res).
         """
-        if interpolant is None:
-            interpolant = DEFAULT_INTERPOLANT
+        interpolant = interpolant or DEFAULT_INTERPOLANT
+
         noise = np.zeros(shape)
         frequency = 1
         amplitude = 1
@@ -552,7 +543,13 @@ class BatchShake:
         octaves,
         seed,
     ):
-        self.rehash(seed, octaves)
+        # Rehash
+        np.random.seed(seed)
+        self.position_offset = np.random.uniform(-1e3, 1e3, 3)
+        self.rotation_offset = np.random.uniform(-1e3, 1e3, 3)
+        self.noise_pattern = self.generate_perlin_noise_2d(
+            (512, 512), (32, 32), (True, True)
+        )
 
         # Assuming frame count is derived from the first dimension of images tensor
         frame_count = images.shape[0]
