@@ -141,19 +141,23 @@ class Crop:
         self, image: torch.Tensor, mask=None, x=0, y=0, width=256, height=256, bbox=None
     ):
         image = image.numpy()
-        if mask != None:
+        if mask is not None:
             mask = mask.numpy()
 
-        if bbox != None:
+        if bbox is not None:
             x, y, width, height = bbox
 
         cropped_image = image[:, y : y + height, x : x + width, :]
-        cropped_mask = mask[y : y + height, x : x + width] if mask != None else None
+        cropped_mask = None
+        if mask is not None:
+            cropped_mask = (
+                mask[:, y : y + height, x : x + width] if mask is not None else None
+            )
         crop_data = (x, y, width, height)
 
         return (
             torch.from_numpy(cropped_image),
-            torch.from_numpy(cropped_mask) if mask != None else None,
+            torch.from_numpy(cropped_mask) if cropped_mask is not None else None,
             crop_data,
         )
 
