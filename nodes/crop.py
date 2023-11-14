@@ -44,6 +44,7 @@ class BboxFromMask:
         return {
             "required": {
                 "mask": ("MASK",),
+                "invert": ("BOOLEAN", {"default": False}),
             },
             "optional": {
                 "image": ("IMAGE",),
@@ -61,7 +62,7 @@ class BboxFromMask:
     FUNCTION = "extract_bounding_box"
     CATEGORY = "mtb/crop"
 
-    def extract_bounding_box(self, mask: torch.Tensor, image=None):
+    def extract_bounding_box(self, mask: torch.Tensor, invert: bool, image=None):
         # if image != None:
         #     if mask.size(0) != image.size(0):
         #         if mask.size(0) != 1:
@@ -74,7 +75,7 @@ class BboxFromMask:
         #             )
 
         # we invert it
-        _mask = tensor2pil(1.0 - mask)[0]
+        _mask = tensor2pil(1.0 - mask)[0] if invert else tensor2pil(mask)[0]
         alpha_channel = np.array(_mask)
 
         rows = np.any(alpha_channel, axis=0)
