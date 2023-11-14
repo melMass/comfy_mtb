@@ -1,9 +1,11 @@
-import qrcode
-from ..utils import pil2tensor
-from ..utils import comfy_dir
+import threading
 from typing import cast
+
+import qrcode
 from PIL import Image
+
 from ..log import log
+from ..utils import comfy_dir, pil2tensor
 
 # class MtbExamples:
 #     """MTB Example Images"""
@@ -74,8 +76,9 @@ class UnsplashImage:
     CATEGORY = "mtb/generate"
 
     def do_unsplash_image(self, width, height, random_seed, keyword=None):
-        import requests
         import io
+
+        import requests
 
         base_url = "https://source.unsplash.com/random/"
 
@@ -201,12 +204,14 @@ class TextToImage:
 
         for font in fonts:
             log.debug(f"Adding font {font}")
-            cls.fonts[font.stem] = font.as_posix()
+            TextToImage.fonts[font.stem] = font.as_posix()
 
     @classmethod
     def INPUT_TYPES(cls):
         if not cls.fonts:
-            cls.CACHE_FONTS()
+            # cls.CACHE_FONTS()
+            thread = threading.Thread(target=cls.CACHE_FONTS)
+            thread.start()
         else:
             log.debug(f"Using cached fonts (count: {len(cls.fonts)})")
         return {
@@ -252,8 +257,9 @@ class TextToImage:
     def text_to_image(
         self, text, font, wrap, font_size, width, height, color, background
     ):
-        from PIL import Image, ImageDraw, ImageFont
         import textwrap
+
+        from PIL import Image, ImageDraw, ImageFont
 
         font = self.fonts[font]
         font = cast(ImageFont.FreeTypeFont, ImageFont.truetype(font, font_size))
