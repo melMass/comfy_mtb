@@ -141,7 +141,7 @@ class Crop:
         self, image: torch.Tensor, mask=None, x=0, y=0, width=256, height=256, bbox=None
     ):
         image = image.numpy()
-        if mask:
+        if mask != None:
             mask = mask.numpy()
 
         if bbox != None:
