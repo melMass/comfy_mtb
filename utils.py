@@ -239,6 +239,7 @@ here = Path(__file__).parent.absolute()
 comfy_dir = Path(folder_paths.base_path)
 models_dir = Path(folder_paths.models_dir)
 styles_dir = comfy_dir / "styles"
+audioInputDir = comfy_dir / "input" / "audio"
 
 # - Construct the path to the font file
 font_path = here / "font.ttf"

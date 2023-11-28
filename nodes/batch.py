@@ -1,16 +1,19 @@
-import math
-import os
-from pathlib import Path
-from typing import List
+from io import BytesIO
 
 import cv2
-import folder_paths
+import torchaudio
 import numpy as np
 import torch
+from PIL import Image
 
 from ..log import log
 from ..utils import apply_easing, pil2tensor
 from .transform import TransformImage
+
+try:
+    import librosa
+except ImportError:
+    log.warning("librosa not installed. Batch Audio features will not be available.")
 
 
 def hex_to_rgb(hex_color, bgr=False):
@@ -613,9 +616,57 @@ class BatchShake:
         return (shaken_images, x_translations, y_translations, rotations)
 
 
+class BatchFloatsFromSound:
+    """Extracts a list of floats based on audio frequency band peaks."""
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "audio": ("AUDIO",),
+                "sensitivity": ("FLOAT", {"default": 1.0}),
+                "low_freq": ("FLOAT", {"default": 100.0}),
+                "high_freq": ("FLOAT", {"default": 2000.0}),
+                "hop_length": ("INT", {"default": 512}),
+            },
+        }
+
+    RETURN_TYPES = ("FLOATS",)
+    RETURN_NAMES = ("float_data",)
+    FUNCTION = "process_audio"
+    CATEGORY = "mtb/audio"
+
+    def process_audio(
+        self,
+        audio,
+        sensitivity=1.0,
+        low_freq=100,
+        high_freq=2000,
+        hop_length=512,
+    ):
+        # audio_data, _ = librosa.load(audio_file_path, sr=sample_rate)
+
+        # audio_data_tensor = audio.squeeze(1)  # Remove the channel dimension if present
+        # audio_tensor = audio_data_tensor.float()
+        audio_data = audio.to(device=torchaudio.transforms.Spectrogram().window.device)
+
+        hop_length = 512
+        stft = torchaudio.transforms.Spectrogram()(audio_data)
+        freqs = torchaudio.transforms.FrequencyMasking(low_freq, high_freq)(stft)
+        band_energy = torch.sum(freqs, dim=1)
+
+        min_val = torch.min(band_energy)
+        max_val = torch.max(band_energy)
+        normalized_peaks = (band_energy - min_val) / (max_val - min_val)
+        scaled_peaks = normalized_peaks * sensitivity
+
+        return (scaled_peaks.tolist(),)
+
+
 __nodes__ = [
     BatchFloat,
     Batch2dTransform,
+    BatchFloatsFromSound,
     BatchShape,
     BatchMake,
     BatchFloatAssemble,

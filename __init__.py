@@ -322,6 +322,14 @@ if hasattr(PromptServer, "instance"):
 
         return await endpoint.do_action(request)
 
+    @PromptServer.instance.routes.get("/mtb/audio")
+    async def get_audio(request):
+        from . import endpoint
+
+        reload(endpoint)
+
+        return await endpoint.get_audio(request)
+
 
 # - WAS Dictionary
 MANIFEST = {
