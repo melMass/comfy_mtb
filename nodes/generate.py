@@ -209,7 +209,6 @@ class TextToImage:
     @classmethod
     def INPUT_TYPES(cls):
         if not cls.fonts:
-            # cls.CACHE_FONTS()
             thread = threading.Thread(target=cls.CACHE_FONTS)
             thread.start()
         else:
@@ -237,7 +236,6 @@ class TextToImage:
                     "INT",
                     {"default": 512, "min": 1, "max": 8096, "step": 1},
                 ),
-                # "position": (["INT"], {"default": 0, "min": 0, "max": 100, "step": 1}),
                 "color": (
                     "COLOR",
                     {"default": "black"},
@@ -246,6 +244,8 @@ class TextToImage:
                     "COLOR",
                     {"default": "white"},
                 ),
+                "h_align": (("left", "center", "right"), {"default": "left"}),
+                "v_align": (("top", "center", "bottom"), {"default": "top"}),
             }
         }
 
@@ -255,30 +255,62 @@ class TextToImage:
     CATEGORY = "mtb/generate"
 
     def text_to_image(
-        self, text, font, wrap, font_size, width, height, color, background
+        self,
+        text,
+        font,
+        wrap,
+        font_size,
+        width,
+        height,
+        color,
+        background,
+        h_align="left",
+        v_align="top",
     ):
         import textwrap
 
         from PIL import Image, ImageDraw, ImageFont
 
-        font = self.fonts[font]
-        font = cast(ImageFont.FreeTypeFont, ImageFont.truetype(font, font_size))
-        if wrap == 0:
-            wrap = width / font_size
-        lines = textwrap.wrap(text, width=wrap)
-        log.debug(f"Lines: {lines}")
-        line_height = bbox_dim(font.getbbox("hg"))[1]
-        img_height = height  # line_height * len(lines)
-        img_width = width  # max(font.getsize(line)[0] for line in lines)
+        font_path = self.fonts[font]
 
-        img = Image.new("RGBA", (img_width, img_height), background)
+        # Handle word wrapping
+        if wrap:
+            lines = textwrap.wrap(text, width=wrap)
+        else:
+            lines = [text]
+        font = ImageFont.truetype(font_path, font_size)
+        # font = ImageFont.truetype(font_path, font_size)
+        # if wrap == 0:
+        #     wrap = width / font_size
+
+        log.debug(f"Lines: {lines}")
+        img = Image.new("RGBA", (width, height), background)
         draw = ImageDraw.Draw(img)
-        y_text = 0
-        # - bbox is [left, upper, right, lower]
+
+        text_height = sum(font.getsize(line)[1] for line in lines)
+
+        # Vertical alignment
+        if v_align == "top":
+            y_text = 0
+        elif v_align == "center":
+            y_text = (height - text_height) // 2
+        else:  # bottom
+            y_text = height - text_height
+
+        # Draw each line of text
         for line in lines:
-            width, height = bbox_dim(font.getbbox(line))
-            draw.text((0, y_text), line, color, font=font)
-            y_text += height
+            line_width, line_height = font.getsize(line)
+
+            # Horizontal alignment
+            if h_align == "left":
+                x_text = 0
+            elif h_align == "center":
+                x_text = (width - line_width) // 2
+            else:  # right
+                x_text = width - line_width
+
+            draw.text((x_text, y_text), line, color, font=font)
+            y_text += line_height
 
         # img.save(os.path.join(folder_paths.base_path, f'{str(uuid.uuid4())}.png'))
         return (pil2tensor(img),)

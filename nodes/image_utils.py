@@ -38,4 +38,39 @@ class StackImages:
         return (stacked_tensor,)
 
 
-__nodes__ = [StackImages]
+class PickFromBatch:
+    """Pick a specific number of images from a batch, either from the start or end."""
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "image": ("IMAGE",),
+                "from_direction": (["end", "start"], {"default": "start"}),
+                "count": ("INT", {"default": 1}),
+            }
+        }
+
+    RETURN_TYPES = ("IMAGE",)
+    FUNCTION = "pick_from_batch"
+    CATEGORY = "mtb/image utils"
+
+    def pick_from_batch(self, image, from_direction, count):
+        batch_size = image.size(0)
+
+        # Limit count to the available number of images in the batch
+        count = min(count, batch_size)
+        if count < batch_size:
+            log.warning(
+                f"Requested {count} images, but only {batch_size} are available."
+            )
+
+        if from_direction == "end":
+            selected_tensors = image[-count:]
+        else:
+            selected_tensors = image[:count]
+
+        return (selected_tensors,)
+
+
+__nodes__ = [StackImages, PickFromBatch]
