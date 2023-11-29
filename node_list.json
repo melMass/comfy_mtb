@@ -42,6 +42,7 @@
     "Mask To Image (mtb)": "Converts a mask (alpha) to an RGB image with a color and background",
     "Math Expression (mtb)": "Node to evaluate a simple math expression string",
     "Model Patch Seamless (mtb)": "Uses the stable diffusion 'hack' to infer seamless images by setting the model layers padding mode to circular (experimental)",
+    "Pick From Batch (mtb)": "Pick a specific number of images from a batch, either from the start or end.",
     "Qr Code (mtb)": "Basic QR Code generator",
     "Restore Face (mtb)": "Uses GFPGan to restore faces",
     "Save Gif (mtb)": "Save the images from the batch as a GIF",
