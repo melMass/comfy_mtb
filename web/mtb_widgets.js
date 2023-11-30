@@ -494,10 +494,6 @@ const mtb_widgets = {
   async beforeRegisterNodeDef(nodeType, nodeData, app) {
     // const rinputs = nodeData.input?.required
 
-    if (!nodeData.name.endsWith('(mtb)')) {
-      return
-    }
-
     let has_custom = false
     if (nodeData.input && nodeData.input.required) {
       for (const i of Object.keys(nodeData.input.required)) {
@@ -563,6 +559,10 @@ const mtb_widgets = {
 
         return r
       }
+    }
+
+    if (!nodeData.name.endsWith('(mtb)')) {
+      return
     }
 
     //- Extending Python Nodes
@@ -896,6 +896,7 @@ const mtb_widgets = {
 
         break
       }
+      // TODO: remove this, recommend pythongoss's version that is much better
       case 'Math Expression (mtb)': {
         const onNodeCreated = nodeType.prototype.onNodeCreated
         nodeType.prototype.onNodeCreated = function () {
