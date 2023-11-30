@@ -1,7 +1,4 @@
-import io
-import json
-import urllib.parse
-import urllib.request
+import io, json, urllib.parse, urllib.request
 
 import numpy as np
 import torch

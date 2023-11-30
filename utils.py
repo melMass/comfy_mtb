@@ -1,13 +1,4 @@
-import contextlib
-import functools
-import math
-import os
-import shlex
-import shutil
-import socket
-import subprocess
-import sys
-import uuid
+import contextlib, functools, math, os, shlex, shutil, socket, subprocess, sys, uuid
 from pathlib import Path
 from typing import List, Optional, Union
 
@@ -238,8 +229,9 @@ here = Path(__file__).parent.absolute()
 # - Construct the absolute path to the ComfyUI directory
 comfy_dir = Path(folder_paths.base_path)
 models_dir = Path(folder_paths.models_dir)
+output_dir = Path(folder_paths.output_directory)
 styles_dir = comfy_dir / "styles"
-
+session_id = str(uuid.uuid4())
 # - Construct the path to the font file
 font_path = here / "font.ttf"
 

@@ -121,6 +121,9 @@ export const dynamic_connection = (
   connectionType = 'PSDLAYER',
   nameArray = []
 ) => {
+  if (!node.inputs[index].name.startsWith(connectionPrefix)) {
+    return
+  }
   // remove all non connected inputs
   if (!connected && node.inputs.length > 1) {
     log(`Removing input ${index} (${node.inputs[index].name})`)

@@ -881,6 +881,10 @@ const mtb_widgets = {
 
         break
       }
+      case 'Add To Playlist (mtb)': {
+        shared.setupDynamicConnections(nodeType, 'video', 'VIDEO')
+        break
+      }
       case 'Stack Images (mtb)':
       case 'Concat Images (mtb)': {
         shared.setupDynamicConnections(nodeType, 'image', 'IMAGE')
