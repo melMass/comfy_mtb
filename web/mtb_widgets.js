@@ -7,6 +7,8 @@
  *
  */
 
+// TODO: Use the builtin addDOMWidget everywhere appropriate
+
 import { app } from '../../scripts/app.js'
 import { api } from '../../scripts/api.js'
 
