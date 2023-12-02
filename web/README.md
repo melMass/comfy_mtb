@@ -13,6 +13,10 @@ data otherwise:
 ![debug](https://github.com/melMass/comfy_mtb/assets/7041726/1f4393e4-1c3d-4807-9501-fe8888bfae25)
 
 
+**note +**
+A basic HTML note mainly to add better looking notes/instructions for workflow makers:
+![image](https://github.com/melMass/comfy_mtb/assets/7041726/2ba1f832-0044-4bad-974c-e6387981af57)
+
 
 ## Standalone
 These scripts can be taken and placed independently of `comfy_mtb` or any other files, mimicking what pythongosss did for their 
