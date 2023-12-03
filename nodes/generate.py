@@ -62,9 +62,18 @@ class UnsplashImage:
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "width": ("INT", {"default": 512, "max": 8096, "min": 0, "step": 1}),
-                "height": ("INT", {"default": 512, "max": 8096, "min": 0, "step": 1}),
-                "random_seed": ("INT", {"default": 0, "max": 1e5, "min": 0, "step": 1}),
+                "width": (
+                    "INT",
+                    {"default": 512, "max": 8096, "min": 0, "step": 1},
+                ),
+                "height": (
+                    "INT",
+                    {"default": 512, "max": 8096, "min": 0, "step": 1},
+                ),
+                "random_seed": (
+                    "INT",
+                    {"default": 0, "max": 1e5, "min": 0, "step": 1},
+                ),
             },
             "optional": {
                 "keyword": ("STRING", {"default": "nature"}),
@@ -124,8 +133,14 @@ class QrCode:
                     {"default": 256, "max": 8096, "min": 0, "step": 1},
                 ),
                 "error_correct": (("L", "M", "Q", "H"), {"default": "L"}),
-                "box_size": ("INT", {"default": 10, "max": 8096, "min": 0, "step": 1}),
-                "border": ("INT", {"default": 4, "max": 8096, "min": 0, "step": 1}),
+                "box_size": (
+                    "INT",
+                    {"default": 10, "max": 8096, "min": 0, "step": 1},
+                ),
+                "border": (
+                    "INT",
+                    {"default": 4, "max": 8096, "min": 0, "step": 1},
+                ),
                 "invert": (("BOOLEAN",), {"default": False}),
             }
         }
@@ -134,7 +149,9 @@ class QrCode:
     FUNCTION = "do_qr"
     CATEGORY = "mtb/generate"
 
-    def do_qr(self, url, width, height, error_correct, box_size, border, invert):
+    def do_qr(
+        self, url, width, height, error_correct, box_size, border, invert
+    ):
         log.warning(
             "This node will soon be deprecated, there are much better alternatives like https://github.com/coreyryanhanson/comfy-qr"
         )
@@ -159,7 +176,9 @@ class QrCode:
         back_color = (255, 255, 255) if invert else (0, 0, 0)
         fill_color = (0, 0, 0) if invert else (255, 255, 255)
 
-        code = img = qr.make_image(back_color=back_color, fill_color=fill_color)
+        code = img = qr.make_image(
+            back_color=back_color, fill_color=fill_color
+        )
 
         # that we now resize without filtering
         code = code.resize((width, height), Image.NEAREST)
@@ -175,8 +194,7 @@ def bbox_dim(bbox):
 
 
 class TextToImage:
-    """Utils to convert text to image using a font
-
+    """Utils to convert text to image using a font.
 
     The tool looks for any .ttf file in the Comfy folder hierarchy.
     """
@@ -193,7 +211,13 @@ class TextToImage:
         fonts = []
 
         for extension in font_extensions:
-            fonts.extend(comfy_dir.glob(f"**/{extension}"))
+            try:
+                if comfy_dir.exists():
+                    fonts.extend(comfy_dir.glob(f"**/{extension}"))
+                else:
+                    log.warn(f"Directory {comfy_dir} does not exist.")
+            except Exception as e:
+                log.error(f"Error during font caching: {e}")
 
         if not fonts:
             log.warn(
@@ -319,6 +343,6 @@ class TextToImage:
 __nodes__ = [
     QrCode,
     UnsplashImage,
-    TextToImage
+    TextToImage,
     #  MtbExamples,
 ]
