@@ -9,6 +9,36 @@
 
 import { app } from '../../scripts/app.js'
 
+// - crude uuid
+export function makeUUID() {
+  let dt = new Date().getTime()
+  const uuid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (dt + Math.random() * 16) % 16 | 0
+    dt = Math.floor(dt / 16)
+    return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16)
+  })
+  return uuid
+}
+
+// - log utilities
+
+function createLogger(emoji, color, consoleMethod = 'log') {
+  return function (message, ...args) {
+    if (window.MTB?.DEBUG) {
+      console[consoleMethod](
+        `%c${emoji} ${message}`,
+        `color: ${color};`,
+        ...args
+      )
+    }
+  }
+}
+
+export const infoLogger = createLogger('ℹ️', 'yellow')
+export const warnLogger = createLogger('⚠️', 'orange', 'warn')
+export const errorLogger = createLogger('🔥', 'red', 'error')
+export const successLogger = createLogger('✅', 'green')
+
 export const log = (...args) => {
   if (window.MTB?.DEBUG) {
     console.debug(...args)
@@ -159,6 +189,25 @@ export const dynamic_connection = (
   }
 }
 
+export function calculateTotalChildrenHeight(parentElement) {
+  let totalHeight = 0
+
+  for (const child of parentElement.children) {
+    const style = window.getComputedStyle(child)
+
+    // Get height as an integer (without 'px')
+    const height = parseInt(style.height, 10)
+
+    // Get vertical margin as integers
+    const marginTop = parseInt(style.marginTop, 10)
+    const marginBottom = parseInt(style.marginBottom, 10)
+
+    // Sum up height and vertical margins
+    totalHeight += height + marginTop + marginBottom
+  }
+
+  return totalHeight
+}
 /**
  * Appends a callback to the extra menu options of a given node type.
  * @param {*} nodeType
