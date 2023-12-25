@@ -1,10 +1,8 @@
-import base64
-import io
+import base64, io
 from pathlib import Path
 from typing import Optional
 
-import folder_paths
-import torch
+import folder_paths, torch
 
 from ..log import log
 from ..utils import tensor2pil
@@ -43,18 +41,29 @@ def process_list(anything):
         )
 
     elif isinstance(first_element, torch.Tensor):
-        text.append(f"List of Tensors: {first_element.shape} (x{len(anything)})")
+        text.append(
+            f"List of Tensors: {first_element.shape} (x{len(anything)})"
+        )
 
     return {"text": text}
 
 
 def process_dict(anything):
-    text = []
-    if "samples" in anything:
-        is_empty = "(empty)" if torch.count_nonzero(anything["samples"]) == 0 else ""
-        text.append(f"Latent Samples: {anything['samples'].shape} {is_empty}")
+    if "mesh" in anything:
+        m = {"geometry": {}}
+        m["geometry"]["mesh"] = mesh_to_json(anything["mesh"])
+        if "material" in anything:
+            m["geometry"]["material"] = anything["material"]
+        return m
 
-    return {"text": text}
+    res = []
+    if "samples" in anything:
+        is_empty = (
+            "(empty)" if torch.count_nonzero(anything["samples"]) == 0 else ""
+        )
+        res.append(f"Latent Samples: {anything['samples'].shape} {is_empty}")
+
+    return {"text": res}
 
 
 def process_bool(anything):
@@ -65,6 +74,7 @@ def process_text(anything):
     return {"text": [str(anything)]}
 
 
+# NOT USED ANYMORE
 def process_geometry(anything):
     return {"geometry": [mesh_to_json(anything)]}
 
@@ -102,8 +112,6 @@ class Debug:
             bool: process_bool,
             o3d.geometry.Geometry: process_geometry,
         }
-        if output_to_console:
-            print("bouh!")
 
         for anything in kwargs.values():
             processor = processors.get(type(anything))
@@ -118,10 +126,20 @@ class Debug:
             processed_data = processor(anything)
 
             for ui_key, ui_value in processed_data.items():
-                output["ui"][ui_key].extend(ui_value)
+                if isinstance(ui_value, list):
+                    output["ui"][ui_key].extend(ui_value)
+                else:
+                    output["ui"][ui_key].append(ui_value)
             # log.debug(
             #     f"Processed input {k}, found {len(processed_data.get('b64_images', []))} images and {len(processed_data.get('text', []))} text items."
             # )
+
+        if output_to_console:
+            from rich.console import Console
+
+            cons = Console()
+            cons.print("OUTPUT:")
+            cons.print(output)
 
         return output
 

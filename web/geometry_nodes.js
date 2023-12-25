@@ -27,7 +27,9 @@ export const make_wireframe = (mesh) => {
   return wireframe
 }
 
-export const o3d_to_three = (data) => {
+export const o3d_to_three = (data, material_opts) => {
+
+  material_opts = material_opts || { color: "0x00ff00" }
   // Parse the JSON data
   const meshData = JSON.parse(data)
 
@@ -58,13 +60,16 @@ export const o3d_to_three = (data) => {
     const uvs = new Float32Array(meshData.triangle_uvs.flat())
     geometry.setAttribute('uv', new THREE.BufferAttribute(uvs, 2))
   }
-  const material_opts = {
-    // wireframe: true,
+
+  if (material_opts.displacementB64 != undefined) {
+    material_opts.displacementMap = THREE.ImageUtils.loadTexture(material_opts.displacementB64)
+    delete (material_opts.displacementB64)
   }
+
   // For visualization, you might choose to use the MeshPhongMaterial to get the benefit of lighting with normals
   const material = meshData.vertex_colors
-    ? new THREE.MeshPhongMaterial({ ...material_opts, vertexColors: true })
-    : new THREE.MeshPhongMaterial({ ...material_opts, color: 0x00ff00 })
+    ? new THREE.MeshStandardMaterial({ ...material_opts, vertexColors: true })
+    : new THREE.MeshStandardMaterial({ ...material_opts })
 
   const threeMesh = new THREE.Mesh(geometry, material)
 

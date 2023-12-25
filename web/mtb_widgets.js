@@ -406,7 +406,7 @@ export const MtbWidgets = {
         const animate = () => {
           requestAnimationFrame(animate)
           if (this.mesh && this.animate) {
-            this.group.rotation.x += 0.005
+            //this.group.rotation.x += 0.005
             this.group.rotation.y += 0.005
           }
           this.renderer.render(this.scene, this.camera)
@@ -432,9 +432,16 @@ export const MtbWidgets = {
         }
         return [width, width]
       },
+      onRemoved: function () {
+        if (this.inputEl) {
+          this.inputEl.remove()
+        }
+      }
     }
     log('Creating canvas')
     w.inputEl = document.createElement('canvas')
+    w.inputEl.width = 768
+    w.inputEl.height = 768
 
     // add context menu with "animate" and "show wireframe"
     w.inputEl.addEventListener('contextmenu', (e) => {
@@ -483,9 +490,9 @@ export const MtbWidgets = {
       document.body.appendChild(w.menu)
     })
 
-    w.initThreeJS(w.inputEl, val)
+    w.initThreeJS(w.inputEl)
 
-    w.mesh = o3d_to_three(val)
+    w.mesh = o3d_to_three(val?.mesh ? val.mesh : val, val?.material)
     w.mesh_wireframe = make_wireframe(w.mesh)
     w.group = new THREE.Group()
 

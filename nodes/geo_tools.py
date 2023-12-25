@@ -1,10 +1,15 @@
-import itertools
+import copy, itertools, json, os
+
 import numpy as np
 import open3d as o3d
-import json
+
 from ..utils import log
 
-import os
+
+def spread_geo(geo, *, cp=False):
+    mesh = geo["mesh"] if not cp else copy.copy(geo["mesh"])
+    material = geo.get("material", {})
+    return (mesh, material)
 
 
 def euler_to_rotation_matrix(x_deg, y_deg, z_deg):
@@ -14,13 +19,19 @@ def euler_to_rotation_matrix(x_deg, y_deg, z_deg):
     z = np.radians(z_deg)
 
     # Rotation matrix around x-axis
-    Rx = np.array([[1, 0, 0], [0, np.cos(x), -np.sin(x)], [0, np.sin(x), np.cos(x)]])
+    Rx = np.array(
+        [[1, 0, 0], [0, np.cos(x), -np.sin(x)], [0, np.sin(x), np.cos(x)]]
+    )
 
     # Rotation matrix around y-axis
-    Ry = np.array([[np.cos(y), 0, np.sin(y)], [0, 1, 0], [-np.sin(y), 0, np.cos(y)]])
+    Ry = np.array(
+        [[np.cos(y), 0, np.sin(y)], [0, 1, 0], [-np.sin(y), 0, np.cos(y)]]
+    )
 
     # Rotation matrix around z-axis
-    Rz = np.array([[np.cos(z), -np.sin(z), 0], [np.sin(z), np.cos(z), 0], [0, 0, 1]])
+    Rz = np.array(
+        [[np.cos(z), -np.sin(z), 0], [np.sin(z), np.cos(z), 0], [0, 0, 1]]
+    )
 
     return Rz @ Ry @ Rx
 
@@ -75,7 +86,9 @@ def create_grid(scale=(1, 1, 1), rows=10, columns=10):
     # Create vertices
     vertices = []
     for i in np.linspace(-dy / 2, dy / 2, rows + 1):
-        vertices.extend([j, 0, i] for j in np.linspace(-dx / 2, dx / 2, columns + 1))
+        vertices.extend(
+            [j, 0, i] for j in np.linspace(-dx / 2, dx / 2, columns + 1)
+        )
     # Generate triangles
     triangles = []
     for i, j in itertools.product(range(rows), range(columns)):
@@ -101,7 +114,9 @@ def create_box(scale=(1, 1, 1), divisions=(1, 1, 1)):
     vertices = []
     for i in np.linspace(-dx / 2, dx / 2, div_x + 1):
         for j in np.linspace(-dy / 2, dy / 2, div_y + 1):
-            vertices.extend([i, j, k] for k in np.linspace(-dz / 2, dz / 2, div_z + 1))
+            vertices.extend(
+                [i, j, k] for k in np.linspace(-dz / 2, dz / 2, div_z + 1)
+            )
     # Generate triangles for the box faces
     triangles = []
     for x, y in itertools.product(range(div_x), range(div_y)):
@@ -240,20 +255,125 @@ def create_torus(torus_radius=1, ring_radius=0.5, rows=10, columns=10):
 #     CATEGORY = "mtb/uv"
 
 
+def default_material(color=None):
+    return {
+        "color": color or "#00ff00",
+        "roughness": 1.0,
+        "metalness": 0.0,
+        "emissive": "#000000",
+        "displacementScale": 1.0,
+        "displacementMap": None,
+    }
+
+
+class MTB_Material:
+    """Make a std material."""
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        base = default_material()
+        return {
+            "required": {
+                "color": ("COLOR", {"default": base["color"]}),
+                "roughness": (
+                    "FLOAT",
+                    {
+                        "default": base["roughness"],
+                        "min": 0.005,
+                        "max": 4.0,
+                        "step": 0.01,
+                    },
+                ),
+                "metalness": (
+                    "FLOAT",
+                    {
+                        "default": base["metalness"],
+                        "min": 0.0,
+                        "max": 1.0,
+                        "step": 0.01,
+                    },
+                ),
+                "emissive": ("COLOR", {"default": base["emissive"]}),
+                "displacementScale": (
+                    "FLOAT",
+                    {"default": 1.0, "min": -10.0, "max": 10.0},
+                ),
+            },
+            "optional": {"displacementMap": ("IMAGE",)},
+        }
+
+    RETURN_TYPES = ("GEO_MATERIAL",)
+    RETURN_NAMES = ("material",)
+    FUNCTION = "make_material"
+    CATEGORY = "mtb/3D"
+
+    def make_material(
+        self, **kwargs
+    ):  # color, roughness, metalness, emissive, displacementScalen displacementMap=None):
+        return (kwargs,)
+
+
+class MTB_ApplyMaterial:
+    """Apply a Material to a geometry."""
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {"geometry": ("GEOMETRY",), "color": ("COLOR",)},
+            "optional": {"material": ("GEO_MATERIAL",)},
+        }
+
+    RETURN_TYPES = ("GEOMETRY",)
+    RETURN_NAMES = ("geometry",)
+    FUNCTION = "apply"
+    CATEGORY = "mtb/3D"
+
+    def apply(
+        self,
+        geometry,
+        color,
+        material=None,
+    ):
+        if material is None:
+            material = default_material(color)
+        #
+        geometry["material"] = material
+
+        return (geometry,)
+
+
 class TransformGeometry:
-    """Transforms the input geometry"""
+    """Transforms the input geometry."""
 
     @classmethod
     def INPUT_TYPES(cls):
         return {
             "required": {
                 "mesh": ("GEOMETRY",),
-                "position_x": ("FLOAT", {"default": 0.0, "step": 0.1}),
-                "position_y": ("FLOAT", {"default": 0.0, "step": 0.1}),
-                "position_z": ("FLOAT", {"default": 0.0, "step": 0.1}),
-                "rotation_x": ("FLOAT", {"default": 0.0, "step": 1}),
-                "rotation_y": ("FLOAT", {"default": 0.0, "step": 1}),
-                "rotation_z": ("FLOAT", {"default": 0.0, "step": 1}),
+                "position_x": (
+                    "FLOAT",
+                    {"default": 0.0, "step": 0.1, "min": -10000, "max": 10000},
+                ),
+                "position_y": (
+                    "FLOAT",
+                    {"default": 0.0, "step": 0.1, "min": -10000, "max": 10000},
+                ),
+                "position_z": (
+                    "FLOAT",
+                    {"default": 0.0, "step": 0.1, "min": -10000, "max": 10000},
+                ),
+                "rotation_x": (
+                    "FLOAT",
+                    {"default": 0.0, "step": 1, "min": -10000, "max": 10000},
+                ),
+                "rotation_y": (
+                    "FLOAT",
+                    {"default": 0.0, "step": 1, "min": -10000, "max": 10000},
+                ),
+                "rotation_z": (
+                    "FLOAT",
+                    {"default": 0.0, "step": 1, "min": -10000, "max": 10000},
+                ),
                 "scale_x": ("FLOAT", {"default": 1.0, "step": 0.1}),
                 "scale_y": ("FLOAT", {"default": 1.0, "step": 0.1}),
                 "scale_z": ("FLOAT", {"default": 1.0, "step": 0.1}),
@@ -267,7 +387,7 @@ class TransformGeometry:
 
     def transform_geometry(
         self,
-        mesh,
+        mesh: o3d.geometry.TriangleMesh,
         position_x=0.0,
         position_y=0.0,
         position_z=0.0,
@@ -290,12 +410,21 @@ class TransformGeometry:
         rotation = (rotation_x, rotation_y, rotation_z)
         scale = np.array([scale_x, scale_y, scale_z])
 
-        transformation_matrix = get_transformation_matrix(position, rotation, scale)
-        return (mesh.transform(transformation_matrix),)
+        transformation_matrix = get_transformation_matrix(
+            position, rotation, scale
+        )
+        mesh, material = spread_geo(mesh, cp=True)
+
+        return (
+            {
+                "mesh": mesh.transform(transformation_matrix),
+                "material": material,
+            },
+        )
 
 
 class GeometrySphere:
-    """Makes a Sphere 3D geometry"""
+    """Makes a Sphere 3D geometry.."""
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -320,11 +449,11 @@ class GeometrySphere:
         )
         mesh.compute_vertex_normals()
 
-        return (mesh,)
+        return ({"mesh": mesh},)
 
 
 class GeometryTest:
-    """Fetches an Open3D data geometry"""
+    """Fetches an Open3D data geometry.."""
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -358,11 +487,11 @@ class GeometryTest:
         model = getattr(o3d.data, name)()
         mesh = o3d.io.read_triangle_mesh(model.path)
         mesh.compute_vertex_normals()
-        return (mesh,)
+        return ({"mesh": mesh},)
 
 
 class GeometryBox:
-    """Makes a Box 3D geometry"""
+    """Makes a Box 3D geometry."""
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -408,11 +537,11 @@ class GeometryBox:
             (width, height, depth), (divisions_x, divisions_y, divisions_z)
         )
 
-        return (mesh,)
+        return ({"mesh": mesh},)
 
 
 class LoadGeometry:
-    """Load a 3D geometry"""
+    """Load a 3D geometry."""
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -428,35 +557,47 @@ class LoadGeometry:
             raise ValueError(f"Path {path} does not exist")
 
         mesh = o3d.io.read_triangle_mesh(path)
+
+        if len(mesh.vertices) == 0:
+            mesh = o3d.io.read_triangle_model(path)
+            mesh_count = len(mesh.meshes)
+            if mesh_count == 0:
+                raise ValueError("Couldn't parse input file")
+
+            if mesh_count > 1:
+                log.warn(
+                    f"Found {mesh_count} meshes, only the first will be used..."
+                )
+
+            mesh = mesh.meshes[0].mesh
+
         mesh.compute_vertex_normals()
 
         return {
-            "result": (mesh,),
+            "result": ({"mesh": mesh},),
         }
 
 
 class GeometryInfo:
-    """Retrieve information about a 3D geometry"""
+    """Retrieve information about a 3D geometry."""
 
     @classmethod
     def INPUT_TYPES(cls):
         return {"required": {"geometry": ("GEOMETRY", {})}}
 
-    RETURN_TYPES = ("INT", "INT")
-    RETURN_NAMES = ("num_vertices", "num_triangles")
+    RETURN_TYPES = ("INT", "INT", "MATERIAL")
+    RETURN_NAMES = ("num_vertices", "num_triangles", "material")
     FUNCTION = "get_info"
     CATEGORY = "mtb/3D"
 
     def get_info(self, geometry):
-        log.debug(geometry)
-        return (
-            len(geometry.vertices),
-            len(geometry.triangles),
-        )
+        mesh, material = spread_geo(geometry)
+        log.debug(mesh)
+        return (len(mesh.vertices), len(mesh.triangles), material)
 
 
 class GeometryDecimater:
-    """Optimized the geometry to match the target number of triangles"""
+    """Optimized the geometry to match the target number of triangles."""
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -473,14 +614,16 @@ class GeometryDecimater:
     CATEGORY = "mtb/3D"
 
     def decimate(self, mesh, target):
-        mesh = mesh.simplify_quadric_decimation(target_number_of_triangles=target)
+        mesh = mesh.simplify_quadric_decimation(
+            target_number_of_triangles=target
+        )
         mesh.compute_vertex_normals()
 
-        return (mesh,)
+        return ({"mesh": mesh},)
 
 
 class GeometrySceneSetup:
-    """Scene setup for the renderer"""
+    """Scene setup for the renderer."""
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -496,11 +639,11 @@ class GeometrySceneSetup:
     CATEGORY = "mtb/3D"
 
     def setup(self, mesh, target):
-        return ({"geometry": mesh, "camera": cam},)
+        return ({"geometry": {"mesh": mesh}, "camera": cam},)
 
 
 class GeometryRender:
-    """Renders a Geometry to an image"""
+    """Renders a Geometry to an image."""
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -536,6 +679,9 @@ __nodes__ = [
     GeometryTest,
     GeometryDecimater,
     GeometrySphere,
+    GeometryRender,
     TransformGeometry,
     GeometryBox,
+    MTB_ApplyMaterial,
+    MTB_Material,
 ]

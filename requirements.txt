@@ -7,3 +7,4 @@ imageio_ffmpeg
 rich
 rich_argparse
 matplotlib
+open3d==0.17.0 
