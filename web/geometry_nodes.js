@@ -7,9 +7,9 @@
  *
  */
 
-import { app } from '/scripts/app.js'
+import { app } from '../../scripts/app.js'
 
-import * as THREE from '/extensions/mtb/extern/three.module.js'
+import * as THREE from './extern/three.module.js'
 
 export const make_wireframe = (mesh) => {
   const wireframeGeometry = new THREE.WireframeGeometry(mesh.geometry)
