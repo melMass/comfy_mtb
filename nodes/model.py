@@ -2,6 +2,8 @@ import copy
 
 import torch
 
+from ..log import log
+
 
 class VaeDecode_:
     """Wrapper for the 2 core decoders (nomarl and tiled) but also adding the sd seamless hack, taken from: FlyingFireCo/tiled_ksampler"""
@@ -30,6 +32,11 @@ class VaeDecode_:
         self, vae, samples, seamless_model, use_tiling_decoder=True, tile_size=512
     ):
         if seamless_model:
+            if use_tiling_decoder:
+                log.error(
+                    "You cannot use seamless mode with tiling decoder together, skipping tiling."
+                )
+                use_tiling_decoder = False
             for layer in [
                 layer
                 for layer in vae.first_stage_model.modules()

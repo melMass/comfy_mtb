@@ -1,16 +1,5 @@
-import functools
-import math
-import os
-import shutil
-import signal
-import socket
-import subprocess
-import sys
-import threading
-import uuid
-from contextlib import suppress
+import contextlib, functools, math, os, shlex, shutil, socket, subprocess, sys, uuid
 from pathlib import Path
-from queue import Empty, Queue
 from typing import List, Optional, Union
 
 import folder_paths
@@ -18,6 +7,8 @@ import numpy as np
 import requests
 import torch
 from PIL import Image
+
+from .install import pip_map
 
 try:
     from .log import log
@@ -147,102 +138,76 @@ def add_path(path, prepend=False):
             sys.path.append(path)
 
 
-def enqueue_output(out, queue):
-    for line in iter(out.readline, b""):
-        queue.put(line)
-    out.close()
+def run_command(cmd, ignored_lines_start=None):
+    if ignored_lines_start is None:
+        ignored_lines_start = []
 
-
-def run_command(cmd):
     if isinstance(cmd, str):
         shell_cmd = cmd
     elif isinstance(cmd, list):
-        shell_cmd = ""
-        for arg in cmd:
-            if isinstance(arg, Path):
-                arg = arg.as_posix()
-            shell_cmd += f"{arg} "
+        shell_cmd = " ".join(
+            arg.as_posix() if isinstance(arg, Path) else shlex.quote(str(arg))
+            for arg in cmd
+        )
     else:
         raise ValueError(
             "Invalid 'cmd' argument. It must be a string or a list of arguments."
         )
 
-    process = subprocess.Popen(
+    try:
+        _run_command(shell_cmd, ignored_lines_start)
+    except subprocess.CalledProcessError as e:
+        print(f"Command failed with return code: {e.returncode}", file=sys.stderr)
+        print(e.stderr.strip(), file=sys.stderr)
+
+    except KeyboardInterrupt:
+        print("Command execution interrupted.")
+
+
+def _run_command(shell_cmd, ignored_lines_start):
+    log.debug(f"Running {shell_cmd}")
+
+    result = subprocess.run(
         shell_cmd,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
-        universal_newlines=True,
+        text=True,
         shell=True,
+        check=True,
     )
 
-    # Create separate threads to read standard output and standard error streams
-    stdout_queue = Queue()
-    stderr_queue = Queue()
-    stdout_thread = threading.Thread(
-        target=enqueue_output, args=(process.stdout, stdout_queue)
-    )
-    stderr_thread = threading.Thread(
-        target=enqueue_output, args=(process.stderr, stderr_queue)
-    )
-    stdout_thread.daemon = True
-    stderr_thread.daemon = True
-    stdout_thread.start()
-    stderr_thread.start()
+    stdout_lines = result.stdout.strip().split("\n")
+    stderr_lines = result.stderr.strip().split("\n")
 
-    interrupted = False
+    # Print stdout, skipping ignored lines
+    for line in stdout_lines:
+        if not any(line.startswith(ign) for ign in ignored_lines_start):
+            print(line)
 
-    def signal_handler(signum, frame):
-        nonlocal interrupted
-        interrupted = True
-        print("Command execution interrupted.")
+    # Print stderr
+    for line in stderr_lines:
+        print(line, file=sys.stderr)
 
-    # Register the signal handler for keyboard interrupts (SIGINT)
-    signal.signal(signal.SIGINT, signal_handler)
-
-    # Process output from both streams until the process completes or interrupted
-    while not interrupted and (
-        process.poll() is None or not stdout_queue.empty() or not stderr_queue.empty()
-    ):
-        with suppress(Empty):
-            stdout_line = stdout_queue.get_nowait()
-            if stdout_line.strip() != "":
-                print(stdout_line.strip())
-        with suppress(Empty):
-            stderr_line = stderr_queue.get_nowait()
-            if stderr_line.strip() != "":
-                print(stderr_line.strip())
-    return_code = process.returncode
-
-    if return_code == 0 and not interrupted:
-        print("Command executed successfully!")
-    else:
-        if not interrupted:
-            print(f"Command failed with return code: {return_code}")
+    print("Command executed successfully!")
 
 
 # todo use the requirements library
-reqs_map = {
-    "onnxruntime": "onnxruntime-gpu==1.15.1",
-    "basicsr": "basicsr==1.4.2",
-    "rembg": "rembg==2.0.50",
-    "qrcode": "qrcode[pil]",
-    "requirements": "requirements-parser==0.5.0",
-}
+reqs_map = {value: key for key, value in pip_map.items()}
+
+import importlib
 
 
 def import_install(package_name):
-    from pip._internal import main as pip_main
+    package_spec = reqs_map.get(package_name, package_name)
 
     try:
-        __import__(package_name)
-    except ImportError:
-        package_spec = reqs_map.get(package_name)
-        if package_spec is None:
-            print(f"Installing {package_name}")
-            package_spec = package_name
+        importlib.import_module(package_name)
 
-        pip_main(["install", package_spec])
-        __import__(package_name)
+    except Exception:  # (ImportError, ModuleNotFoundError):
+        run_command(
+            [Path(sys.executable).as_posix(), "-m", "pip", "install", package_spec]
+        )
+        importlib.import_module(package_name)
 
 
 # endregion
@@ -264,8 +229,9 @@ here = Path(__file__).parent.absolute()
 # - Construct the absolute path to the ComfyUI directory
 comfy_dir = Path(folder_paths.base_path)
 models_dir = Path(folder_paths.models_dir)
+output_dir = Path(folder_paths.output_directory)
 styles_dir = comfy_dir / "styles"
-
+session_id = str(uuid.uuid4())
 # - Construct the path to the font file
 font_path = here / "font.ttf"
 
@@ -529,12 +495,11 @@ def download_antelopev2():
     antelopev2_url = "https://drive.google.com/uc?id=18wEUfMNohBJ4K3Ly5wpTejPfDzp-8fI8"
 
     try:
-        import folder_paths
         import gdown
 
         log.debug("Loading antelopev2 model")
 
-        dest = Path(folder_paths.models_dir) / "insightface"
+        dest = get_model_path("insightface")
         archive = dest / "antelopev2.zip"
         final_path = dest / "models" / "antelopev2"
         if not final_path.exists():
@@ -561,6 +526,33 @@ def download_antelopev2():
         raise e
 
 
+def get_model_path(fam, model=None):
+    log.debug(f"Requesting {fam} with model {model}")
+    res = None
+    if model:
+        res = folder_paths.get_full_path(fam, model)
+    else:
+        # this one can raise errors...
+        with contextlib.suppress(KeyError):
+            res = folder_paths.get_folder_paths(fam)
+
+    if res:
+        if isinstance(res, list):
+            if len(res) > 1:
+                log.warning(
+                    f"Found multiple match, we will pick the first {res[0]}\n{res}"
+                )
+            res = res[0]
+        res = Path(res)
+        log.debug(f"Resolved model path from folder_paths: {res}")
+    else:
+        res = models_dir / fam
+        if model:
+            res /= model
+
+    return res
+
+
 # endregion
 
 
@@ -585,9 +577,6 @@ def create_uv_map_tensor(width=512, height=512):
 
 # region ANIMATION Utilities
 def apply_easing(value, easing_type):
-    if value < 0 or value > 1:
-        raise ValueError(f"The value should be between 0 and 1. (value is {value})")
-
     if easing_type == "Linear":
         return value
 

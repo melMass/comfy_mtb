@@ -1,7 +1,8 @@
-from rembg import remove
-from ..utils import pil2tensor, tensor2pil
-from PIL import Image
 import comfy.utils
+from PIL import Image
+from rembg import remove
+
+from ..utils import pil2tensor, tensor2pil
 
 
 class ImageRemoveBackgroundRembg:
@@ -90,6 +91,8 @@ class ImageRemoveBackgroundRembg:
             image_on_bg = Image.new("RGBA", img_rm.size, bgcolor)
 
             image_on_bg.paste(img_rm, mask=mask)
+
+            image_on_bg = image_on_bg.convert("RGB")
 
             out_img.append(img_rm)
             out_mask.append(mask)

@@ -1,21 +1,21 @@
+# Optional face enhance nodes
 # region imports
-import onnxruntime
+import sys
 from pathlib import Path
-from PIL import Image
-from typing import List, Set, Union, Optional
+from typing import List, Optional, Set, Union
+
+import comfy.model_management as model_management
 import cv2
-import folder_paths
-import glob
 import insightface
 import numpy as np
-import os
+import onnxruntime
 import torch
 from insightface.model_zoo.inswapper import INSwapper
-from ..utils import pil2tensor, tensor2pil, download_antelopev2
-from ..log import mklog, NullWriter
-import sys
-import comfy.model_management as model_management
+from PIL import Image
 
+from ..errors import ModelNotFound
+from ..log import NullWriter, mklog
+from ..utils import download_antelopev2, get_model_path, pil2tensor, tensor2pil
 
 # endregion
 
@@ -26,15 +26,6 @@ class LoadFaceAnalysisModel:
     """Loads a face analysis model"""
 
     models = []
-
-    @staticmethod
-    def get_models() -> List[str]:
-        models_path = os.path.join(folder_paths.models_dir, "insightface/*")
-        models = glob.glob(models_path)
-        models = [
-            Path(x).name for x in models if x.endswith(".onnx") or x.endswith(".pth")
-        ]
-        return models
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -57,7 +48,7 @@ class LoadFaceAnalysisModel:
 
         face_analyser = insightface.app.FaceAnalysis(
             name=faceswap_model,
-            root=os.path.join(folder_paths.models_dir, "insightface"),
+            root=get_model_path("insightface"),
         )
         return (face_analyser,)
 
@@ -67,10 +58,8 @@ class LoadFaceSwapModel:
 
     @staticmethod
     def get_models() -> List[Path]:
-        models_path = os.path.join(folder_paths.models_dir, "insightface/*")
-        models = glob.glob(models_path)
-        models = [Path(x) for x in models if x.endswith(".onnx") or x.endswith(".pth")]
-        return models
+        models_path = get_model_path("insightface").iterdir()
+        return [x for x in models_path if x.suffix in [".onnx", ".pth"]]
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -88,9 +77,10 @@ class LoadFaceSwapModel:
     CATEGORY = "mtb/facetools"
 
     def load_model(self, faceswap_model: str):
-        model_path = os.path.join(
-            folder_paths.models_dir, "insightface", faceswap_model
-        )
+        model_path = get_model_path("insightface", faceswap_model)
+        if not model_path or not model_path.exists():
+            raise ModelNotFound(f"{faceswap_model} ({model_path})")
+
         log.info(f"Loading model {model_path}")
         return (
             INSwapper(

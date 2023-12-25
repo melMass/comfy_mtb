@@ -1,16 +1,20 @@
-from typing import List
-from pathlib import Path
-import os
 import glob
-import folder_paths
-from ..log import log
-import torch
-from frame_interpolation.eval import util, interpolator
-import numpy as np
+import os
+from pathlib import Path
+from typing import List
+
 import comfy
-import comfy.utils
-import tensorflow as tf
 import comfy.model_management as model_management
+import comfy.utils
+import folder_paths
+import numpy as np
+import tensorflow as tf
+import torch
+from frame_interpolation.eval import interpolator, util
+
+from ..errors import ModelNotFound
+from ..log import log
+from ..utils import get_model_path
 
 
 class LoadFilmModel:
@@ -18,10 +22,9 @@ class LoadFilmModel:
 
     @staticmethod
     def get_models() -> List[Path]:
-        models_path = os.path.join(folder_paths.models_dir, "FILM/*")
-        models = glob.glob(models_path)
-        models = [Path(x) for x in models if x.endswith(".onnx") or x.endswith(".pth")]
-        return models
+        models_paths = get_model_path("FILM").iterdir()
+
+        return [x for x in models_paths if x.suffix in [".onnx", ".pth"]]
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -39,7 +42,10 @@ class LoadFilmModel:
     CATEGORY = "mtb/frame iterpolation"
 
     def load_model(self, film_model: str):
-        model_path = Path(folder_paths.models_dir) / "FILM" / film_model
+        model_path = get_model_path("FILM", film_model)
+        if not model_path or not model_path.exists():
+            raise ModelNotFound(f"FILM ({model_path})")
+
         if not (model_path / "saved_model.pb").exists():
             model_path = model_path / "saved_model"
 
@@ -114,41 +120,4 @@ class FilmInterpolation:
         return (out_tensors,)
 
 
-class ConcatImages:
-    """Add images to batch"""
-
-    RETURN_TYPES = ("IMAGE",)
-    FUNCTION = "concat_images"
-    CATEGORY = "mtb/image"
-
-    @classmethod
-    def INPUT_TYPES(cls):
-        return {
-            "required": {
-                "imageA": ("IMAGE",),
-                "imageB": ("IMAGE",),
-            },
-        }
-
-    @classmethod
-    def concatenate_tensors(cls, A: torch.Tensor, B: torch.Tensor):
-        # Get the batch sizes of A and B
-        batch_size_A = A.size(0)
-        batch_size_B = B.size(0)
-
-        # Concatenate the tensors along the batch dimension
-        concatenated = torch.cat((A, B), dim=0)
-
-        # Update the batch size in the concatenated tensor
-        concatenated_size = list(concatenated.size())
-        concatenated_size[0] = batch_size_A + batch_size_B
-        concatenated = concatenated.view(*concatenated_size)
-
-        return concatenated
-
-    def concat_images(self, imageA: torch.Tensor, imageB: torch.Tensor):
-        log.debug(f"Concatenating A ({imageA.shape}) and B ({imageB.shape})")
-        return (self.concatenate_tensors(imageA, imageB),)
-
-
-__nodes__ = [LoadFilmModel, FilmInterpolation, ConcatImages]
+__nodes__ = [LoadFilmModel, FilmInterpolation]

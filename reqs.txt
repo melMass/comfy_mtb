@@ -1,7 +1,0 @@
-onnxruntime-gpu==1.15.1
-qrcode[pil]
-rembg==2.0.50
-tensorflow
-facexlib==0.3.0
-insightface==0.7.3
-basicsr==1.4.2

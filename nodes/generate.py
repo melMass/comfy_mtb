@@ -1,9 +1,14 @@
+import threading
 import qrcode
 from ..utils import pil2tensor, create_uv_map_tensor
 from ..utils import comfy_dir
 from typing import cast
+
+import qrcode
 from PIL import Image
+
 from ..log import log
+from ..utils import comfy_dir, pil2tensor
 
 # class MtbExamples:
 #     """MTB Example Images"""
@@ -60,9 +65,18 @@ class UnsplashImage:
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "width": ("INT", {"default": 512, "max": 8096, "min": 0, "step": 1}),
-                "height": ("INT", {"default": 512, "max": 8096, "min": 0, "step": 1}),
-                "random_seed": ("INT", {"default": 0, "max": 1e5, "min": 0, "step": 1}),
+                "width": (
+                    "INT",
+                    {"default": 512, "max": 8096, "min": 0, "step": 1},
+                ),
+                "height": (
+                    "INT",
+                    {"default": 512, "max": 8096, "min": 0, "step": 1},
+                ),
+                "random_seed": (
+                    "INT",
+                    {"default": 0, "max": 1e5, "min": 0, "step": 1},
+                ),
             },
             "optional": {
                 "keyword": ("STRING", {"default": "nature"}),
@@ -74,8 +88,9 @@ class UnsplashImage:
     CATEGORY = "mtb/generate"
 
     def do_unsplash_image(self, width, height, random_seed, keyword=None):
-        import requests
         import io
+
+        import requests
 
         base_url = "https://source.unsplash.com/random/"
 
@@ -121,8 +136,14 @@ class QrCode:
                     {"default": 256, "max": 8096, "min": 0, "step": 1},
                 ),
                 "error_correct": (("L", "M", "Q", "H"), {"default": "L"}),
-                "box_size": ("INT", {"default": 10, "max": 8096, "min": 0, "step": 1}),
-                "border": ("INT", {"default": 4, "max": 8096, "min": 0, "step": 1}),
+                "box_size": (
+                    "INT",
+                    {"default": 10, "max": 8096, "min": 0, "step": 1},
+                ),
+                "border": (
+                    "INT",
+                    {"default": 4, "max": 8096, "min": 0, "step": 1},
+                ),
                 "invert": (("BOOLEAN",), {"default": False}),
             }
         }
@@ -131,7 +152,9 @@ class QrCode:
     FUNCTION = "do_qr"
     CATEGORY = "mtb/generate"
 
-    def do_qr(self, url, width, height, error_correct, box_size, border, invert):
+    def do_qr(
+        self, url, width, height, error_correct, box_size, border, invert
+    ):
         log.warning(
             "This node will soon be deprecated, there are much better alternatives like https://github.com/coreyryanhanson/comfy-qr"
         )
@@ -156,7 +179,9 @@ class QrCode:
         back_color = (255, 255, 255) if invert else (0, 0, 0)
         fill_color = (0, 0, 0) if invert else (255, 255, 255)
 
-        code = img = qr.make_image(back_color=back_color, fill_color=fill_color)
+        code = img = qr.make_image(
+            back_color=back_color, fill_color=fill_color
+        )
 
         # that we now resize without filtering
         code = code.resize((width, height), Image.NEAREST)
@@ -172,8 +197,7 @@ def bbox_dim(bbox):
 
 
 class TextToImage:
-    """Utils to convert text to image using a font
-
+    """Utils to convert text to image using a font.
 
     The tool looks for any .ttf file in the Comfy folder hierarchy.
     """
@@ -190,7 +214,13 @@ class TextToImage:
         fonts = []
 
         for extension in font_extensions:
-            fonts.extend(comfy_dir.glob(f"**/{extension}"))
+            try:
+                if comfy_dir.exists():
+                    fonts.extend(comfy_dir.glob(f"**/{extension}"))
+                else:
+                    log.warn(f"Directory {comfy_dir} does not exist.")
+            except Exception as e:
+                log.error(f"Error during font caching: {e}")
 
         if not fonts:
             log.warn(
@@ -201,12 +231,13 @@ class TextToImage:
 
         for font in fonts:
             log.debug(f"Adding font {font}")
-            cls.fonts[font.stem] = font.as_posix()
+            TextToImage.fonts[font.stem] = font.as_posix()
 
     @classmethod
     def INPUT_TYPES(cls):
         if not cls.fonts:
-            cls.CACHE_FONTS()
+            thread = threading.Thread(target=cls.CACHE_FONTS)
+            thread.start()
         else:
             log.debug(f"Using cached fonts (count: {len(cls.fonts)})")
         return {
@@ -232,7 +263,6 @@ class TextToImage:
                     "INT",
                     {"default": 512, "min": 1, "max": 8096, "step": 1},
                 ),
-                # "position": (["INT"], {"default": 0, "min": 0, "max": 100, "step": 1}),
                 "color": (
                     "COLOR",
                     {"default": "#000000"},
@@ -241,6 +271,8 @@ class TextToImage:
                     "COLOR",
                     {"default": "#FFFFFF"},
                 ),
+                "h_align": (("left", "center", "right"), {"default": "left"}),
+                "v_align": (("top", "center", "bottom"), {"default": "top"}),
             }
         }
 
@@ -250,29 +282,62 @@ class TextToImage:
     CATEGORY = "mtb/generate"
 
     def text_to_image(
-        self, text, font, wrap, font_size, width, height, color, background
+        self,
+        text,
+        font,
+        wrap,
+        font_size,
+        width,
+        height,
+        color,
+        background,
+        h_align="left",
+        v_align="top",
     ):
-        from PIL import Image, ImageDraw, ImageFont
         import textwrap
 
-        font = self.fonts[font]
-        font = cast(ImageFont.FreeTypeFont, ImageFont.truetype(font, font_size))
-        if wrap == 0:
-            wrap = width / font_size
-        lines = textwrap.wrap(text, width=wrap)
-        log.debug(f"Lines: {lines}")
-        line_height = bbox_dim(font.getbbox("hg"))[1]
-        img_height = height  # line_height * len(lines)
-        img_width = width  # max(font.getsize(line)[0] for line in lines)
+        from PIL import Image, ImageDraw, ImageFont
 
-        img = Image.new("RGBA", (img_width, img_height), background)
+        font_path = self.fonts[font]
+
+        # Handle word wrapping
+        if wrap:
+            lines = textwrap.wrap(text, width=wrap)
+        else:
+            lines = [text]
+        font = ImageFont.truetype(font_path, font_size)
+        # font = ImageFont.truetype(font_path, font_size)
+        # if wrap == 0:
+        #     wrap = width / font_size
+
+        log.debug(f"Lines: {lines}")
+        img = Image.new("RGBA", (width, height), background)
         draw = ImageDraw.Draw(img)
-        y_text = 0
-        # - bbox is [left, upper, right, lower]
+
+        text_height = sum(font.getsize(line)[1] for line in lines)
+
+        # Vertical alignment
+        if v_align == "top":
+            y_text = 0
+        elif v_align == "center":
+            y_text = (height - text_height) // 2
+        else:  # bottom
+            y_text = height - text_height
+
+        # Draw each line of text
         for line in lines:
-            width, height = bbox_dim(font.getbbox(line))
-            draw.text((0, y_text), line, color, font=font)
-            y_text += height
+            line_width, line_height = font.getsize(line)
+
+            # Horizontal alignment
+            if h_align == "left":
+                x_text = 0
+            elif h_align == "center":
+                x_text = (width - line_width) // 2
+            else:  # right
+                x_text = width - line_width
+
+            draw.text((x_text, y_text), line, color, font=font)
+            y_text += line_height
 
         # img.save(os.path.join(folder_paths.base_path, f'{str(uuid.uuid4())}.png'))
         return (pil2tensor(img),)
@@ -303,6 +368,6 @@ __nodes__ = [
     QrCode,
     UnsplashImage,
     TextToImage,
-    UvMap
+    UvMap,
     #  MtbExamples,
 ]

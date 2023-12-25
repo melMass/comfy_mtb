@@ -1,7 +1,4 @@
-import io
-import json
-import urllib.parse
-import urllib.request
+import io, json, urllib.parse, urllib.request
 
 import numpy as np
 import torch
@@ -170,6 +167,52 @@ class StringReplace:
         return (string,)
 
 
+class MTB_MathExpression:
+    """Node to evaluate a simple math expression string"""
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "expression": ("STRING", {"default": "", "multiline": True}),
+            }
+        }
+
+    FUNCTION = "eval_expression"
+    RETURN_TYPES = ("FLOAT", "INT")
+    RETURN_NAMES = ("result (float)", "result (int)")
+    CATEGORY = "mtb/math"
+    DESCRIPTION = "evaluate a simple math expression string (!! Fallsback to eval)"
+
+    def eval_expression(self, expression, **kwargs):
+        import math
+        from ast import literal_eval
+
+        for key, value in kwargs.items():
+            print(f"Replacing placeholder <{key}> with value {value}")
+            expression = expression.replace(f"<{key}>", str(value))
+
+        result = -1
+        try:
+            result = literal_eval(expression)
+        except SyntaxError as e:
+            raise ValueError(
+                f"The expression syntax is wrong '{expression}': {e}"
+            ) from e
+
+        except ValueError:
+            try:
+                expression = expression.replace("^", "**")
+                result = eval(expression)
+            except Exception as e:
+                # Handle any other exceptions and provide a meaningful error message
+                raise ValueError(
+                    f"Error evaluating expression '{expression}': {e}"
+                ) from e
+
+        return (result, int(result))
+
+
 class FitNumber:
     """Fit the input float using a source and target range"""
 
@@ -179,10 +222,10 @@ class FitNumber:
             "required": {
                 "value": ("FLOAT", {"default": 0, "forceInput": True}),
                 "clamp": ("BOOLEAN", {"default": False}),
-                "source_min": ("FLOAT", {"default": 0.0}),
-                "source_max": ("FLOAT", {"default": 1.0}),
-                "target_min": ("FLOAT", {"default": 0.0}),
-                "target_max": ("FLOAT", {"default": 1.0}),
+                "source_min": ("FLOAT", {"default": 0.0, "step": 0.01}),
+                "source_max": ("FLOAT", {"default": 1.0, "step": 0.01}),
+                "target_min": ("FLOAT", {"default": 0.0, "step": 0.01}),
+                "target_max": ("FLOAT", {"default": 1.0, "step": 0.01}),
                 "easing": (
                     [
                         "Linear",
@@ -228,20 +271,53 @@ class FitNumber:
         target_max: float,
         easing: str,
     ):
-        normalized_value = (value - source_min) / (source_max - source_min)
+        if source_min == source_max:
+            normalized_value = 0
+        else:
+            normalized_value = (value - source_min) / (source_max - source_min)
+        if clamp:
+            normalized_value = max(min(normalized_value, 1), 0)
 
         eased_value = apply_easing(normalized_value, easing)
 
         # - Convert the eased value to the target range
         res = target_min + (target_max - target_min) * eased_value
 
-        if clamp:
-            if target_min > target_max:
-                res = max(min(res, target_min), target_max)
-            else:
-                res = max(min(res, target_max), target_min)
-
         return (res,)
 
 
-__nodes__ = [StringReplace, FitNumber, GetBatchFromHistory, AnyToString]
+class ConcatImages:
+    """Add images to batch"""
+
+    RETURN_TYPES = ("IMAGE",)
+    FUNCTION = "concatenate_tensors"
+    CATEGORY = "mtb/image"
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {"reverse": ("BOOLEAN", {"default": False})},
+        }
+
+    def concatenate_tensors(self, reverse, **kwargs):
+        tensors = tuple(kwargs.values())
+        batch_sizes = [tensor.size(0) for tensor in tensors]
+
+        concatenated = torch.cat(tensors, dim=0)
+
+        # Update the batch size in the concatenated tensor
+        concatenated_size = list(concatenated.size())
+        concatenated_size[0] = sum(batch_sizes)
+        concatenated = concatenated.view(*concatenated_size)
+
+        return (concatenated,)
+
+
+__nodes__ = [
+    StringReplace,
+    FitNumber,
+    GetBatchFromHistory,
+    AnyToString,
+    ConcatImages,
+    MTB_MathExpression,
+]

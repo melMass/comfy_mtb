@@ -9,6 +9,36 @@
 
 import { app } from '../../scripts/app.js'
 
+// - crude uuid
+export function makeUUID() {
+  let dt = new Date().getTime()
+  const uuid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (dt + Math.random() * 16) % 16 | 0
+    dt = Math.floor(dt / 16)
+    return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16)
+  })
+  return uuid
+}
+
+// - log utilities
+
+function createLogger(emoji, color, consoleMethod = 'log') {
+  return function (message, ...args) {
+    if (window.MTB?.DEBUG) {
+      console[consoleMethod](
+        `%c${emoji} ${message}`,
+        `color: ${color};`,
+        ...args
+      )
+    }
+  }
+}
+
+export const infoLogger = createLogger('ℹ️', 'yellow')
+export const warnLogger = createLogger('⚠️', 'orange', 'warn')
+export const errorLogger = createLogger('🔥', 'red', 'error')
+export const successLogger = createLogger('✅', 'green')
+
 export const log = (...args) => {
   if (window.MTB?.DEBUG) {
     console.debug(...args)
@@ -92,14 +122,38 @@ export function getWidgetType(config) {
   }
   return { type, linkType }
 }
+export const setupDynamicConnections = (nodeType, prefix, inputType) => {
+  const onNodeCreated = nodeType.prototype.onNodeCreated
+  nodeType.prototype.onNodeCreated = function () {
+    const r = onNodeCreated ? onNodeCreated.apply(this, arguments) : undefined
+    this.addInput(`${prefix}_1`, inputType)
+    return r
+  }
 
+  const onConnectionsChange = nodeType.prototype.onConnectionsChange
+  nodeType.prototype.onConnectionsChange = function (
+    type,
+    index,
+    connected,
+    link_info
+  ) {
+    const r = onConnectionsChange
+      ? onConnectionsChange.apply(this, arguments)
+      : undefined
+    dynamic_connection(this, index, connected, `${prefix}_`, inputType)
+  }
+}
 export const dynamic_connection = (
   node,
   index,
   connected,
   connectionPrefix = 'input_',
-  connectionType = 'PSDLAYER'
+  connectionType = 'PSDLAYER',
+  nameArray = []
 ) => {
+  if (!node.inputs[index].name.startsWith(connectionPrefix)) {
+    return
+  }
   // remove all non connected inputs
   if (!connected && node.inputs.length > 1) {
     log(`Removing input ${index} (${node.inputs[index].name})`)
@@ -114,25 +168,46 @@ export const dynamic_connection = (
 
     // make inputs sequential again
     for (let i = 0; i < node.inputs.length; i++) {
-      node.inputs[i].label = `${connectionPrefix}${i + 1}`
+      const name =
+        i < nameArray.length ? nameArray[i] : `${connectionPrefix}${i + 1}`
+      node.inputs[i].label = name
+      node.inputs[i].name = name
     }
   }
 
   // add an extra input
   if (node.inputs[node.inputs.length - 1].link != undefined) {
-    log(
-      `Adding input ${node.inputs.length + 1} (${connectionPrefix}${
-        node.inputs.length + 1
-      })`
-    )
+    const nextIndex = node.inputs.length
+    const name =
+      nextIndex < nameArray.length
+        ? nameArray[nextIndex]
+        : `${connectionPrefix}${nextIndex + 1}`
 
-    node.addInput(
-      `${connectionPrefix}${node.inputs.length + 1}`,
-      connectionType
-    )
+    log(`Adding input ${nextIndex + 1} (${name})`)
+
+    node.addInput(name, connectionType)
   }
 }
 
+export function calculateTotalChildrenHeight(parentElement) {
+  let totalHeight = 0
+
+  for (const child of parentElement.children) {
+    const style = window.getComputedStyle(child)
+
+    // Get height as an integer (without 'px')
+    const height = parseInt(style.height, 10)
+
+    // Get vertical margin as integers
+    const marginTop = parseInt(style.marginTop, 10)
+    const marginBottom = parseInt(style.marginBottom, 10)
+
+    // Sum up height and vertical margins
+    totalHeight += height + marginTop + marginBottom
+  }
+
+  return totalHeight
+}
 /**
  * Appends a callback to the extra menu options of a given node type.
  * @param {*} nodeType
@@ -308,6 +383,43 @@ function getBrightness(rgbObj) {
 }
 
 //- HTML / CSS UTILS
+export const loadScript = (
+  FILE_URL,
+  async = true,
+  type = 'text/javascript'
+) => {
+  return new Promise((resolve, reject) => {
+    try {
+      // Check if the script already exists
+      const existingScript = document.querySelector(`script[src="${FILE_URL}"]`)
+      if (existingScript) {
+        resolve({ status: true, message: 'Script already loaded' })
+        return
+      }
+
+      const scriptEle = document.createElement('script')
+      scriptEle.type = type
+      scriptEle.async = async
+      scriptEle.src = FILE_URL
+
+      scriptEle.addEventListener('load', (ev) => {
+        resolve({ status: true })
+      })
+
+      scriptEle.addEventListener('error', (ev) => {
+        reject({
+          status: false,
+          message: `Failed to load the script ＄{FILE_URL}`,
+        })
+      })
+
+      document.body.appendChild(scriptEle)
+    } catch (error) {
+      reject(error)
+    }
+  })
+}
+
 export function defineClass(className, classStyles) {
   const styleSheets = document.styleSheets
 

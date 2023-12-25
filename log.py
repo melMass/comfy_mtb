@@ -1,6 +1,6 @@
 import logging
-import re
 import os
+import re
 
 base_log_level = logging.DEBUG if os.environ.get("MTB_DEBUG") else logging.INFO
 
@@ -75,5 +75,7 @@ def cyan_text(text):
 
 
 def get_label(label):
+    if label.startswith("MTB_"):
+        label = label[4:]
     words = re.findall(r"(?:^|[A-Z])[a-z]*", label)
     return " ".join(words).strip()

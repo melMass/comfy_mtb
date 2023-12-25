@@ -1,21 +1,19 @@
-from gfpgan import GFPGANer
-import cv2
-import numpy as np
 import os
 from pathlib import Path
-import folder_paths
-from ..utils import pil2tensor, np2tensor, tensor2np
+from typing import Tuple
 
-from basicsr.utils import imwrite
-
-
-from PIL import Image
-import torch
-from ..log import NullWriter, log
-from comfy import model_management
 import comfy
 import comfy.utils
-from typing import Tuple
+import cv2
+import folder_paths
+import numpy as np
+import torch
+from comfy import model_management
+from gfpgan import GFPGANer
+from PIL import Image
+
+from ..log import NullWriter, log
+from ..utils import get_model_path, np2tensor, pil2tensor, tensor2np
 
 
 class LoadFaceEnhanceModel:
@@ -26,11 +24,12 @@ class LoadFaceEnhanceModel:
 
     @classmethod
     def get_models_root(cls):
-        fr = Path(folder_paths.models_dir) / "face_restore"
+        fr = get_model_path("face_restore")
+        # fr = Path(folder_paths.models_dir) / "face_restore"
         if fr.exists():
             return (fr, None)
 
-        um = Path(folder_paths.models_dir) / "upscale_models"
+        um = get_model_path("upscale_models")
         return (fr, um) if um.exists() else (None, None)
 
     @classmethod
@@ -41,12 +40,12 @@ class LoadFaceEnhanceModel:
             log.warning("Face restoration models not found.")
             return []
         if not fr_models_path.exists():
-            log.warning(
-                f"No Face Restore checkpoints found at {fr_models_path} (if you've used mtb before these checkpoints were saved in upscale_models before)"
-            )
-            log.warning(
-                "For now we fallback to upscale_models but this will be removed in a future version"
-            )
+            # log.warning(
+            #     f"No Face Restore checkpoints found at {fr_models_path} (if you've used mtb before these checkpoints were saved in upscale_models before)"
+            # )
+            # log.warning(
+            #     "For now we fallback to upscale_models but this will be removed in a future version"
+            # )
             if um_models_path.exists():
                 return [
                     x
@@ -99,7 +98,9 @@ class LoadFaceEnhanceModel:
                 (fr_root if fr_root.exists() else um_root) / model_name
             ).as_posix(),
             upscale=upscale,
-            arch="clean" if basic else "RestoreFormer",  # or original for v1.0 only
+            arch="clean"
+            if basic
+            else "RestoreFormer",  # or original for v1.0 only
             channel_multiplier=2,  # 1 for v1.0 only
             bg_upsampler=bg_upsampler,
         )
@@ -123,7 +124,11 @@ class BGUpscaleWrapper:
         imgt = imgt.movedim(-1, -3).to(device)
 
         steps = imgt.shape[0] * comfy.utils.get_tiled_scale_steps(
-            imgt.shape[3], imgt.shape[2], tile_x=tile, tile_y=tile, overlap=overlap
+            imgt.shape[3],
+            imgt.shape[2],
+            tile_x=tile,
+            tile_y=tile,
+            overlap=overlap,
         )
 
         log.debug(f"Steps: {steps}")
@@ -200,10 +205,14 @@ class RestoreFace:
         log.warning(f"Weight value has no effect for now. (value: {weight})")
 
         if save_tmp_steps:
-            self.save_intermediate_images(cropped_faces, restored_faces, height, width)
+            self.save_intermediate_images(
+                cropped_faces, restored_faces, height, width
+            )
         output = None
         if restored_img is not None:
-            output = Image.fromarray(cv2.cvtColor(restored_img, cv2.COLOR_BGR2RGB))
+            output = Image.fromarray(
+                cv2.cvtColor(restored_img, cv2.COLOR_BGR2RGB)
+            )
             # imwrite(restored_img, save_restore_path)
 
         return pil2tensor(output)
@@ -219,7 +228,12 @@ class RestoreFace:
     ) -> Tuple[torch.Tensor]:
         out = [
             self.do_restore(
-                image[i], model, aligned, only_center_face, weight, save_tmp_steps
+                image[i],
+                model,
+                aligned,
+                only_center_face,
+                weight,
+                save_tmp_steps,
             )
             for i in range(image.size(0))
         ]
@@ -241,22 +255,24 @@ class RestoreFace:
 
         return os.path.join(full_output_folder, file)
 
-    def save_intermediate_images(self, cropped_faces, restored_faces, height, width):
+    def save_intermediate_images(
+        self, cropped_faces, restored_faces, height, width
+    ):
         for idx, (cropped_face, restored_face) in enumerate(
             zip(cropped_faces, restored_faces)
         ):
             face_id = idx + 1
             file = self.get_step_image_path("cropped_faces", face_id)
-            imwrite(cropped_face, file)
+            cv2.imwrite(file, cropped_face)
 
             file = self.get_step_image_path("cropped_faces_restored", face_id)
-            imwrite(restored_face, file)
+            cv2.imwrite(file, restored_face)
 
             file = self.get_step_image_path("cropped_faces_compare", face_id)
 
             # save comparison image
             cmp_img = np.concatenate((cropped_face, restored_face), axis=1)
-            imwrite(cmp_img, file)
+            cv2.imwrite(file, cmp_img)
 
 
 __nodes__ = [RestoreFace, LoadFaceEnhanceModel]

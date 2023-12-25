@@ -1,9 +1,9 @@
-import torch
-from ..utils import tensor2pil, pil2tensor, tensor2np, np2tensor
-from PIL import Image, ImageFilter, ImageDraw, ImageChops
 import numpy as np
+import torch
+from PIL import Image, ImageChops, ImageDraw, ImageFilter
 
 from ..log import log
+from ..utils import np2tensor, pil2tensor, tensor2np, tensor2pil
 
 
 class Bbox:
@@ -32,7 +32,7 @@ class Bbox:
     CATEGORY = "mtb/crop"
 
     def do_crop(self, x, y, width, height):  # bbox
-        return (x, y, width, height)
+        return ((x, y, width, height),)
         # return bbox
 
 
@@ -44,6 +44,7 @@ class BboxFromMask:
         return {
             "required": {
                 "mask": ("MASK",),
+                "invert": ("BOOLEAN", {"default": False}),
             },
             "optional": {
                 "image": ("IMAGE",),
@@ -61,7 +62,7 @@ class BboxFromMask:
     FUNCTION = "extract_bounding_box"
     CATEGORY = "mtb/crop"
 
-    def extract_bounding_box(self, mask: torch.Tensor, image=None):
+    def extract_bounding_box(self, mask: torch.Tensor, invert: bool, image=None):
         # if image != None:
         #     if mask.size(0) != image.size(0):
         #         if mask.size(0) != 1:
@@ -73,9 +74,8 @@ class BboxFromMask:
         #                 f"Batch count mismatch for mask and image, it can either be 1 mask for X images, or X masks for X images (mask: {mask.shape} | image: {image.shape})"
         #             )
 
-        _mask = tensor2pil(1.0 - mask)[0]
-
         # we invert it
+        _mask = tensor2pil(1.0 - mask)[0] if invert else tensor2pil(mask)[0]
         alpha_channel = np.array(_mask)
 
         non_zero_indices = np.nonzero(alpha_channel)
@@ -141,19 +141,23 @@ class Crop:
         self, image: torch.Tensor, mask=None, x=0, y=0, width=256, height=256, bbox=None
     ):
         image = image.numpy()
-        if mask:
+        if mask is not None:
             mask = mask.numpy()
 
-        if bbox != None:
+        if bbox is not None:
             x, y, width, height = bbox
 
         cropped_image = image[:, y : y + height, x : x + width, :]
-        cropped_mask = mask[y : y + height, x : x + width] if mask != None else None
+        cropped_mask = None
+        if mask is not None:
+            cropped_mask = (
+                mask[:, y : y + height, x : x + width] if mask is not None else None
+            )
         crop_data = (x, y, width, height)
 
         return (
             torch.from_numpy(cropped_image),
-            torch.from_numpy(cropped_mask) if mask != None else None,
+            torch.from_numpy(cropped_mask) if cropped_mask is not None else None,
             crop_data,
         )
 
