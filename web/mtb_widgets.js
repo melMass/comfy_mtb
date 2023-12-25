@@ -195,7 +195,7 @@ export const MtbWidgets = {
                     try {
                       //solve the equation if possible
                       v = eval(v)
-                    } catch (e) {}
+                    } catch (e) { }
                   }
                   this.value = Number(v)
                   shared.inner_value_change(this, this.value, event)
@@ -445,7 +445,7 @@ const mtb_widgets = {
               enabled: value,
             }),
           })
-          .then((response) => {})
+          .then((response) => { })
           .catch((error) => {
             console.error('Error:', error)
           })
@@ -723,8 +723,7 @@ const mtb_widgets = {
             onReset() // this could maybe be a setting or checkbox
             app.queuePrompt(0, total_frames.value * loop_count.value)
             window.MTB?.notify?.(
-              `Started a queue of ${total_frames.value} frames (for ${
-                loop_count.value
+              `Started a queue of ${total_frames.value} frames (for ${loop_count.value
               } loop, so ${total_frames.value * loop_count.value})`,
               5000
             )
@@ -739,16 +738,14 @@ const mtb_widgets = {
             this.value++
             raw_loop.value = Math.floor(this.value / total_frames.value)
 
-            value_preview.value = `frame: ${
-              raw_iteration.value % total_frames.value
-            } / ${total_frames.value - 1}`
+            value_preview.value = `frame: ${raw_iteration.value % total_frames.value
+              } / ${total_frames.value - 1}`
 
             if (raw_loop.value + 1 > loop_count.value) {
               loop_preview.value = 'Done 😎!'
             } else {
-              loop_preview.value = `current loop: ${raw_loop.value + 1}/${
-                loop_count.value
-              }`
+              loop_preview.value = `current loop: ${raw_loop.value + 1}/${loop_count.value
+                }`
             }
           }
 
@@ -893,7 +890,8 @@ const mtb_widgets = {
 
         break
       }
-      case 'Batch Float Assemble (mtb)': {
+      case 'Batch Float Assemble (mtb)':
+      case 'Plot Batch Float (mtb)': {
         shared.setupDynamicConnections(nodeType, 'floats', 'FLOATS')
         break
       }

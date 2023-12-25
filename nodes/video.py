@@ -1,13 +1,11 @@
-import os
-import re
-import torch
+import hashlib, json, os, re
+from pathlib import Path
+
+import folder_paths
 import numpy as np
-import hashlib
+import torch
 from PIL import Image, ImageOps
 from PIL.PngImagePlugin import PngInfo
-import folder_paths
-from pathlib import Path
-import json
 
 from ..log import log
 
@@ -173,7 +171,10 @@ class SaveImageSequence:
             "required": {
                 "images": ("IMAGE",),
                 "filename_prefix": ("STRING", {"default": "Sequence"}),
-                "current_frame": ("INT", {"default": 0, "min": 0, "max": 9999999}),
+                "current_frame": (
+                    "INT",
+                    {"default": 0, "min": 0, "max": 9999999},
+                ),
             },
             "hidden": {"prompt": "PROMPT", "extra_pnginfo": "EXTRA_PNGINFO"},
         }
@@ -220,10 +221,14 @@ class SaveImageSequence:
         resolved_path = Path(self.output_dir) / filename_prefix
         resolved_path.mkdir(parents=True, exist_ok=True)
 
-        resolved_img = resolved_path / f"{filename_prefix}_{current_frame:05}.png"
+        resolved_img = (
+            resolved_path / f"{filename_prefix}_{current_frame:05}.png"
+        )
 
         output_image = images[0].cpu().numpy()
-        img = Image.fromarray(np.clip(output_image * 255.0, 0, 255).astype(np.uint8))
+        img = Image.fromarray(
+            np.clip(output_image * 255.0, 0, 255).astype(np.uint8)
+        )
         metadata = PngInfo()
         if prompt is not None:
             metadata.add_text("prompt", json.dumps(prompt))
