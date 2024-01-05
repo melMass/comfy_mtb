@@ -1,4 +1,7 @@
-import copy, itertools, json, os
+import copy
+import itertools
+import json
+import os
 
 import numpy as np
 import open3d as o3d
@@ -7,6 +10,7 @@ from ..utils import log
 
 
 def spread_geo(geo, *, cp=False):
+    """Spreads a GEOMETRY type into (mesh,material)."""
     mesh = geo["mesh"] if not cp else copy.copy(geo["mesh"])
     material = geo.get("material", {})
     return (mesh, material)
@@ -59,6 +63,39 @@ def get_transformation_matrix(position, rotation, scale):
 
     # Combined transforms
     return T @ R_homo @ S
+
+
+def json_to_mesh(json_data: str):
+    """Convert JSON to an Open3D mesh."""
+    data = json.loads(json_data)
+    mesh = o3d.geometry.TriangleMesh()
+
+    if "vertices" in data:
+        mesh.vertices = o3d.utility.Vector3dVector(
+            np.array(data["vertices"]).reshape(-1, 3)
+        )
+
+    if "triangles" in data:
+        mesh.triangles = o3d.utility.Vector3iVector(
+            np.array(data["triangles"]).reshape(-1, 3)
+        )
+
+    if "vertex_normals" in data:
+        mesh.vertex_normals = o3d.utility.Vector3dVector(
+            np.array(data["vertex_normals"]).reshape(-1, 3)
+        )
+
+    if "vertex_colors" in data:
+        mesh.vertex_colors = o3d.utility.Vector3dVector(
+            np.array(data["vertex_colors"]).reshape(-1, 3)
+        )
+
+    if "triangle_uvs" in data:
+        mesh.triangle_uvs = o3d.utility.Vector2dVector(
+            np.array(data["triangle_uvs"]).reshape(-1, 2)
+        )
+
+    return mesh
 
 
 def mesh_to_json(mesh: o3d.geometry.MeshBase):
@@ -266,6 +303,98 @@ def default_material(color=None):
     }
 
 
+class MTB_Camera:
+    """Make a Camera."""
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        base = default_material()
+        return {
+            "required": {
+                "color": ("COLOR", {"default": base["color"]}),
+                "roughness": (
+                    "FLOAT",
+                    {
+                        "default": base["roughness"],
+                        "min": 0.005,
+                        "max": 4.0,
+                        "step": 0.01,
+                    },
+                ),
+                "flatShading": ("BOOLEAN",),
+                "metalness": (
+                    "FLOAT",
+                    {
+                        "default": base["metalness"],
+                        "min": 0.0,
+                        "max": 1.0,
+                        "step": 0.01,
+                    },
+                ),
+                "emissive": ("COLOR", {"default": base["emissive"]}),
+                "displacementScale": (
+                    "FLOAT",
+                    {"default": 1.0, "min": -10.0, "max": 10.0},
+                ),
+            },
+            "optional": {"displacementMap": ("IMAGE",)},
+        }
+
+    RETURN_TYPES = ("CAMERA",)
+    RETURN_NAMES = ("camera",)
+    FUNCTION = "make_camera"
+    CATEGORY = "mtb/3D"
+
+    def make_camera(self, **kwargs):
+        return (kwargs,)
+
+
+class MTB_DrawGeometry:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "geometry": ("GEOMETRY",),
+            },
+            "optional": {
+                "camera": ("CAMERA",),
+            },
+        }
+
+    RETURN_TYPES = ("IMAGE",)
+    RETURN_NAMES = ("rendered_image",)
+    FUNCTION = "render"
+    CATEGORY = "mtb/3D"
+
+    def render(self, geometry, camera):
+        mesh, material = spread_geo(geometry)
+        o3d.visualization.draw_geometries([mesh], **camera)
+
+
+# class MTB_RGBD_Image:
+#     @classmethod
+#     def INPUT_TYPES(cls):
+#         return {
+#             "required": {
+#                 "image": ("IMAGE",),
+#                 "depth": ("IMAGE",),
+#             }
+#         }
+
+#     RETURN_TYPES = ("RGBD_IMAGE",)
+#     RETURN_NAMES = ("rgbd",)
+#     FUNCTION = "make_rgbd"
+#     CATEGORY = "mtb/3D"
+
+#     def make_rgbd(self, image, depth):
+#         color_raw = o3d.io.read_image("../../test_data/RGBD/color/00000.jpg")
+#         depth_raw = o3d.io.read_image("../../test_data/RGBD/depth/00000.png")
+#         rgbd_image = o3d.geometry.RGBDImage.create_from_color_and_depth(
+#             color_raw, depth_raw
+#         )
+#         print(rgbd_image)
+
+
 class MTB_Material:
     """Make a std material."""
 
@@ -284,6 +413,7 @@ class MTB_Material:
                         "step": 0.01,
                     },
                 ),
+                "flatShading": ("BOOLEAN",),
                 "metalness": (
                     "FLOAT",
                     {
@@ -310,6 +440,8 @@ class MTB_Material:
     def make_material(
         self, **kwargs
     ):  # color, roughness, metalness, emissive, displacementScalen displacementMap=None):
+        # TODO: convert image to b64 and remove the key/add the B64 one
+        # TODO: we can just use the "wireframe" property instead of my current solution
         return (kwargs,)
 
 
@@ -319,7 +451,10 @@ class MTB_ApplyMaterial:
     @classmethod
     def INPUT_TYPES(cls):
         return {
-            "required": {"geometry": ("GEOMETRY",), "color": ("COLOR",)},
+            "required": {
+                "geometry": ("GEOMETRY",),
+                "color": ("COLOR", {"default": "#000000"}),
+            },
             "optional": {"material": ("GEO_MATERIAL",)},
         }
 

@@ -27,6 +27,38 @@ export const make_wireframe = (mesh) => {
   return wireframe
 }
 
+export const three_to_o3d = (mesh) => {
+  const meshData = {};
+
+  // vertices
+  if (mesh.geometry.getAttribute('position')) {
+    meshData.vertices = Array.from(mesh.geometry.getAttribute('position').array);
+  }
+
+  // triangles (indices)
+  if (mesh.geometry.index) {
+    meshData.triangles = Array.from(mesh.geometry.index.array);
+  }
+
+  // vertex normals
+  if (mesh.geometry.getAttribute('normal')) {
+    meshData.vertex_normals = Array.from(mesh.geometry.getAttribute('normal').array);
+  }
+
+  // vertex colors
+  if (mesh.geometry.getAttribute('color')) {
+    meshData.vertex_colors = Array.from(mesh.geometry.getAttribute('color').array);
+  }
+
+  // UVs
+  if (mesh.geometry.getAttribute('uv')) {
+    meshData.triangle_uvs = Array.from(mesh.geometry.getAttribute('uv').array);
+  }
+
+  // Convert to JSON and send to Python backend
+  return JSON.stringify(meshData);
+};
+
 export const o3d_to_three = (data, material_opts) => {
 
   material_opts = material_opts || { color: "0x00ff00" }
