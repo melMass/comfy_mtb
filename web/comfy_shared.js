@@ -20,6 +20,38 @@ export function makeUUID() {
   return uuid
 }
 
+//- local storage manager
+export class LocalStorageManager {
+  constructor(namespace) {
+    this.namespace = namespace;
+  }
+
+  _namespacedKey(key) {
+    return `${this.namespace}:${key}`;
+  }
+
+  set(key, value) {
+    const serializedValue = JSON.stringify(value);
+    localStorage.setItem(this._namespacedKey(key), serializedValue);
+  }
+
+  get(key, default_val = null) {
+    const value = localStorage.getItem(this._namespacedKey(key));
+    return value ? JSON.parse(value) : default_val;
+  }
+
+  remove(key) {
+    localStorage.removeItem(this._namespacedKey(key));
+  }
+
+  clear() {
+    Object.keys(localStorage)
+      .filter(k => k.startsWith(this.namespace + ':'))
+      .forEach(k => localStorage.removeItem(k));
+  }
+}
+
+
 // - log utilities
 
 function createLogger(emoji, color, consoleMethod = 'log') {
@@ -378,7 +410,7 @@ function getBrightness(rgbObj) {
     (parseInt(rgbObj[0]) * 299 +
       parseInt(rgbObj[1]) * 587 +
       parseInt(rgbObj[2]) * 114) /
-      1000
+    1000
   )
 }
 
