@@ -582,7 +582,7 @@ const mtb_widgets = {
   setup: () => {
     app.ui.settings.addSetting({
       id: 'mtb.Debug.enabled',
-      name: '[mtb] Enable Debug (py and js)',
+      name: '[⚡mtb] Enable Debug (py and js)',
       type: 'boolean',
       defaultValue: false,
 

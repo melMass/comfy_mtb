@@ -436,8 +436,11 @@ class MaskToImage:
         return (pil2tensor(images),)
 
 
+from typing import Optional
+
+
 class ColoredImage:
-    """Constant color image of given size"""
+    """Constant color image of given size."""
 
     def __init__(self) -> None:
         pass
@@ -565,43 +568,52 @@ class ColoredImage:
         return img.crop((left, top, right, bottom))
 
     def render_img(
-        self, color, width, height, foreground_image=None, foreground_mask=None
+        self,
+        color,
+        width,
+        height,
+        foreground_image: Optional[torch.Tensor] = None,
+        foreground_mask: Optional[torch.Tensor] = None,
     ):
         image = Image.new("RGBA", (width, height), color=color)
         output = []
         if foreground_image is not None:
-            if foreground_mask is None:
-                fg_images = tensor2pil(foreground_image)
-                for img in fg_images:
-                    if image.size != img.size:
-                        raise ValueError(
-                            f"Dimension mismatch: image {image.size}, img {img.size}"
-                        )
+            fg_images = tensor2pil(foreground_image)
+            fg_masks = [None] * len(
+                fg_images
+            )  # Default to None for each foreground image
 
-                    if img.mode != "RGBA":
-                        raise ValueError(
-                            f"Foreground image must be in 'RGBA' mode when no mask is provided, got {img.mode}"
-                        )
+            if foreground_mask is not None:
+                if foreground_image.size()[0] != foreground_mask.size()[0]:
+                    raise ValueError(
+                        "Foreground image and mask must have same batch size"
+                    )
+                fg_masks = tensor2pil(foreground_mask)
 
+            for fg_image, fg_mask in zip(fg_images, fg_masks):
+                # Resize and crop if dimensions mismatch
+                if fg_image.size != image.size:
+                    fg_image = self.resize_and_crop(fg_image, image.size)
+                    if fg_mask:
+                        fg_mask = self.resize_and_crop(fg_mask, image.size)
+
+                if fg_mask:
                     output.append(
-                        Image.alpha_composite(image, img).convert("RGB")
+                        Image.composite(
+                            fg_image.convert("RGBA"),
+                            image,
+                            fg_mask,
+                        ).convert("RGB")
+                    )
+                else:
+                    if fg_image.mode != "RGBA":
+                        raise ValueError(
+                            "Foreground image must be in 'RGBA' mode when no mask is provided, got {fg_image.mode}"
+                        )
+                    output.append(
+                        Image.alpha_composite(image, fg_image).convert("RGB")
                     )
 
-            elif foreground_image.size[0] != foreground_mask.size[0]:
-                raise ValueError(
-                    "Foreground image and mask must have same batch size"
-                )
-            else:
-                fg_images = tensor2pil(foreground_image)
-                fg_masks = tensor2pil(foreground_mask)
-                output.extend(
-                    Image.composite(
-                        fg_image.convert("RGBA"),
-                        image,
-                        fg_mask,
-                    ).convert("RGB")
-                    for fg_image, fg_mask in zip(fg_images, fg_masks)
-                )
         elif foreground_mask is not None:
             log.warn("Mask ignored because no foreground image is given")
 
