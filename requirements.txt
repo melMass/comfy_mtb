@@ -7,4 +7,7 @@ imageio_ffmpeg
 rich
 rich_argparse
 matplotlib
+imageio
+imageio-ffmpeg
+aiohttp-cors
 open3d==0.17.0 

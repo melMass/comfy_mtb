@@ -1,6 +1,7 @@
 import os
+import sys
 from pathlib import Path
-from typing import Tuple
+from typing import Optional, Tuple
 
 import comfy
 import comfy.utils
@@ -40,12 +41,7 @@ class LoadFaceEnhanceModel:
             log.warning("Face restoration models not found.")
             return []
         if not fr_models_path.exists():
-            # log.warning(
-            #     f"No Face Restore checkpoints found at {fr_models_path} (if you've used mtb before these checkpoints were saved in upscale_models before)"
-            # )
-            # log.warning(
-            #     "For now we fallback to upscale_models but this will be removed in a future version"
-            # )
+            # - fallback to upscale_models
             if um_models_path.exists():
                 return [
                     x
@@ -120,7 +116,7 @@ class BGUpscaleWrapper:
         tile = 128 + 64
         overlap = 8
 
-        imgt = np2tensor(img)
+        imgt = pil2tensor(img)
         imgt = imgt.movedim(-1, -3).to(device)
 
         steps = imgt.shape[0] * comfy.utils.get_tiled_scale_steps(
@@ -150,11 +146,8 @@ class BGUpscaleWrapper:
         return (tensor2np(s)[0],)
 
 
-import sys
-
-
 class RestoreFace:
-    """Uses GFPGan to restore faces"""
+    """Uses GFPGan to restore faces."""
 
     def __init__(self) -> None:
         pass
@@ -187,7 +180,7 @@ class RestoreFace:
         only_center_face,
         weight,
         save_tmp_steps,
-    ) -> torch.Tensor:
+    ) -> Optional[torch.Tensor]:
         pimage = tensor2np(image)[0]
         width, height = pimage.shape[1], pimage.shape[0]
         source_img = cv2.cvtColor(np.array(pimage), cv2.COLOR_RGB2BGR)
@@ -214,8 +207,8 @@ class RestoreFace:
                 cv2.cvtColor(restored_img, cv2.COLOR_BGR2RGB)
             )
             # imwrite(restored_img, save_restore_path)
-
-        return pil2tensor(output)
+            return pil2tensor(output)
+        log.warning("No restored image found")
 
     def restore(
         self,
@@ -226,18 +219,25 @@ class RestoreFace:
         weight=0.5,
         save_tmp_steps=True,
     ) -> Tuple[torch.Tensor]:
-        out = [
-            self.do_restore(
-                image[i],
-                model,
-                aligned,
-                only_center_face,
-                weight,
-                save_tmp_steps,
+        out = tuple(
+            val
+            for val in (
+                self.do_restore(
+                    image[i],
+                    model,
+                    aligned,
+                    only_center_face,
+                    weight,
+                    save_tmp_steps,
+                )
+                for i in range(image.size(0))
             )
-            for i in range(image.size(0))
-        ]
+            if val is not None
+        )
 
+        if len(out) == 0:
+            raise ValueError("No faces restored")
+        print(f"Restored {len(out)} faces")
         return (torch.cat(out, dim=0),)
 
     def get_step_image_path(self, step, idx):

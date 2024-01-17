@@ -303,7 +303,7 @@ def default_material(color=None):
     }
 
 
-class MTB_Camera:
+class MTBCamera:
     """Make a Camera."""
 
     @classmethod
@@ -349,7 +349,7 @@ class MTB_Camera:
         return (kwargs,)
 
 
-class MTB_DrawGeometry:
+class MTBDrawGeometry:
     @classmethod
     def INPUT_TYPES(cls):
         return {
@@ -371,7 +371,7 @@ class MTB_DrawGeometry:
         o3d.visualization.draw_geometries([mesh], **camera)
 
 
-# class MTB_RGBD_Image:
+# class MTBRGBD_Image:
 #     @classmethod
 #     def INPUT_TYPES(cls):
 #         return {
@@ -395,7 +395,7 @@ class MTB_DrawGeometry:
 #         print(rgbd_image)
 
 
-class MTB_Material:
+class MTBMaterial:
     """Make a std material."""
 
     @classmethod
@@ -445,7 +445,7 @@ class MTB_Material:
         return (kwargs,)
 
 
-class MTB_ApplyMaterial:
+class MTBApplyMaterial:
     """Apply a Material to a geometry."""
 
     @classmethod
@@ -817,6 +817,6 @@ __nodes__ = [
     GeometryRender,
     TransformGeometry,
     GeometryBox,
-    MTB_ApplyMaterial,
-    MTB_Material,
+    MTBApplyMaterial,
+    MTBMaterial,
 ]

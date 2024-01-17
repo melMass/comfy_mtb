@@ -22,7 +22,9 @@ from ..utils import pil2tensor, tensor2np, tensor2pil
 #     log.warning("cv2.ximgproc.guidedFilter not found, use opencv-contrib-python")
 
 
-def gaussian_kernel(kernel_size: int, sigma_x: float, sigma_y: float, device=None):
+def gaussian_kernel(
+    kernel_size: int, sigma_x: float, sigma_y: float, device=None
+):
     x, y = torch.meshgrid(
         torch.linspace(-1, 1, kernel_size, device=device),
         torch.linspace(-1, 1, kernel_size, device=device),
@@ -115,7 +117,9 @@ class ColorCorrect:
         return pil2tensor(out)
 
     @staticmethod
-    def hsv_adjustment_tensor_not_working(image: torch.Tensor, hue, saturation, value):
+    def hsv_adjustment_tensor_not_working(
+        image: torch.Tensor, hue, saturation, value
+    ):
         """Abandonning for now"""
         image = image.squeeze(0).permute(2, 0, 1)
 
@@ -344,11 +348,16 @@ class Sharpen_:
             (sharpen_radius, sharpen_radius, sharpen_radius, sharpen_radius),
             "reflect",
         )
-        sharpened = F.conv2d(tensor_image, kernel, padding=center, groups=channels)
+        sharpened = F.conv2d(
+            tensor_image, kernel, padding=center, groups=channels
+        )
 
         # Remove padding
         sharpened = sharpened[
-            :, :, sharpen_radius:-sharpen_radius, sharpen_radius:-sharpen_radius
+            :,
+            :,
+            sharpen_radius:-sharpen_radius,
+            sharpen_radius:-sharpen_radius,
         ]
 
         sharpened = sharpened.permute(0, 2, 3, 1)
@@ -408,7 +417,9 @@ class MaskToImage:
         for m in masks:
             _mask = Image.fromarray(m).convert("L")
 
-            log.debug(f"Converted mask to PIL Image format, size: {_mask.size}")
+            log.debug(
+                f"Converted mask to PIL Image format, size: {_mask.size}"
+            )
 
             image = Image.new("RGBA", _mask.size, color=color)
             # apply the mask
@@ -451,6 +462,108 @@ class ColoredImage:
 
     FUNCTION = "render_img"
 
+    def resize_and_crop(self, img, target_size):
+        original_width, original_height = img.size
+        target_width, target_height = target_size
+
+        # If the target size is larger, center the image on a canvas of the target size
+        if target_width > original_width or target_height > original_height:
+            new_img = Image.new(img.mode, (target_width, target_height))
+            left = (target_width - original_width) // 2
+            top = (target_height - original_height) // 2
+            new_img.paste(img, (left, top))
+            return new_img
+        # Calculate scaling factors for both dimensions
+        scale_x = target_size[0] / img.width
+        scale_y = target_size[1] / img.height
+
+        # Use the smaller scaling factor to maintain aspect ratio
+        scale = max(scale_x, scale_y)
+
+        # Resize the image based on calculated scale
+        new_size = (int(img.width * scale), int(img.height * scale))
+        img = img.resize(new_size, Image.ANTIALIAS)
+
+        # Calculate cropping coordinates
+        left = (img.width - target_size[0]) / 2
+        top = (img.height - target_size[1]) / 2
+        right = (img.width + target_size[0]) / 2
+        bottom = (img.height + target_size[1]) / 2
+
+        # Crop and return the image
+        return img.crop((left, top, right, bottom))
+
+    def resize_and_crop_new(self, img, target_size):
+        original_width, original_height = img.size
+        target_width, target_height = target_size
+
+        # Determine the scaling factors for both dimensions
+        scale_x = target_width / original_width
+        scale_y = target_height / original_height
+
+        # Resize the image based on the scaling factor that requires the least change
+        scale = min(scale_x, scale_y)
+        new_width, new_height = (
+            int(original_width * scale),
+            int(original_height * scale),
+        )
+        resized_img = img.resize((new_width, new_height), Image.ANTIALIAS)
+
+        # Create a new canvas for the target size
+        new_img = Image.new(img.mode, (target_width, target_height))
+
+        # Calculate position to paste the resized image onto the canvas
+        left = (target_width - new_width) // 2
+        top = (target_height - new_height) // 2
+        new_img.paste(resized_img, (left, top))
+
+        return new_img
+
+    def resize_and_crop_(self, img, target_size):
+        original_width, original_height = img.size
+        target_width, target_height = target_size
+
+        # If the target size is larger, center the image on a canvas of the target size
+        if target_width > original_width or target_height > original_height:
+            new_img = Image.new(img.mode, (target_width, target_height))
+            left = (target_width - original_width) // 2
+            top = (target_height - original_height) // 2
+            new_img.paste(img, (left, top))
+            return new_img
+
+        # If the target size is smaller, resize and crop
+        else:
+            # Calculate scaling factors for both dimensions
+            scale_x = target_width / original_width
+            scale_y = target_height / original_height
+
+            # Use the larger scaling factor to maintain aspect ratio
+            scale = max(scale_x, scale_y)
+
+            # Resize the image based on calculated scale
+            new_size = (
+                int(original_width * scale),
+                int(original_height * scale),
+            )
+            img = img.resize(new_size, Image.ANTIALIAS)
+
+            # Calculate cropping coordinates
+            left = (img.width - target_width) / 2
+            top = (img.height - target_height) / 2
+            right = (img.width + target_width) / 2
+            bottom = (img.height + target_height) / 2
+
+            # Crop and return the image
+            return img.crop((left, top, right, bottom))
+
+    def resize_and_crop_thumbnails(self, img, target_size):
+        img.thumbnail(target_size, Image.ANTIALIAS)
+        left = (img.width - target_size[0]) / 2
+        top = (img.height - target_size[1]) / 2
+        right = (img.width + target_size[0]) / 2
+        bottom = (img.height + target_size[1]) / 2
+        return img.crop((left, top, right, bottom))
+
     def render_img(
         self, color, width, height, foreground_image=None, foreground_mask=None
     ):
@@ -470,10 +583,14 @@ class ColoredImage:
                             f"Foreground image must be in 'RGBA' mode when no mask is provided, got {img.mode}"
                         )
 
-                    output.append(Image.alpha_composite(image, img).convert("RGB"))
+                    output.append(
+                        Image.alpha_composite(image, img).convert("RGB")
+                    )
 
             elif foreground_image.size[0] != foreground_mask.size[0]:
-                raise ValueError("Foreground image and mask must have same batch size")
+                raise ValueError(
+                    "Foreground image and mask must have same batch size"
+                )
             else:
                 fg_images = tensor2pil(foreground_image)
                 fg_masks = tensor2pil(foreground_mask)
@@ -577,7 +694,9 @@ class ImageResizeFactor:
     ):
         # Check if the tensor has the correct dimension
         if len(image.shape) not in [3, 4]:  # HxWxC or BxHxWxC
-            raise ValueError("Expected image tensor of shape (H, W, C) or (B, H, W, C)")
+            raise ValueError(
+                "Expected image tensor of shape (H, W, C) or (B, H, W, C)"
+            )
 
         # Transpose to CxHxW or BxCxHxW for PyTorch
         if len(image.shape) == 3:
@@ -689,7 +808,10 @@ class SaveImageGrid_:
             subfolder,
             filename_prefix,
         ) = folder_paths.get_save_image_path(
-            filename_prefix, self.output_dir, images[0].shape[1], images[0].shape[0]
+            filename_prefix,
+            self.output_dir,
+            images[0].shape[1],
+            images[0].shape[0],
         )
         image_list = []
         batch_counter = counter
@@ -719,10 +841,14 @@ class SaveImageGrid_:
         file = f"{filename}_{counter:05}_.png"
         grid = self.create_image_grid(image_list)
         grid.save(
-            os.path.join(full_output_folder, file), pnginfo=metadata, compress_level=4
+            os.path.join(full_output_folder, file),
+            pnginfo=metadata,
+            compress_level=4,
         )
 
-        results = [{"filename": file, "subfolder": subfolder, "type": self.type}]
+        results = [
+            {"filename": file, "subfolder": subfolder, "type": self.type}
+        ]
         return {"ui": {"images": results}}
 
 

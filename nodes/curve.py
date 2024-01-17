@@ -13,7 +13,7 @@ def serialize_curve(curve):
     return curve
 
 
-class MTB_Curve:
+class MTBCurve:
     """A basic FLOAT_CURVE input node."""
 
     @classmethod
@@ -33,4 +33,4 @@ class MTB_Curve:
         return (curve,)
 
 
-__nodes__ = [MTB_Curve]
+__nodes__ = [MTBCurve]
