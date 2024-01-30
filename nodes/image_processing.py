@@ -541,8 +541,10 @@ class ColoredImage:
                         Image.alpha_composite(image, fg_image).convert("RGB")
                     )
 
-        elif foreground_mask is not None:
-            log.warn("Mask ignored because no foreground image is given")
+        else:
+            if foreground_mask is not None:
+                log.warn("Mask ignored because no foreground image is given")
+            output.append(image)
 
         output = pil2tensor(output)
 
