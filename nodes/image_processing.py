@@ -544,7 +544,7 @@ class ColoredImage:
         else:
             if foreground_mask is not None:
                 log.warn("Mask ignored because no foreground image is given")
-            output.append(image)
+            output.append(image.convert("RGB"))
 
         output = pil2tensor(output)
 
