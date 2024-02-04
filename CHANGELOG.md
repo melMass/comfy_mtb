@@ -2,7 +2,7 @@
 
 This is an automated changelog based on the commits in this repository.
 
-Check the notes in the [releases](<REPO>/releases) for more information.
+Check the notes in the [releases](https://github.com/melMass/comfy_mtb/releases) for more information.
 ## [main] - 2024-02-04
 
 ### Bug Fixes
@@ -80,6 +80,7 @@ Check the notes in the [releases](<REPO>/releases) for more information.
 
 ### Miscellaneous Tasks
 
+- 📝 hardcode links in changelog ([915b744](https://github.com/melMass/comfy_mtb/commit/915b7444a9db83f349d83b636304af0d276f529f))
 - 🔖 local updates ([6c5e5d3](https://github.com/melMass/comfy_mtb/commit/6c5e5d36379bdab223b4503e42b7956b55a82ab0))
 - 📝 update node list ([dd27f99](https://github.com/melMass/comfy_mtb/commit/dd27f990c72fa94aff205eb314a8ea360f57479e))
 - ✨ update node_list ([537a0d8](https://github.com/melMass/comfy_mtb/commit/537a0d8108d0caa3ab2daeafd1d25d680214ef26))

@@ -3,7 +3,7 @@ header = """
 # Changelog\n
 This is an automated changelog based on the commits in this repository.
 
-Check the notes in the [releases](<REPO>/releases) for more information.
+Check the notes in the [releases](https://github.com/melMass/comfy_mtb/releases) for more information.
 """
 # https://keats.github.io/tera/docs/#introduction
 body = """
