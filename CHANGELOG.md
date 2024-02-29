@@ -80,6 +80,7 @@ Check the notes in the [releases](https://github.com/melMass/comfy_mtb/releases)
 
 ### Miscellaneous Tasks
 
+- 📝 header links not parsed ([514c0d2](https://github.com/melMass/comfy_mtb/commit/514c0d2eda9990435eb18258d4bbd1aa137feb3d))
 - 📝 hardcode links in changelog ([915b744](https://github.com/melMass/comfy_mtb/commit/915b7444a9db83f349d83b636304af0d276f529f))
 - 🔖 local updates ([6c5e5d3](https://github.com/melMass/comfy_mtb/commit/6c5e5d36379bdab223b4503e42b7956b55a82ab0))
 - 📝 update node list ([dd27f99](https://github.com/melMass/comfy_mtb/commit/dd27f990c72fa94aff205eb314a8ea360f57479e))
