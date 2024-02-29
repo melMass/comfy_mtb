@@ -1,5 +1,3 @@
-import threading
-from typing import cast
 
 import qrcode
 from PIL import Image
@@ -192,6 +190,7 @@ def bbox_dim(bbox):
     height = lower - upper
     return width, height
 
+# TODO: Auto install the base font to ComfyUI/fonts
 
 class TextToImage:
     """Utils to convert text to image using a font.
@@ -213,7 +212,7 @@ class TextToImage:
         for extension in font_extensions:
             try:
                 if comfy_dir.exists():
-                    fonts.extend(comfy_dir.glob(f"**/{extension}"))
+                    fonts.extend(comfy_dir.glob(f"fonts/**/{extension}"))
                 else:
                     log.warn(f"Directory {comfy_dir} does not exist.")
             except Exception as e:
@@ -233,8 +232,9 @@ class TextToImage:
     @classmethod
     def INPUT_TYPES(cls):
         if not cls.fonts:
-            thread = threading.Thread(target=cls.CACHE_FONTS)
-            thread.start()
+            # thread = threading.Thread(target=cls.CACHE_FONTS)
+            # thread.start()
+            cls.CACHE_FONTS()
         else:
             log.debug(f"Using cached fonts (count: {len(cls.fonts)})")
         return {
@@ -244,13 +244,25 @@ class TextToImage:
                     {"default": "Hello world!"},
                 ),
                 "font": ((sorted(cls.fonts.keys())),),
+                # "wrap": (
+                #     "INT",
+                #     {"default": 120, "min": 0, "max": 8096, "step": 1},
+                # ),
                 "wrap": (
-                    "INT",
-                    {"default": 120, "min": 0, "max": 8096, "step": 1},
+                    "BOOLEAN",
+                    {"default": True}
+                ),
+                "trim": (
+                    "BOOLEAN",
+                    {"default": True}
+                ),
+                "line_height": (
+                    "FLOAT",
+                    {"default": 1.0, "min": 0, "step":0.1},
                 ),
                 "font_size": (
                     "INT",
-                    {"default": 12, "min": 1, "max": 2500, "step": 1},
+                    {"default": 32, "min": 1, "max": 2500, "step": 1},
                 ),
                 "width": (
                     "INT",
@@ -280,9 +292,11 @@ class TextToImage:
 
     def text_to_image(
         self,
-        text,
+        text:str,
         font,
         wrap,
+        trim,
+        line_height,
         font_size,
         width,
         height,
@@ -297,12 +311,14 @@ class TextToImage:
 
         font_path = self.fonts[font]
 
+        text = text.encode("ascii", "ignore").decode().strip() if trim else text
         # Handle word wrapping
         if wrap:
-            lines = textwrap.wrap(text, width=wrap)
+            wrap_width = (width / font_size) * 2
+            lines = textwrap.wrap(text, width=wrap_width)
         else:
             lines = [text]
-        font = ImageFont.truetype(font_path, font_size)
+        font = ImageFont.truetype(font_path, size=font_size)
         # font = ImageFont.truetype(font_path, font_size)
         # if wrap == 0:
         #     wrap = width / font_size
@@ -311,20 +327,20 @@ class TextToImage:
         img = Image.new("RGBA", (width, height), background)
         draw = ImageDraw.Draw(img)
 
-        text_height = sum(font.getsize(line)[1] for line in lines)
+        line_height = line_height * font_size
+
 
         # Vertical alignment
         if v_align == "top":
             y_text = 0
         elif v_align == "center":
-            y_text = (height - text_height) // 2
+            y_text = (height - (line_height * len(lines))) // 2
         else:  # bottom
-            y_text = height - text_height
+            y_text = height - (line_height * len(lines))
 
         # Draw each line of text
         for line in lines:
-            line_width, line_height = font.getsize(line)
-
+            line_width = font.getlength(line)
             # Horizontal alignment
             if h_align == "left":
                 x_text = 0
