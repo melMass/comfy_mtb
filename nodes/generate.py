@@ -1,4 +1,3 @@
-
 import qrcode
 from PIL import Image
 
@@ -190,7 +189,9 @@ def bbox_dim(bbox):
     height = lower - upper
     return width, height
 
+
 # TODO: Auto install the base font to ComfyUI/fonts
+
 
 class TextToImage:
     """Utils to convert text to image using a font.
@@ -232,8 +233,6 @@ class TextToImage:
     @classmethod
     def INPUT_TYPES(cls):
         if not cls.fonts:
-            # thread = threading.Thread(target=cls.CACHE_FONTS)
-            # thread.start()
             cls.CACHE_FONTS()
         else:
             log.debug(f"Using cached fonts (count: {len(cls.fonts)})")
@@ -244,21 +243,11 @@ class TextToImage:
                     {"default": "Hello world!"},
                 ),
                 "font": ((sorted(cls.fonts.keys())),),
-                # "wrap": (
-                #     "INT",
-                #     {"default": 120, "min": 0, "max": 8096, "step": 1},
-                # ),
-                "wrap": (
-                    "BOOLEAN",
-                    {"default": True}
-                ),
-                "trim": (
-                    "BOOLEAN",
-                    {"default": True}
-                ),
+                "wrap": ("BOOLEAN", {"default": True}),
+                "trim": ("BOOLEAN", {"default": True}),
                 "line_height": (
                     "FLOAT",
-                    {"default": 1.0, "min": 0, "step":0.1},
+                    {"default": 1.0, "min": 0, "step": 0.1},
                 ),
                 "font_size": (
                     "INT",
@@ -282,6 +271,18 @@ class TextToImage:
                 ),
                 "h_align": (("left", "center", "right"), {"default": "left"}),
                 "v_align": (("top", "center", "bottom"), {"default": "top"}),
+                "h_offset": (
+                    "INT",
+                    {"default": 0, "min": 0, "max": 8096, "step": 1},
+                ),
+                "v_offset": (
+                    "INT",
+                    {"default": 0, "min": 0, "max": 8096, "step": 1},
+                ),
+                "h_coverage": (
+                    "INT",
+                    {"default": 100, "min": 1, "max": 100, "step": 1},
+                ),
             }
         }
 
@@ -292,7 +293,7 @@ class TextToImage:
 
     def text_to_image(
         self,
-        text:str,
+        text: str,
         font,
         wrap,
         trim,
@@ -304,6 +305,9 @@ class TextToImage:
         background,
         h_align="left",
         v_align="top",
+        h_offset=0,
+        v_offset=0,
+        h_coverage=100,
     ):
         import textwrap
 
@@ -311,48 +315,44 @@ class TextToImage:
 
         font_path = self.fonts[font]
 
-        text = text.encode("ascii", "ignore").decode().strip() if trim else text
+        text = (
+            text.encode("ascii", "ignore").decode().strip() if trim else text
+        )
         # Handle word wrapping
         if wrap:
-            wrap_width = (width / font_size) * 2
+            wrap_width = (((width / 100) * h_coverage) / font_size) * 2
             lines = textwrap.wrap(text, width=wrap_width)
         else:
             lines = [text]
         font = ImageFont.truetype(font_path, size=font_size)
-        # font = ImageFont.truetype(font_path, font_size)
-        # if wrap == 0:
-        #     wrap = width / font_size
-
         log.debug(f"Lines: {lines}")
         img = Image.new("RGBA", (width, height), background)
         draw = ImageDraw.Draw(img)
 
-        line_height = line_height * font_size
-
+        line_height_px = line_height * font_size
 
         # Vertical alignment
         if v_align == "top":
-            y_text = 0
+            y_text = v_offset
         elif v_align == "center":
-            y_text = (height - (line_height * len(lines))) // 2
+            y_text = ((height - (line_height_px * len(lines))) // 2) + v_offset
         else:  # bottom
-            y_text = height - (line_height * len(lines))
+            y_text = (height - (line_height_px * len(lines))) - v_offset
 
         # Draw each line of text
         for line in lines:
             line_width = font.getlength(line)
             # Horizontal alignment
             if h_align == "left":
-                x_text = 0
+                x_text = h_offset
             elif h_align == "center":
-                x_text = (width - line_width) // 2
+                x_text = ((width - line_width) // 2) + h_offset
             else:  # right
-                x_text = width - line_width
+                x_text = (width - line_width) - h_offset
 
-            draw.text((x_text, y_text), line, color, font=font)
-            y_text += line_height
+            draw.text((x_text, y_text), line, fill=color, font=font)
+            y_text += line_height_px
 
-        # img.save(os.path.join(folder_paths.base_path, f'{str(uuid.uuid4())}.png'))
         return (pil2tensor(img),)
 
 
