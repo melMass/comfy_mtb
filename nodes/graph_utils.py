@@ -1,3 +1,4 @@
+from typing import Optional
 import io, json, urllib.parse, urllib.request
 
 import numpy as np
@@ -22,10 +23,58 @@ def get_image(filename, subfolder, folder_type):
         return io.BytesIO(response.read())
 
 
+class MTB_ToDevice:
+    """Send a image or mask tensor to the given device."""
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        devices = ["cpu"]
+        if torch.backends.mps.is_available():
+            devices.append("mps")
+        if torch.cuda.is_available():
+            for i in range(torch.cuda.device_count()):
+                devices.append(f"cuda{i}")
+
+        return {
+            "required": {
+                "ignore_errors": ("BOOLEAN", {"default": False}),
+                "device": (devices, {"default": "cpu"}),
+            },
+            "optional": {
+                "image": ("IMAGE",),
+                "mask": ("MASK",),
+            },
+        }
+
+    RETURN_TYPES = ("IMAGE", "MASK")
+    RETURN_NAMES = ("images", "masks")
+    CATEGORY = "mtb/utils"
+    FUNCTION = "to_device"
+
+    def to_device(
+        self,
+        *,
+        ignore_errors=False,
+        device="cuda",
+        image: Optional[torch.Tensor] = None,
+        mask: Optional[torch.Tensor] = None,
+    ):
+        if not ignore_errors and image is None and mask is None:
+            raise ValueError(
+                "You must either provide an image or a mask,"
+                " use ignore_error to passthrough"
+            )
+        if image is not None:
+            image = image.to(device)
+        if mask is not None:
+            mask = mask.to(device)
+        return (image, mask)
+
 class GetBatchFromHistory:
     """Very experimental node to load images from the history of the server.
 
-    Queue items without output are ignored in the count."""
+    Queue items without output are ignored in the count.
+    """
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -48,6 +97,7 @@ class GetBatchFromHistory:
 
     def load_from_history(
         self,
+        *,
         enable=True,
         count=0,
         offset=0,
@@ -85,7 +135,9 @@ class GetBatchFromHistory:
                 if "images" in node_output:
                     for image in node_output["images"]:
                         image_data = get_image(
-                            image["filename"], image["subfolder"], image["type"]
+                            image["filename"],
+                            image["subfolder"],
+                            image["type"],
                         )
                         output_images.append(image_data)
 
@@ -108,7 +160,7 @@ class GetBatchFromHistory:
 
 
 class AnyToString:
-    """Tries to take any input and convert it to a string"""
+    """Tries to take any input and convert it to a string."""
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -128,10 +180,14 @@ class AnyToString:
         elif isinstance(input, Image.Image):
             return (f"PIL Image of size {input.size} and mode {input.mode}",)
         elif isinstance(input, np.ndarray):
-            return (f"Numpy array of shape {input.shape} and dtype {input.dtype}",)
+            return (
+                f"Numpy array of shape {input.shape} and dtype {input.dtype}",
+            )
 
         elif isinstance(input, dict):
-            return (f"Dictionary of {len(input)} items, with keys {input.keys()}",)
+            return (
+                f"Dictionary of {len(input)} items, with keys {input.keys()}",
+            )
 
         else:
             log.debug(f"Falling back to string conversion of {input}")
@@ -139,7 +195,7 @@ class AnyToString:
 
 
 class StringReplace:
-    """Basic string replacement"""
+    """Basic string replacement."""
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -182,7 +238,9 @@ class MTB_MathExpression:
     RETURN_TYPES = ("FLOAT", "INT")
     RETURN_NAMES = ("result (float)", "result (int)")
     CATEGORY = "mtb/math"
-    DESCRIPTION = "evaluate a simple math expression string (!! Fallsback to eval)"
+    DESCRIPTION = (
+        "evaluate a simple math expression string (!! Fallsback to eval)"
+    )
 
     def eval_expression(self, expression, **kwargs):
         import math
@@ -287,7 +345,7 @@ class FitNumber:
 
 
 class ConcatImages:
-    """Add images to batch"""
+    """Add images to batch."""
 
     RETURN_TYPES = ("IMAGE",)
     FUNCTION = "concatenate_tensors"
@@ -320,4 +378,5 @@ __nodes__ = [
     AnyToString,
     ConcatImages,
     MTB_MathExpression,
+    MTB_ToDevice,
 ]
