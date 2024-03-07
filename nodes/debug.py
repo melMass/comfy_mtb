@@ -39,11 +39,14 @@ def process_list(anything):
         and isinstance(first_element[0], torch.Tensor)
     ):
         text.append(
-            f"List of List of Tensors: {first_element[0].shape} (x{len(anything)})"
+            "List of List of Tensors: "
+            f"{first_element[0].shape} (x{len(anything)})"
         )
 
     elif isinstance(first_element, torch.Tensor):
-        text.append(f"List of Tensors: {first_element.shape} (x{len(anything)})")
+        text.append(
+            f"List of Tensors: {first_element.shape} (x{len(anything)})"
+        )
 
     return {"text": text}
 
@@ -51,7 +54,9 @@ def process_list(anything):
 def process_dict(anything):
     text = []
     if "samples" in anything:
-        is_empty = "(empty)" if torch.count_nonzero(anything["samples"]) == 0 else ""
+        is_empty = (
+            "(empty)" if torch.count_nonzero(anything["samples"]) == 0 else ""
+        )
         text.append(f"Latent Samples: {anything['samples'].shape} {is_empty}")
 
     return {"text": text}
@@ -69,7 +74,10 @@ def process_text(anything):
 
 
 class Debug:
-    """Experimental node to debug any Comfy values, support for more types and widgets is planned"""
+    """Experimental node to debug any Comfy values.
+
+    support for more types and widgets is planned.
+    """
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -103,15 +111,15 @@ class Debug:
 
             for ui_key, ui_value in processed_data.items():
                 output["ui"][ui_key].extend(ui_value)
-            # log.debug(
-            #     f"Processed input {k}, found {len(processed_data.get('b64_images', []))} images and {len(processed_data.get('text', []))} text items."
-            # )
 
         return output
 
 
 class SaveTensors:
-    """Save torch tensors (image, mask or latent) to disk, useful to debug things outside comfy"""
+    """Save torch tensors (image, mask or latent) to disk.
+
+    useful to debug things outside comfy.
+    """
 
     def __init__(self):
         self.output_dir = folder_paths.get_output_directory()
@@ -166,7 +174,8 @@ class SaveTensors:
             torch.save(latent, full_output_folder / latent_file)
             # pickle.dump(latent, open(full_output_folder/ latent_file, "wb"))
 
-            # np.save(full_output_folder/ latent_file, latent[""].cpu().numpy())
+            # np.save(full_output_folder / latent_file,
+            # latent[""].cpu().numpy())
 
         return f"{filename_prefix}_{counter:05}"
 

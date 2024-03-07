@@ -8,7 +8,13 @@ from PIL import Image
 
 from ..errors import ModelNotFound
 from ..log import mklog
-from ..utils import get_model_path, tensor2pil, tiles_infer, tiles_merge, tiles_split
+from ..utils import (
+    get_model_path,
+    tensor2pil,
+    tiles_infer,
+    tiles_merge,
+    tiles_split,
+)
 
 # Disable MS telemetry
 ort.disable_telemetry_events()
@@ -16,9 +22,13 @@ log = mklog(__name__)
 
 
 # - COLOR to NORMALS
-def color_to_normals(color_img, overlap, progress_callback, save_temp=False):
-    """Computes a normal map from the given color map. 'color_img' must be a numpy array
-    in C,H,W format (with C as RGB). 'overlap' must be one of 'SMALL', 'MEDIUM', 'LARGE'.
+def color_to_normals(
+    color_img, overlap, progress_callback, *, save_temp=False
+):
+    """Compute a normal map from the given color map.
+
+    'color_img' must be a numpy array in C,H,W format (with C as RGB).
+    'overlap' must be one of 'SMALL', 'MEDIUM', 'LARGE'.
     """
     temp_dir = Path(tempfile.mkdtemp()) if save_temp else None
 
@@ -31,7 +41,8 @@ def color_to_normals(color_img, overlap, progress_callback, save_temp=False):
         )
 
     log.debug(
-        f"Converting color image to grayscale by taking the mean over color channels: {img.shape}"
+        "Converting color image to grayscale by taking "
+        f"the mean over color channels: {img.shape}"
     )
 
     # Split image in tiles
@@ -62,13 +73,15 @@ def color_to_normals(color_img, overlap, progress_callback, save_temp=False):
 
     # Predict normal map for each tile
     log.debug("DeepBump Color → Normals : generating")
-    pred_tiles = tiles_infer(tiles, ort_session, progress_callback=progress_callback)
+    pred_tiles = tiles_infer(
+        tiles, ort_session, progress_callback=progress_callback
+    )
 
     if temp_dir:
         for i, pred_tile in enumerate(pred_tiles):
-            Image.fromarray((pred_tile.transpose(1, 2, 0) * 255).astype(np.uint8)).save(
-                temp_dir / f"pred_tile_{i}.png"
-            )
+            Image.fromarray(
+                (pred_tile.transpose(1, 2, 0) * 255).astype(np.uint8)
+            ).save(temp_dir / f"pred_tile_{i}.png")
 
     # Merge tiles
     log.debug("DeepBump Color → Normals : merging")
@@ -80,17 +93,17 @@ def color_to_normals(color_img, overlap, progress_callback, save_temp=False):
     )
 
     if temp_dir:
-        Image.fromarray((pred_img.transpose(1, 2, 0) * 255).astype(np.uint8)).save(
-            temp_dir / "merged_img.png"
-        )
+        Image.fromarray(
+            (pred_img.transpose(1, 2, 0) * 255).astype(np.uint8)
+        ).save(temp_dir / "merged_img.png")
 
     # Normalize each pixel to unit vector
     pred_img = normalize(pred_img)
 
     if temp_dir:
-        Image.fromarray((pred_img.transpose(1, 2, 0) * 255).astype(np.uint8)).save(
-            temp_dir / "final_img.png"
-        )
+        Image.fromarray(
+            (pred_img.transpose(1, 2, 0) * 255).astype(np.uint8)
+        ).save(temp_dir / "final_img.png")
 
         log.debug(f"Debug images saved in {temp_dir}")
 
@@ -99,40 +112,47 @@ def color_to_normals(color_img, overlap, progress_callback, save_temp=False):
 
 # - NORMALS to CURVATURE
 def conv_1d(array, kernel_1d):
-    """Performs row by row 1D convolutions of the given 2D image with the given 1D kernel."""
+    """Perform row by row 1D convolutions.
 
+    of the given 2D image with the given 1D kernel.
+    """
     # Input kernel length must be odd
     k_l = len(kernel_1d)
+
     assert k_l % 2 != 0
     # Convolution is repeat-padded
     extended = np.pad(array, k_l // 2, mode="wrap")
     # Output has same size as input (padded, valid-mode convolution)
     output = np.empty(array.shape)
     for i in range(array.shape[0]):
-        output[i] = np.convolve(extended[i + (k_l // 2)], kernel_1d, mode="valid")
+        output[i] = np.convolve(
+            extended[i + (k_l // 2)], kernel_1d, mode="valid"
+        )
 
     return output * -1
 
 
 def gaussian_kernel(length, sigma):
-    """Returns a 1D gaussian kernel of size 'length'."""
-
+    """Return a 1D gaussian kernel of size 'length'."""
     space = np.linspace(-(length - 1) / 2, (length - 1) / 2, length)
     kernel = np.exp(-0.5 * np.square(space) / np.square(sigma))
     return kernel / np.sum(kernel)
 
 
 def normalize(np_array):
-    """Normalize all elements of the given numpy array to [0,1]"""
-
-    return (np_array - np.min(np_array)) / (np.max(np_array) - np.min(np_array))
+    """Normalize all elements of the given numpy array to [0,1]."""
+    return (np_array - np.min(np_array)) / (
+        np.max(np_array) - np.min(np_array)
+    )
 
 
 def normals_to_curvature(normals_img, blur_radius, progress_callback):
-    """Computes a curvature map from the given normal map. 'normals_img' must be a numpy array
-    in C,H,W format (with C as RGB). 'blur_radius' must be one of 'SMALLEST', 'SMALLER', 'SMALL',
-    'MEDIUM', 'LARGE', 'LARGER', 'LARGEST'."""
+    """Compute a curvature map from the given normal map.
 
+    'normals_img' must be a numpy array in C,H,W format (with C as RGB).
+    'blur_radius' must be one of:
+        'SMALLEST', 'SMALLER', 'SMALL', 'MEDIUM', 'LARGE', 'LARGER', 'LARGEST'.
+    """
     # Convolutions on normal map red & green channels
     if progress_callback is not None:
         progress_callback(0, 4)
@@ -157,8 +177,12 @@ def normals_to_curvature(normals_img, blur_radius, progress_callback):
         "LARGER": 1 / 8,
         "LARGEST": 1 / 4,
     }
-    assert blur_radius in blur_factors
-    blur_radius_px = int(np.mean(normals_img.shape[1:3]) * blur_factors[blur_radius])
+    if blur_radius not in blur_factors:
+        raise ValueError(f"{blur_radius} not found in {blur_factors}")
+
+    blur_radius_px = int(
+        np.mean(normals_img.shape[1:3]) * blur_factors[blur_radius]
+    )
 
     # If blur radius too small, do not blur
     if blur_radius_px < 2:
@@ -195,8 +219,9 @@ def normals_to_grad(normals_img):
 
 def copy_flip(grad_x, grad_y):
     """Concat 4 flipped copies of input gradients (makes them wrap).
-    Output is twice bigger in both dimensions."""
 
+    Output is twice bigger in both dimensions.
+    """
     grad_x_top = np.hstack([grad_x, -np.flip(grad_x, axis=1)])
     grad_x_bottom = np.hstack([np.flip(grad_x, axis=0), -np.flip(grad_x)])
     new_grad_x = np.vstack([grad_x_top, grad_x_bottom])
@@ -210,7 +235,6 @@ def copy_flip(grad_x, grad_y):
 
 def frankot_chellappa(grad_x, grad_y, progress_callback=None):
     """Frankot-Chellappa depth-from-gradient algorithm."""
-
     if progress_callback is not None:
         progress_callback(0, 3)
 
@@ -250,8 +274,8 @@ def frankot_chellappa(grad_x, grad_y, progress_callback=None):
 def normals_to_height(normals_img, seamless, progress_callback):
     """Computes a height map from the given normal map. 'normals_img' must be a numpy array
     in C,H,W format (with C as RGB). 'seamless' is a bool that should indicates if 'normals_img'
-    is seamless."""
-
+    is seamless.
+    """
     # Flip height axis
     flip_img = np.flip(normals_img, axis=1)
 
@@ -265,7 +289,9 @@ def normals_to_height(normals_img, seamless, progress_callback):
         grad_x, grad_y = copy_flip(grad_x, grad_y)
 
     # Compute height
-    pred_img = frankot_chellappa(-grad_x, grad_y, progress_callback=progress_callback)
+    pred_img = frankot_chellappa(
+        -grad_x, grad_y, progress_callback=progress_callback
+    )
 
     # Cut to valid part if gradients were expanded
     if not seamless:
@@ -286,7 +312,11 @@ class DeepBump:
             "required": {
                 "image": ("IMAGE",),
                 "mode": (
-                    ["Color to Normals", "Normals to Curvature", "Normals to Height"],
+                    [
+                        "Color to Normals",
+                        "Normals to Curvature",
+                        "Normals to Height",
+                    ],
                 ),
                 "color_to_normals_overlap": (["SMALL", "MEDIUM", "LARGE"],),
                 "normals_to_curvature_blur_radius": (
@@ -311,6 +341,7 @@ class DeepBump:
 
     def apply(
         self,
+        *,
         image,
         mode="Color to Normals",
         color_to_normals_overlap="SMALL",
@@ -329,13 +360,17 @@ class DeepBump:
 
             # Apply processing
             if mode == "Color to Normals":
-                out_img = color_to_normals(in_img, color_to_normals_overlap, None)
+                out_img = color_to_normals(
+                    in_img, color_to_normals_overlap, None
+                )
             if mode == "Normals to Curvature":
                 out_img = normals_to_curvature(
                     in_img, normals_to_curvature_blur_radius, None
                 )
             if mode == "Normals to Height":
-                out_img = normals_to_height(in_img, normals_to_height_seamless, None)
+                out_img = normals_to_height(
+                    in_img, normals_to_height_seamless, None
+                )
 
             if out_img is not None:
                 log.debug(f"Output image shape: {out_img.shape}")

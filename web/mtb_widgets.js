@@ -16,7 +16,11 @@ import parseCss from './extern/parse-css.js'
 import * as shared from './comfy_shared.js'
 import { log } from './comfy_shared.js'
 
+// NOTE: new widget types registered by MTB Widgets
 const newTypes = [, /*'BOOL'*/ 'COLOR', 'BBOX']
+
+const deprecated_nodes = {
+}
 
 const withFont = (ctx, font, cb) => {
   const oldFont = ctx.font
@@ -566,7 +570,11 @@ const mtb_widgets = {
     if (!nodeData.name.endsWith('(mtb)')) {
       return
     }
+    const deprecation = deprecated_nodes[nodeData.name.replace(' (mtb)', '')]
 
+    if (deprecation) {
+      shared.addDeprecation(nodeType, deprecation)
+    }
     //- Extending Python Nodes
     switch (nodeData.name) {
       case 'Psd Save (mtb)': {
