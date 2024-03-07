@@ -7,6 +7,8 @@ imageio_ffmpeg
 rich
 rich_argparse
 matplotlib
+pillow>=10
+
 imageio
 imageio-ffmpeg
 aiohttp-cors

@@ -1,10 +1,9 @@
 import torch
-
 from ..log import log
 
 
 class StackImages:
-    """Stack the input images horizontally or vertically"""
+    """Stack the input images horizontally or vertically."""
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -20,26 +19,59 @@ class StackImages:
 
         tensors = list(kwargs.values())
         log.debug(
-            f"Stacking {len(tensors)} tensors {'vertically' if vertical else 'horizontally'}"
+            f"Stacking {len(tensors)} tensors "
+            f"{'vertically' if vertical else 'horizontally'}"
         )
-        log.debug(list(kwargs.keys()))
 
-        ref_shape = tensors[0].shape
-        for tensor in tensors[1:]:
-            if tensor.shape[1:] != ref_shape[1:]:
+        normalized_tensors = [
+            self.normalize_to_rgba(tensor) for tensor in tensors
+        ]
+
+        if vertical:
+            width = normalized_tensors[0].shape[2]
+            if any(tensor.shape[2] != width for tensor in normalized_tensors):
                 raise ValueError(
-                    "All tensors must have the same dimensions except for the stacking dimension."
+                    "All tensors must have the same width "
+                    "for vertical stacking."
                 )
+            dim = 1
+        else:
+            height = normalized_tensors[0].shape[1]
+            if any(tensor.shape[1] != height for tensor in normalized_tensors):
+                raise ValueError(
+                    "All tensors must have the same height "
+                    "for horizontal stacking."
+                )
+            dim = 2
 
-        dim = 1 if vertical else 2
-
-        stacked_tensor = torch.cat(tensors, dim=dim)
+        stacked_tensor = torch.cat(normalized_tensors, dim=dim)
 
         return (stacked_tensor,)
 
+    def normalize_to_rgba(self, tensor):
+        """Normalize tensor to have 4 channels (RGBA)."""
+        _, _, _, channels = tensor.shape
+        # already RGBA
+        if channels == 4:
+            return tensor
+        # RGB to RGBA
+        elif channels == 3:
+            alpha_channel = torch.ones(
+                tensor.shape[:-1] + (1,), device=tensor.device
+            )  # Add an alpha channel
+            return torch.cat((tensor, alpha_channel), dim=-1)
+        else:
+            raise ValueError(
+                "Tensor has an unsupported number of channels: "
+                "expected 3 (RGB) or 4 (RGBA)."
+            )
+
 
 class PickFromBatch:
-    """Pick a specific number of images from a batch, either from the start or end."""
+    """Pick a specific number of images from a batch.
+
+    either from the start or end.
+    """
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -62,7 +94,8 @@ class PickFromBatch:
         count = min(count, batch_size)
         if count < batch_size:
             log.warning(
-                f"Requested {count} images, but only {batch_size} are available."
+                f"Requested {count} images, "
+                f"but only {batch_size} are available."
             )
 
         if from_direction == "end":

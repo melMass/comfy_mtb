@@ -3,3 +3,6 @@ __pycache__
 *.onnx
 wheels/
 node_modules/
+compose.yaml
+comfy_mtb.wsb
+Dockerfile

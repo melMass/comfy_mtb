@@ -1,0 +1,83 @@
+[changelog]
+header = """
+# Changelog\n
+This is an automated changelog based on the commits in this repository.
+
+Check the notes in the [releases](https://github.com/melMass/comfy_mtb/releases) for more information.
+"""
+# https://keats.github.io/tera/docs/#introduction
+body = """
+{% if version -%}\
+    ## [{{ version | trim_start_matches(pat="v") }}] - {{ timestamp | date(format="%Y-%m-%d") }}
+{% else %}\
+    ## [Unreleased]
+{% endif -%}\
+
+{% for group, commits in commits | group_by(attribute="group") %}
+    ### {{ group | upper_first }}
+    {% for commit in commits %}
+        - {% if commit.breaking %}[**breaking**] {% endif %}{{ commit.message | upper_first | trim }} ([{{ commit.id | truncate(length=7, end="") }}](<REPO>/commit/{{ commit.id }}))\
+            {% if commit.github.username and commit.github.username != remote.github.owner %} by [@{{ commit.github.username }}](https://github.com/{{ commit.github.username }}){%- endif -%}
+            {% if commit.github.pr_number %} in [#{{ commit.github.pr_number }}](<REPO>/pull/{{ commit.github.pr_number }}){%- endif -%}
+    {% endfor %}
+{% endfor %}
+
+{%- if github.contributors | filter(attribute="is_first_time", value=true) | length != 0 %}
+  ## New Contributors
+{%- endif -%}
+
+{% for contributor in github.contributors | filter(attribute="is_first_time", value=true) %}
+  * [@{{ contributor.username }}](https://github.com/{{ contributor.username }}) made their first contribution in [#{{ contributor.pr_number }}](<REPO>/pull/{{ contributor.pr_number }})\
+{%- endfor %}\n
+"""
+footer = """
+{% for release in releases -%}
+    {% if release.version -%}
+        {% if release.previous.version -%}
+            [{{ release.version | trim_start_matches(pat="v") }}]: \
+                <REPO>/compare/{{ release.previous.version }}..{{ release.version }}
+        {% endif -%}
+    {% else -%}
+        [unreleased]: <REPO>/compare/{{ release.previous.version }}..HEAD
+    {% endif -%}
+{% endfor %}
+"""
+trim = true
+postprocessors = [
+  { pattern = '<REPO>', replace = "https://github.com/melMass/comfy_mtb" }, # replace repository URL
+]
+
+[git]
+# https://www.conventionalcommits.org
+conventional_commits = true
+filter_unconventional = true
+split_commits = false
+commit_preprocessors = [
+  # { pattern = '\((\w+\s)?#([0-9]+)\)', replace = "([#${2}](<REPO>/issues/${2}))" }, # replace issue numbers
+  { pattern = '\((\w+\s)?#([0-9]+)\)', replace = "" },
+]
+commit_parsers = [
+  { message = "^feat", group = "Features" },
+  { message = "^fix", group = "Bug Fixes" },
+  { message = "^doc", group = "Documentation" },
+  { message = "^perf", group = "Performance" },
+  { message = "^refactor", group = "Refactor" },
+  { message = "^style", group = "Styling" },
+  { message = "^test", group = "Testing" },
+  { message = "^chore\\(release\\): prepare for", skip = true },
+  { message = "^chore\\(deps\\)", skip = true },
+  { message = "^chore\\(pr\\)", skip = true },
+  { message = "^chore\\(pull\\)", skip = true },
+  { message = "^chore|ci", group = "Miscellaneous Tasks" },
+  { body = ".*security", group = "Security" },
+  { message = "^revert", group = "Revert" },
+]
+protect_breaking_commits = false
+filter_commits = false
+tag_pattern = "v[0-9].*"
+topo_order = false
+sort_commits = "newest"
+
+[remote.github]
+owner = "melMass"
+repo = "comfy_mtb"

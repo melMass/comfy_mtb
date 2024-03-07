@@ -1,8 +1,10 @@
-import base64, io
+import base64
+import io
 from pathlib import Path
 from typing import Optional
 
-import folder_paths, torch
+import folder_paths
+import torch
 
 from ..log import log
 from ..utils import tensor2pil
@@ -37,10 +39,14 @@ def process_list(anything):
         and isinstance(first_element[0], torch.Tensor)
     ):
         text.append(
-            f"List of List of Tensors: {first_element[0].shape} (x{len(anything)})"
+            "List of List of Tensors: "
+            f"{first_element[0].shape} (x{len(anything)})"
         )
 
     elif isinstance(first_element, torch.Tensor):
+        text.append(
+            f"List of Tensors: {first_element.shape} (x{len(anything)})"
+        )
         text.append(
             f"List of Tensors: {first_element.shape} (x{len(anything)})"
         )
@@ -86,7 +92,10 @@ from .geo_tools import mesh_to_json
 
 
 class Debug:
-    """Experimental node to debug any Comfy values, support for more types and widgets is planned"""
+    """Experimental node to debug any Comfy values.
+
+    support for more types and widgets is planned.
+    """
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -145,7 +154,10 @@ class Debug:
 
 
 class SaveTensors:
-    """Save torch tensors (image, mask or latent) to disk, useful to debug things outside comfy"""
+    """Save torch tensors (image, mask or latent) to disk.
+
+    useful to debug things outside comfy.
+    """
 
     def __init__(self):
         self.output_dir = folder_paths.get_output_directory()
@@ -200,7 +212,8 @@ class SaveTensors:
             torch.save(latent, full_output_folder / latent_file)
             # pickle.dump(latent, open(full_output_folder/ latent_file, "wb"))
 
-            # np.save(full_output_folder/ latent_file, latent[""].cpu().numpy())
+            # np.save(full_output_folder / latent_file,
+            # latent[""].cpu().numpy())
 
         return f"{filename_prefix}_{counter:05}"
 

@@ -23,34 +23,33 @@ export function makeUUID() {
 //- local storage manager
 export class LocalStorageManager {
   constructor(namespace) {
-    this.namespace = namespace;
+    this.namespace = namespace
   }
 
   _namespacedKey(key) {
-    return `${this.namespace}:${key}`;
+    return `${this.namespace}:${key}`
   }
 
   set(key, value) {
-    const serializedValue = JSON.stringify(value);
-    localStorage.setItem(this._namespacedKey(key), serializedValue);
+    const serializedValue = JSON.stringify(value)
+    localStorage.setItem(this._namespacedKey(key), serializedValue)
   }
 
   get(key, default_val = null) {
-    const value = localStorage.getItem(this._namespacedKey(key));
-    return value ? JSON.parse(value) : default_val;
+    const value = localStorage.getItem(this._namespacedKey(key))
+    return value ? JSON.parse(value) : default_val
   }
 
   remove(key) {
-    localStorage.removeItem(this._namespacedKey(key));
+    localStorage.removeItem(this._namespacedKey(key))
   }
 
   clear() {
     Object.keys(localStorage)
-      .filter(k => k.startsWith(this.namespace + ':'))
-      .forEach(k => localStorage.removeItem(k));
+      .filter((k) => k.startsWith(this.namespace + ':'))
+      .forEach((k) => localStorage.removeItem(k))
   }
 }
-
 
 // - log utilities
 
@@ -60,7 +59,7 @@ function createLogger(emoji, color, consoleMethod = 'log') {
       console[consoleMethod](
         `%c${emoji} ${message}`,
         `color: ${color};`,
-        ...args
+        ...args,
       )
     }
   }
@@ -110,14 +109,14 @@ export function offsetDOMWidget(
   node,
   widgetWidth,
   widgetY,
-  height
+  height,
 ) {
   const margin = 10
   const elRect = ctx.canvas.getBoundingClientRect()
   const transform = new DOMMatrix()
     .scaleSelf(
       elRect.width / ctx.canvas.width,
-      elRect.height / ctx.canvas.height
+      elRect.height / ctx.canvas.height,
     )
     .multiplySelf(ctx.getTransform())
     .translateSelf(margin, margin + widgetY)
@@ -167,7 +166,7 @@ export const setupDynamicConnections = (nodeType, prefix, inputType) => {
     type,
     index,
     connected,
-    link_info
+    link_info,
   ) {
     const r = onConnectionsChange
       ? onConnectionsChange.apply(this, arguments)
@@ -181,7 +180,7 @@ export const dynamic_connection = (
   connected,
   connectionPrefix = 'input_',
   connectionType = 'PSDLAYER',
-  nameArray = []
+  nameArray = [],
 ) => {
   if (!node.inputs[index].name.startsWith(connectionPrefix)) {
     return
@@ -410,7 +409,7 @@ function getBrightness(rgbObj) {
     (parseInt(rgbObj[0]) * 299 +
       parseInt(rgbObj[1]) * 587 +
       parseInt(rgbObj[2]) * 114) /
-    1000
+      1000,
   )
 }
 
@@ -418,7 +417,7 @@ function getBrightness(rgbObj) {
 export const loadScript = (
   FILE_URL,
   async = true,
-  type = 'text/javascript'
+  type = 'text/javascript',
 ) => {
   return new Promise((resolve, reject) => {
     try {
@@ -483,4 +482,21 @@ export function defineClass(className, classStyles) {
       styleSheets[0].addRule(`.${className}`, classStyles, 0)
     }
   }
+}
+
+/** Prefixes the node title with '[DEPRECATED]' and log the deprecation reason to the console.*/
+export const addDeprecation = (nodeType, reason) => {
+  const title = nodeType.title
+  nodeType.title = '[DEPRECATED] ' + title
+  // console.log(nodeType)
+
+  const styles = {
+    title: 'font-size:1.3em;font-weight:900;color:yellow; background: black',
+    reason: 'font-size:1.2em',
+  }
+  console.log(
+    `%c⚠️  ${title} is deprecated:%c ${reason}`,
+    styles.title,
+    styles.reason,
+  )
 }

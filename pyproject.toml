@@ -8,13 +8,13 @@ repository = "https://github.com/melMass/comfy_mtb"
 authors = ["Mel Massadian"]
 packages = [{ include = "comfy-mtb" }]
 classifiers = [
-    "License :: OSI Approved :: MIT License",
-    "Operating System :: OS Independent",
-    "Programming Language :: Python",
-    "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
-    "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Intended Audience :: Developers",
 ]
 
 [tool.poetry.urls]
@@ -46,8 +46,8 @@ sphinx-autobuild = "^2021.3.14"
 log_level = "DEBUG"
 log_cli = true
 markers = [
-    "wip: tests that aren't fully finished yet",
-    "heavy: marks tests as heavy (deselect with '-m \"not heavy\"')",
+  "wip: tests that aren't fully finished yet",
+  "heavy: marks tests as heavy (deselect with '-m \"not heavy\"')",
 
 ]
 filterwarnings = ["ignore::UserWarning", 'ignore::DeprecationWarning']
@@ -56,6 +56,7 @@ filterwarnings = ["ignore::UserWarning", 'ignore::DeprecationWarning']
 profile = "black"
 line_length = 88
 auto_identify_namespace_packages = false
+# NOTE:
 # pyright doesn't like implicit namespace + single line (related to https://github.com/microsoft/pyright/issues/2882?) but it's horible so I'll live with it
 force_single_line = false
 known_first_party = ["mtb"]
@@ -79,15 +80,22 @@ show_contexts = true
 [tool.ruff]
 line-length = 79
 select = ["A", "B", "C", "D", "E", "F", "FBT", "I", "N", "S", "SIM", "UP", "W"]
-ignore = ["D100", "D102"]
-extend-exclude = ["./docs/conf.py"]                                             # exclude auto generated file
+# NOTE: 
+# D102 - undocumented-public-method (noisy)
+# D103 - undocumented-public-function (noisy)
+# D100 - undocumented-public-module (noisy)
+ignore = ["D103", "D102", "D100"]
+# exclude auto generated file
+extend-exclude = ["./docs/conf.py"]
 
 [tool.ruff.lint.pep8-naming]
 extend-ignore-names = ["INPUT_TYPES", "_DEFAULT_INTERPOLANT"]
 
 [tool.ruff.per-file-ignores]
-"__init__.py" = ["F401"] # imported but unused
-"tests/*" = ["S101"]     # use of assert detected
+# imported but unused
+"__init__.py" = ["F401"]
+# use of assert detected
+"tests/*" = ["S101"]
 
 [tool.ruff.pydocstyle]
 convention = "numpy"
@@ -95,10 +103,12 @@ convention = "numpy"
 [tool.mypy]
 pretty = true
 ignore_missing_imports = true
-exclude = ["docs/conf.py"]    # exclude auto generated file
+# exclude auto generated file
+exclude = ["docs/conf.py"]
 
 [tool.codespell]
-skip = "./docs/conf.py,poetry.lock" # exclude auto generated file
+# exclude auto generated file
+skip = "./docs/conf.py,poetry.lock"
 check-filenames = true
 
 [tool.poetry-version-plugin]

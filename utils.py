@@ -1,6 +1,5 @@
 import contextlib
 import functools
-import importlib
 import math
 import os
 import shlex
@@ -266,7 +265,7 @@ output_dir = Path(folder_paths.output_directory)
 styles_dir = comfy_dir / "styles"
 session_id = str(uuid.uuid4())
 # - Construct the path to the font file
-font_path = here / "font.ttf"
+font_path = here / "data" / "font.ttf"
 
 # - Add extern folder to path
 extern_root = here / "extern"
@@ -277,6 +276,7 @@ for pth in extern_root.iterdir():
 
 # - Add the ComfyUI directory and custom nodes path to the sys.path list
 add_path(comfy_dir)
+add_path(comfy_dir / "custom_nodes")
 add_path(comfy_dir / "custom_nodes")
 
 PIL_FILTER_MAP = {
@@ -361,6 +361,9 @@ def tiles_infer(tiles, ort_session, progress_callback=None):
     """
     out_channels = 3  # normal map RGB channels
     tiles_nb = tiles.shape[0]
+    pred_tiles = np.empty(
+        (tiles_nb, out_channels, tiles.shape[2], tiles.shape[3])
+    )
     pred_tiles = np.empty(
         (tiles_nb, out_channels, tiles.shape[2], tiles.shape[3])
     )

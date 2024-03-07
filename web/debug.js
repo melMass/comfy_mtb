@@ -40,7 +40,7 @@ app.registerExtension({
         type,
         index,
         connected,
-        link_info
+        link_info,
       ) {
         const r = onConnectionsChange
           ? onConnectionsChange.apply(this, arguments)
@@ -51,7 +51,7 @@ app.registerExtension({
         //- infer type
         if (link_info) {
           const fromNode = this.graph._nodes.find(
-            (otherNode) => otherNode.id == link_info.origin_id
+            (otherNode) => otherNode.id == link_info.origin_id,
           )
           const type = fromNode.outputs[link_info.origin_slot].type
           this.inputs[index].type = type
@@ -62,6 +62,7 @@ app.registerExtension({
           this.inputs[index].type = '*'
           this.inputs[index].label = `anything_${index + 1}`
         }
+        return r
       }
 
       const onExecuted = nodeType.prototype.onExecuted
@@ -85,7 +86,7 @@ app.registerExtension({
         if (message.text) {
           for (const txt of message.text) {
             const w = this.addCustomWidget(
-              MtbWidgets.DEBUG_STRING(`${prefix}_${widgetI}`, escapeHtml(txt))
+              MtbWidgets.DEBUG_STRING(`${prefix}_${widgetI}`, escapeHtml(txt)),
             )
             w.parent = this
             widgetI++
@@ -94,7 +95,7 @@ app.registerExtension({
         if (message.b64_images) {
           for (const img of message.b64_images) {
             const w = this.addCustomWidget(
-              MtbWidgets.DEBUG_IMG(`${prefix}_${widgetI}`, img)
+              MtbWidgets.DEBUG_IMG(`${prefix}_${widgetI}`, img),
             )
             w.parent = this
             widgetI++

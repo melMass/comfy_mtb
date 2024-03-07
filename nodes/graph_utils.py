@@ -2,6 +2,7 @@ import io
 import json
 import urllib.parse
 import urllib.request
+from typing import Optional
 
 import numpy as np
 import torch
@@ -25,6 +26,77 @@ def get_image(filename, subfolder, folder_type):
 
     with urllib.request.urlopen(url) as response:  # noqa: S310
         return io.BytesIO(response.read())
+
+
+class MTB_ToDevice:
+    """Send a image or mask tensor to the given device."""
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        devices = ["cpu"]
+        if torch.backends.mps.is_available():
+            devices.append("mps")
+        if torch.cuda.is_available():
+            for i in range(torch.cuda.device_count()):
+                devices.append(f"cuda{i}")
+
+        return {
+            "required": {
+                "ignore_errors": ("BOOLEAN", {"default": False}),
+                "device": (devices, {"default": "cpu"}),
+            },
+            "optional": {
+                "image": ("IMAGE",),
+                "mask": ("MASK",),
+            },
+        }
+
+    RETURN_TYPES = ("IMAGE", "MASK")
+    RETURN_NAMES = ("images", "masks")
+    CATEGORY = "mtb/utils"
+    FUNCTION = "to_device"
+
+    def to_device(
+        self,
+        *,
+        ignore_errors=False,
+        device="cuda",
+        image: Optional[torch.Tensor] = None,
+        mask: Optional[torch.Tensor] = None,
+    ):
+        if not ignore_errors and image is None and mask is None:
+            raise ValueError(
+                "You must either provide an image or a mask,"
+                " use ignore_error to passthrough"
+            )
+        if image is not None:
+            image = image.to(device)
+        if mask is not None:
+            mask = mask.to(device)
+        return (image, mask)
+
+
+# class MTB_ApplyTextTemplate:
+class MTB_ApplyTextTemplate:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "template": ("STRING", {"default": "", "multiline": True}),
+            },
+        }
+
+    RETURN_TYPES = ("STRING",)
+    RETURN_NAMES = ("string",)
+    CATEGORY = "mtb/utils"
+    FUNCTION = "execute"
+
+    def execute(self, *, template: str, **kwargs):
+        res = f"{template}"
+        for k, v in kwargs.items():
+            res = res.replace(f"{{{k}}}", f"{v}")
+
+        return (res,)
 
 
 class GetBatchFromHistory:
@@ -152,6 +224,8 @@ class AnyToString:
 
 
 class StringReplace:
+    """Basic string replacement."""
+
     """Basic string replacement."""
 
     @classmethod
@@ -334,4 +408,6 @@ __nodes__ = [
     AnyToString,
     ConcatImages,
     MTBMathExpression,
+    MTB_ToDevice,
+    MTB_ApplyTextTemplate,
 ]
