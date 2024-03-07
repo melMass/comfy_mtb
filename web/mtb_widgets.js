@@ -20,6 +20,8 @@ import { log } from './comfy_shared.js'
 const newTypes = [, /*'BOOL'*/ 'COLOR', 'BBOX']
 
 const deprecated_nodes = {
+  //  'Animation Builder':
+  //    'Kept to avoid breaking older script but replaced by TimeEngine',
 }
 
 const withFont = (ctx, font, cb) => {

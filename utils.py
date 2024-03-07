@@ -1,4 +1,13 @@
-import contextlib, functools, math, os, shlex, shutil, socket, subprocess, sys, uuid
+import contextlib
+import functools
+import math
+import os
+import shlex
+import shutil
+import socket
+import subprocess
+import sys
+import uuid
 from pathlib import Path
 from typing import List, Optional, Union
 
@@ -77,7 +86,9 @@ def get_server_info():
     base_url = args.listen
     if base_url == "0.0.0.0":
         log.debug("Server set to 0.0.0.0, we will try to resolve the host IP")
-        base_url = ip_checker.get_working_ip(f"http://{{}}:{args.port}/history")
+        base_url = ip_checker.get_working_ip(
+            f"http://{{}}:{args.port}/history"
+        )
         log.debug(f"Setting ip to {base_url}")
     return (base_url, args.port)
 
@@ -157,7 +168,9 @@ def run_command(cmd, ignored_lines_start=None):
     try:
         _run_command(shell_cmd, ignored_lines_start)
     except subprocess.CalledProcessError as e:
-        print(f"Command failed with return code: {e.returncode}", file=sys.stderr)
+        print(
+            f"Command failed with return code: {e.returncode}", file=sys.stderr
+        )
         print(e.stderr.strip(), file=sys.stderr)
 
     except KeyboardInterrupt:
@@ -205,7 +218,13 @@ def import_install(package_name):
 
     except Exception:  # (ImportError, ModuleNotFoundError):
         run_command(
-            [Path(sys.executable).as_posix(), "-m", "pip", "install", package_spec]
+            [
+                Path(sys.executable).as_posix(),
+                "-m",
+                "pip",
+                "install",
+                package_spec,
+            ]
         )
         importlib.import_module(package_name)
 
@@ -233,7 +252,7 @@ output_dir = Path(folder_paths.output_directory)
 styles_dir = comfy_dir / "styles"
 session_id = str(uuid.uuid4())
 # - Construct the path to the font file
-font_path = here / "font.ttf"
+font_path = here / "data" / "font.ttf"
 
 # - Add extern folder to path
 extern_root = here / "extern"
@@ -244,7 +263,7 @@ for pth in extern_root.iterdir():
 
 # - Add the ComfyUI directory and custom nodes path to the sys.path list
 add_path(comfy_dir)
-add_path((comfy_dir / "custom_nodes"))
+add_path(comfy_dir / "custom_nodes")
 
 PIL_FILTER_MAP = {
     "nearest": Image.Resampling.NEAREST,
@@ -268,7 +287,9 @@ def tensor2pil(image: torch.Tensor) -> List[Image.Image]:
 
     return [
         Image.fromarray(
-            np.clip(255.0 * image.cpu().numpy().squeeze(), 0, 255).astype(np.uint8)
+            np.clip(255.0 * image.cpu().numpy().squeeze(), 0, 255).astype(
+                np.uint8
+            )
         )
     ]
 
@@ -277,7 +298,9 @@ def pil2tensor(image: Union[Image.Image, List[Image.Image]]) -> torch.Tensor:
     if isinstance(image, list):
         return torch.cat([pil2tensor(img) for img in image], dim=0)
 
-    return torch.from_numpy(np.array(image).astype(np.float32) / 255.0).unsqueeze(0)
+    return torch.from_numpy(
+        np.array(image).astype(np.float32) / 255.0
+    ).unsqueeze(0)
 
 
 def np2tensor(img_np: Union[np.ndarray, List[np.ndarray]]) -> torch.Tensor:
@@ -295,23 +318,31 @@ def tensor2np(tensor: torch.Tensor) -> List[np.ndarray]:
             out.extend(tensor2np(tensor[i]))
         return out
 
-    return [np.clip(255.0 * tensor.cpu().numpy().squeeze(), 0, 255).astype(np.uint8)]
+    return [
+        np.clip(255.0 * tensor.cpu().numpy().squeeze(), 0, 255).astype(
+            np.uint8
+        )
+    ]
 
 
 def pad(img, left, right, top, bottom):
     pad_width = np.array(((0, 0), (top, bottom), (left, right)))
-    print(f"pad_width: {pad_width}, shape: {pad_width.shape}")  # Debugging line
+    print(
+        f"pad_width: {pad_width}, shape: {pad_width.shape}"
+    )  # Debugging line
     return np.pad(img, pad_width, mode="wrap")
 
 
 def tiles_infer(tiles, ort_session, progress_callback=None):
     """Infer each tile with the given model. progress_callback will be called with
     arguments : current tile idx and total tiles amount (used to show progress on
-    cursor in Blender)."""
-
+    cursor in Blender).
+    """
     out_channels = 3  # normal map RGB channels
     tiles_nb = tiles.shape[0]
-    pred_tiles = np.empty((tiles_nb, out_channels, tiles.shape[2], tiles.shape[3]))
+    pred_tiles = np.empty(
+        (tiles_nb, out_channels, tiles.shape[2], tiles.shape[3])
+    )
 
     for i in range(tiles_nb):
         if progress_callback != None:
@@ -325,7 +356,6 @@ def tiles_infer(tiles, ort_session, progress_callback=None):
 
 def generate_mask(tile_size, stride_size):
     """Generates a pyramidal-like mask. Used for mixing overlapping predicted tiles."""
-
     tile_h, tile_w = tile_size
     stride_h, stride_w = stride_size
     ramp_h = tile_h - stride_h
@@ -364,8 +394,8 @@ def generate_mask(tile_size, stride_size):
 
 def corner_mask(side_length):
     """Generates the corner part of the pyramidal-like mask.
-    Currently, only for square shapes."""
-
+    Currently, only for square shapes.
+    """
     corner = np.zeros([side_length, side_length])
 
     for h in range(0, side_length):
@@ -401,8 +431,8 @@ def scaling_mask(side_length):
 
 def tiles_merge(tiles, stride_size, img_size, paddings):
     """Merges the list of tiles into one image. img_size is the original size, before
-    padding."""
-
+    padding.
+    """
     _, tile_h, tile_w = tiles[0].shape
     pad_left, pad_right, pad_top, pad_bottom = paddings
     height = img_size[1] + pad_top + pad_bottom
@@ -435,7 +465,8 @@ def tiles_merge(tiles, stride_size, img_size, paddings):
 
 def tiles_split(img, tile_size, stride_size):
     """Returns list of tiles from the given image and the padding used to fit the tiles
-    in it. Input image must have dimension C,H,W."""
+    in it. Input image must have dimension C,H,W.
+    """
     log.debug(f"Splitting img: tile {tile_size}, stride {stride_size} ")
     tile_h, tile_w = tile_size
     stride_h, stride_w = stride_size
@@ -492,7 +523,9 @@ def tiles_split(img, tile_size, stride_size):
 
 # region MODEL Utilities
 def download_antelopev2():
-    antelopev2_url = "https://drive.google.com/uc?id=18wEUfMNohBJ4K3Ly5wpTejPfDzp-8fI8"
+    antelopev2_url = (
+        "https://drive.google.com/uc?id=18wEUfMNohBJ4K3Ly5wpTejPfDzp-8fI8"
+    )
 
     try:
         import gdown
@@ -603,7 +636,10 @@ def apply_easing(value, easing_type):
             return 1
         p = 0.3
         s = p / 4
-        return -(math.pow(2, 10 * (t - 1)) * math.sin((t - 1 - s) * (2 * math.pi) / p))
+        return -(
+            math.pow(2, 10 * (t - 1))
+            * math.sin((t - 1 - s) * (2 * math.pi) / p)
+        )
 
     def easeOutElastic(t):
         if t == 0:
@@ -624,10 +660,13 @@ def apply_easing(value, easing_type):
         t = t * 2
         if t < 1:
             return -0.5 * (
-                math.pow(2, 10 * (t - 1)) * math.sin((t - 1 - s) * (2 * math.pi) / p)
+                math.pow(2, 10 * (t - 1))
+                * math.sin((t - 1 - s) * (2 * math.pi) / p)
             )
         return (
-            0.5 * math.pow(2, -10 * (t - 1)) * math.sin((t - 1 - s) * (2 * math.pi) / p)
+            0.5
+            * math.pow(2, -10 * (t - 1))
+            * math.sin((t - 1 - s) * (2 * math.pi) / p)
             + 1
         )
 

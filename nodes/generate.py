@@ -2,7 +2,7 @@ import qrcode
 from PIL import Image
 
 from ..log import log
-from ..utils import comfy_dir, pil2tensor
+from ..utils import comfy_dir, font_path, pil2tensor
 
 # class MtbExamples:
 #     """MTB Example Images"""
@@ -202,13 +202,14 @@ class TextToImage:
     fonts = {}
 
     def __init__(self):
-        # - This is executed when the graph is executed, we could conditionaly reload fonts there
+        # - This is executed when the graph is executed,
+        # - we could conditionaly reload fonts there
         pass
 
     @classmethod
     def CACHE_FONTS(cls):
         font_extensions = ["*.ttf", "*.otf", "*.woff", "*.woff2", "*.eot"]
-        fonts = []
+        fonts = [font_path]
 
         for extension in font_extensions:
             try:
@@ -218,13 +219,6 @@ class TextToImage:
                     log.warn(f"Directory {comfy_dir} does not exist.")
             except Exception as e:
                 log.error(f"Error during font caching: {e}")
-
-        if not fonts:
-            log.warn(
-                "> No fonts found in the comfy folder, place at least one font file somewhere in ComfyUI's hierarchy"
-            )
-        else:
-            log.debug(f"> Found {len(fonts)} fonts")
 
         for font in fonts:
             log.debug(f"Adding font {font}")
