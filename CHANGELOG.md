@@ -3,10 +3,11 @@
 This is an automated changelog based on the commits in this repository.
 
 Check the notes in the [releases](https://github.com/melMass/comfy_mtb/releases) for more information.
-## [main] - 2024-02-04
+## [main] - 2024-03-07
 
 ### Bug Fixes
 
+- 🐛 font fallback ([9fccdee](https://github.com/melMass/comfy_mtb/commit/9fccdee82d721e88c64d2292c209fec869524dd2))
 - ✨ optional inputs of colored image ([cd32f26](https://github.com/melMass/comfy_mtb/commit/cd32f26b167088d6b489e43b260c187ea5e4d223)) by [@ScottNealon](https://github.com/ScottNealon) in [#147](https://github.com/melMass/comfy_mtb/pull/147)
 - 📝 adds a way to not load the imagefeed ([501c330](https://github.com/melMass/comfy_mtb/commit/501c3301056b2851555cccd75ab3ff15b1ab8e0c))
 - 🐛 colored image mask input ([30c4311](https://github.com/melMass/comfy_mtb/commit/30c4311b69f6481a34f968cb67a9b5ce5d2e9fda))
@@ -59,6 +60,7 @@ Check the notes in the [releases](https://github.com/melMass/comfy_mtb/releases)
 
 ### Features
 
+- ✨ add "To Device" ([c28181f](https://github.com/melMass/comfy_mtb/commit/c28181f1615d2e183767aa76cc2350934330e546))
 - ✨ add note+ example ([90f3bc2](https://github.com/melMass/comfy_mtb/commit/90f3bc2d953b299ea34e9e3a925f1a824b488855))
 - 💄 node+ improvements ([4b29395](https://github.com/melMass/comfy_mtb/commit/4b29395000254382882c0d1be115b2ed80cd7c99))
 - 📝 add note plus ([605c8db](https://github.com/melMass/comfy_mtb/commit/605c8db320e1531c6347f6888606fa50d8eb268b))
@@ -80,6 +82,7 @@ Check the notes in the [releases](https://github.com/melMass/comfy_mtb/releases)
 
 ### Miscellaneous Tasks
 
+- 🧹 applied some linting ([fe49312](https://github.com/melMass/comfy_mtb/commit/fe49312cbef03c6540304448fa88aa7a88391efa))
 - 📝 header links not parsed ([514c0d2](https://github.com/melMass/comfy_mtb/commit/514c0d2eda9990435eb18258d4bbd1aa137feb3d))
 - 📝 hardcode links in changelog ([915b744](https://github.com/melMass/comfy_mtb/commit/915b7444a9db83f349d83b636304af0d276f529f))
 - 🔖 local updates ([6c5e5d3](https://github.com/melMass/comfy_mtb/commit/6c5e5d36379bdab223b4503e42b7956b55a82ab0))
@@ -98,6 +101,10 @@ Check the notes in the [releases](https://github.com/melMass/comfy_mtb/releases)
 
 - 🔀 pull request #109 from melMass/dev/0.2.0 ([87e301d](https://github.com/melMass/comfy_mtb/commit/87e301d120a542d5aabe544bec10d38dbd19b2f6)) in [#109](https://github.com/melMass/comfy_mtb/pull/109)
 - 🔀 pull request #86 from melMass/feature/styles-editor ([cbdb816](https://github.com/melMass/comfy_mtb/commit/cbdb816164900061ddaa1671f4287763d0b79ee1)) in [#86](https://github.com/melMass/comfy_mtb/pull/86)
+
+### Wip
+
+- 🚧 add text template node ([af2175a](https://github.com/melMass/comfy_mtb/commit/af2175a1fc0c2fb29ef3493f242fe45ec6fcabac))
 
 ## New Contributors
 * [@ScottNealon](https://github.com/ScottNealon) made their first contribution in [#147](https://github.com/melMass/comfy_mtb/pull/147)
