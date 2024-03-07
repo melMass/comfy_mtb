@@ -70,6 +70,30 @@ class MTB_ToDevice:
             mask = mask.to(device)
         return (image, mask)
 
+
+# class MTB_ApplyTextTemplate:
+class MTB_ApplyTextTemplate:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "template": ("STRING", {"default": "", "multiline": True}),
+            },
+        }
+
+    RETURN_TYPES = ("STRING",)
+    RETURN_NAMES = ("string",)
+    CATEGORY = "mtb/utils"
+    FUNCTION = "execute"
+
+    def execute(self, *, template: str, **kwargs):
+        res = f"{template}"
+        for k, v in kwargs.items():
+            res = res.replace(f"{{{k}}}", f"{v}")
+
+        return (res,)
+
+
 class GetBatchFromHistory:
     """Very experimental node to load images from the history of the server.
 
@@ -379,4 +403,5 @@ __nodes__ = [
     ConcatImages,
     MTB_MathExpression,
     MTB_ToDevice,
+    MTB_ApplyTextTemplate,
 ]

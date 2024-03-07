@@ -891,6 +891,10 @@ const mtb_widgets = {
 
         break
       }
+      case 'Apply Text Template (mtb)': {
+        shared.setupDynamicConnections(nodeType, 'var', '*')
+        break
+      }
       case 'Add To Playlist (mtb)': {
         shared.setupDynamicConnections(nodeType, 'video', 'VIDEO')
         break
