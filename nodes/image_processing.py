@@ -8,7 +8,7 @@ import folder_paths
 import numpy as np
 import torch
 import torch.nn.functional as F
-from PIL import Image
+from PIL import Image, ImageOps
 from PIL.PngImagePlugin import PngInfo
 from skimage.filters import gaussian
 from skimage.util import compare_images
@@ -255,6 +255,7 @@ class LoadImageFromUrl_:
     def load(self, url):
         # get the image from the url
         image = Image.open(requests.get(url, stream=True).raw)
+        image = ImageOps.exif_transpose(image)
         return (pil2tensor(image),)
 
 
