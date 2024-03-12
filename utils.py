@@ -1,3 +1,5 @@
+"""Support utilities for the nodes package."""
+
 import contextlib
 import functools
 import importlib
