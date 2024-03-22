@@ -1,4 +1,6 @@
-import json, subprocess, uuid
+import json
+import subprocess
+import uuid
 from pathlib import Path
 from typing import List, Optional
 
@@ -28,7 +30,10 @@ class ReadPlaylist:
             "required": {
                 "enable": ("BOOLEAN", {"default": True}),
                 "persistant_playlist": ("BOOLEAN", {"default": False}),
-                "playlist_name": ("STRING", {"default": "playlist_{index:04d}"}),
+                "playlist_name": (
+                    "STRING",
+                    {"default": "playlist_{index:04d}"},
+                ),
                 "index": ("INT", {"default": 0, "min": 0}),
             }
         }
@@ -38,7 +43,11 @@ class ReadPlaylist:
     CATEGORY = "mtb/IO"
 
     def read_playlist(
-        self, enable: bool, persistant_playlist: bool, playlist_name: str, index: int
+        self,
+        enable: bool,
+        persistant_playlist: bool,
+        playlist_name: str,
+        index: int,
     ):
         playlist_name = playlist_name.format(index=index)
         playlist_path = get_playlist_path(playlist_name, persistant_playlist)
@@ -62,7 +71,10 @@ class AddToPlaylist:
             "required": {
                 "relative_paths": ("BOOLEAN", {"default": False}),
                 "persistant_playlist": ("BOOLEAN", {"default": False}),
-                "playlist_name": ("STRING", {"default": "playlist_{index:04d}"}),
+                "playlist_name": (
+                    "STRING",
+                    {"default": "playlist_{index:04d}"},
+                ),
                 "index": ("INT", {"default": 0, "min": 0}),
             }
         }
@@ -117,7 +129,10 @@ class ExportWithFfmpeg:
             "required": {
                 "fps": ("FLOAT", {"default": 24, "min": 1}),
                 "prefix": ("STRING", {"default": "export"}),
-                "format": (["mov", "mp4", "mkv", "gif", "avi"], {"default": "mov"}),
+                "format": (
+                    ["mov", "mp4", "mkv", "gif", "avi"],
+                    {"default": "mov"},
+                ),
                 "codec": (
                     ["prores_ks", "libx264", "libx265", "gif"],
                     {"default": "prores_ks"},
@@ -151,7 +166,9 @@ class ExportWithFfmpeg:
                 log.debug("Playlist is empty, skipping")
                 return ("",)
 
-            temp_playlist_path = output_dir / f"temp_playlist_{uuid.uuid4()}.txt"
+            temp_playlist_path = (
+                output_dir / f"temp_playlist_{uuid.uuid4()}.txt"
+            )
             log.debug(
                 f"Create a temporary file to list the videos for concatenation to {temp_playlist_path}"
             )
@@ -196,17 +213,23 @@ class ExportWithFfmpeg:
             out_path = (output_dir / file_id).as_posix()
             command = [
                 "ffmpeg",
-                "-f", "image2pipe",
-                "-vcodec", "png",
-                "-r", str(fps),
-                "-i", "-",
-                "-vcodec", "gif",
-                "-y", out_path
+                "-f",
+                "image2pipe",
+                "-vcodec",
+                "png",
+                "-r",
+                str(fps),
+                "-i",
+                "-",
+                "-vcodec",
+                "gif",
+                "-y",
+                out_path,
             ]
             process = subprocess.Popen(command, stdin=subprocess.PIPE)
             for frame in frames:
                 model_management.throw_exception_if_processing_interrupted()
-                Image.fromarray(frame).save(process.stdin, 'PNG')
+                Image.fromarray(frame).save(process.stdin, "PNG")
             process.stdin.close()
             process.wait()
         else:
@@ -335,20 +358,28 @@ class SaveGif:
         # Use FFmpeg to create the GIF from PIL images
         command = [
             "ffmpeg",
-            "-f", "image2pipe",
-            "-vcodec", "png",
-            "-r", str(fps),
-            "-i", "-",
-            "-vcodec", "gif",
-            "-y", out_path
+            "-f",
+            "image2pipe",
+            "-vcodec",
+            "png",
+            "-r",
+            str(fps),
+            "-i",
+            "-",
+            "-vcodec",
+            "gif",
+            "-y",
+            out_path,
         ]
         process = subprocess.Popen(command, stdin=subprocess.PIPE)
         for image in pil_images:
-            image.save(process.stdin, 'PNG')
+            image.save(process.stdin, "PNG")
         process.stdin.close()
         process.wait()
 
-        results = [{"filename": f"{ruuid}.gif", "subfolder": "", "type": "output"}]
+        results = [
+            {"filename": f"{ruuid}.gif", "subfolder": "", "type": "output"}
+        ]
         return {"ui": {"gif": results}}
 
 
