@@ -230,47 +230,48 @@ class ExportWithFfmpeg:
             for frame in frames:
                 model_management.throw_exception_if_processing_interrupted()
                 Image.fromarray(frame).save(process.stdin, "PNG")
+
             process.stdin.close()
             process.wait()
         else:
             frames = [frame.astype(np.uint16) * 257 for frame in frames]
 
-            height, width, _ = frames[0].shape
+        height, width, _ = frames[0].shape
 
-            out_path = (output_dir / file_id).as_posix()
+        out_path = (output_dir / file_id).as_posix()
 
-            # Prepare the FFmpeg command
-            command = [
-                "ffmpeg",
-                "-y",
-                "-f",
-                "rawvideo",
-                "-vcodec",
-                "rawvideo",
-                "-s",
-                f"{width}x{height}",
-                "-pix_fmt",
-                pix_fmt,
-                "-r",
-                str(fps),
-                "-i",
-                "-",
-                "-c:v",
-                codec,
-                "-r",
-                str(fps),
-                "-y",
-                out_path,
-            ]
+        # Prepare the FFmpeg command
+        command = [
+            "ffmpeg",
+            "-y",
+            "-f",
+            "rawvideo",
+            "-vcodec",
+            "rawvideo",
+            "-s",
+            f"{width}x{height}",
+            "-pix_fmt",
+            pix_fmt,
+            "-r",
+            str(fps),
+            "-i",
+            "-",
+            "-c:v",
+            codec,
+            "-r",
+            str(fps),
+            "-y",
+            out_path,
+        ]
 
-            process = subprocess.Popen(command, stdin=subprocess.PIPE)
+        process = subprocess.Popen(command, stdin=subprocess.PIPE)
 
-            for frame in frames:
-                model_management.throw_exception_if_processing_interrupted()
-                process.stdin.write(frame.tobytes())
+        for frame in frames:
+            model_management.throw_exception_if_processing_interrupted()
+            process.stdin.write(frame.tobytes())
 
-            process.stdin.close()
-            process.wait()
+        process.stdin.close()
+        process.wait()
 
         return (out_path,)
 
@@ -373,6 +374,7 @@ class SaveGif:
         ]
         process = subprocess.Popen(command, stdin=subprocess.PIPE)
         for image in pil_images:
+            model_management.throw_exception_if_processing_interrupted()
             image.save(process.stdin, "PNG")
         process.stdin.close()
         process.wait()
