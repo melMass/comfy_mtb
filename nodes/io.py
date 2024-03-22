@@ -318,11 +318,9 @@ class SaveGif:
                 "fps": ("INT", {"default": 12, "min": 1, "max": 120}),
                 "resize_by": ("FLOAT", {"default": 1.0, "min": 0.1}),
                 "optimize": ("BOOLEAN", {"default": False}),
-                "use_ffmpeg": ("BOOLEAN", {"default": False}),
                 "pingpong": ("BOOLEAN", {"default": False}),
-            },
-            "optional": {
                 "resample_filter": (list(PIL_FILTER_MAP.keys()),),
+                "use_ffmpeg": ("BOOLEAN", {"default": False}),
             },
         }
 
@@ -337,9 +335,9 @@ class SaveGif:
         fps=12,
         resize_by=1.0,
         optimize=False,
-        use_ffmpeg=False,
         pingpong=False,
         resample_filter=None,
+        use_ffmpeg=False,
     ):
         if image.size(0) == 0:
             return ("",)
