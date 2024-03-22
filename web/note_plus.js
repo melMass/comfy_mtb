@@ -1,18 +1,14 @@
 import { app } from '../../scripts/app.js'
 import * as shared from './comfy_shared.js'
-import {
-  infoLogger,
-  warnLogger,
-  successLogger,
-  errorLogger,
-} from './comfy_shared.js'
+import { infoLogger, successLogger, errorLogger } from './comfy_shared.js'
 
-const DEFAULT_CSS = ``
+const DEFAULT_CSS = ''
 const DEFAULT_HTML = `<p style='color:red;font-family:monospace'>
     Note+
 </p>`
 const DEFAULT_MD = '## Note+'
 const DEFAULT_MODE = 'markdown'
+const DEFAULT_THEME = 'one_dark'
 
 const CSS_RESET = `
 * {
@@ -93,6 +89,56 @@ input[type="checkbox"] {
 }
 
 `
+
+const themes = [
+  'ambiance',
+  'chaos',
+  'chrome',
+  'cloud9_day',
+  'cloud9_night',
+  'cloud9_night_low_color',
+  'cloud_editor',
+  'cloud_editor_dark',
+  'clouds',
+  'clouds_midnight',
+  'cobalt',
+  'crimson_editor',
+  'dawn',
+  'dracula',
+  'dreamweaver',
+  'eclipse',
+  'github',
+  'github_dark',
+  'gob',
+  'gruvbox',
+  'gruvbox_dark_hard',
+  'gruvbox_light_hard',
+  'idle_fingers',
+  'iplastic',
+  'katzenmilch',
+  'kr_theme',
+  'kuroir',
+  'merbivore',
+  'merbivore_soft',
+  'mono_industrial',
+  'monokai',
+  'nord_dark',
+  'one_dark',
+  'pastel_on_dark',
+  'solarized_dark',
+  'solarized_light',
+  'sqlserver',
+  'terminal',
+  'textmate',
+  'tomorrow',
+  'tomorrow_night',
+  'tomorrow_night_blue',
+  'tomorrow_night_bright',
+  'tomorrow_night_eighties',
+  'twilight',
+  'vibrant_ink',
+  'vscode',
+]
 class NotePlus extends LiteGraph.LGraphNode {
   title = 'Note+ (mtb)'
   category = 'mtb/utils'
@@ -106,7 +152,7 @@ class NotePlus extends LiteGraph.LGraphNode {
     super()
     this.uuid = shared.makeUUID()
 
-    infoLogger(`Constructing Note+ instance`)
+    infoLogger('Constructing Note+ instance')
     // - litegraph settings
     this.collapsable = true
     this.isVirtualNode = true
@@ -114,7 +160,7 @@ class NotePlus extends LiteGraph.LGraphNode {
     this.serialize_widgets = true
 
     // - default values, serialization is done through widgets
-    this._raw_html = DEFAULT_MODE == 'html' ? DEFAULT_HTML : DEFAULT_MD
+    this._raw_html = DEFAULT_MODE === 'html' ? DEFAULT_HTML : DEFAULT_MD
 
     // - mardown converter
     this.markdownConverter = new showdown.Converter({
@@ -160,7 +206,7 @@ class NotePlus extends LiteGraph.LGraphNode {
    * @returns
    */
 
-  onDrawForeground(ctx, graphcanvas) {
+  onDrawForeground(ctx, _graphcanvas) {
     if (this.flags.collapsed) return
 
     // Define the size and position of the icon
@@ -171,10 +217,10 @@ class NotePlus extends LiteGraph.LGraphNode {
 
     // Create a new Path2D object from SVG path data
     const pencilPath = new Path2D(
-      'M21.28 6.4l-9.54 9.54c-.95.95-3.77 1.39-4.4.76-.63-.63-.2-3.45.75-4.4l9.55-9.55a2.58 2.58 0 1 1 3.64 3.65z'
+      'M21.28 6.4l-9.54 9.54c-.95.95-3.77 1.39-4.4.76-.63-.63-.2-3.45.75-4.4l9.55-9.55a2.58 2.58 0 1 1 3.64 3.65z',
     )
     const folderPath = new Path2D(
-      'M11 4H6a4 4 0 0 0-4 4v10a4 4 0 0 0 4 4h11c2.21 0 3-1.8 3-4v-5'
+      'M11 4H6a4 4 0 0 0-4 4v10a4 4 0 0 0 4 4h11c2.21 0 3-1.8 3-4v-5',
     )
 
     // Draw the paths
@@ -191,7 +237,7 @@ class NotePlus extends LiteGraph.LGraphNode {
     ctx.stroke(folderPath)
     ctx.restore()
   }
-  onMouseDown(e, localPos, graphcanvas) {
+  onMouseDown(_e, localPos, _graphcanvas) {
     // Check if the click is within the pencil icon bounds
     const iconSize = 14
     const iconMargin = 8
@@ -213,27 +259,35 @@ class NotePlus extends LiteGraph.LGraphNode {
   }
 
   setupSerializationWidgets() {
-    infoLogger(`Setup Serializing widgets`)
+    infoLogger('Setup Serializing widgets')
 
     this.edit_mode_widget = this.addWidget(
       'combo',
       'Mode',
       DEFAULT_MODE,
-      (me) => successLogger(`Updating edit_mode`, me),
+      (me) => successLogger('Updating edit_mode', me),
       {
         values: ['html', 'markdown', 'raw'],
-      }
+      },
     )
-
     this.css_widget = this.addWidget('text', 'CSS', DEFAULT_CSS, (val) => {
       successLogger(`Updating css ${val}`)
     })
+    this.theme_widget = this.addWidget(
+      'text',
+      'Theme',
+      DEFAULT_THEME,
+      (val) => {
+        successLogger(`Setting theme ${val}`)
+      },
+    )
 
     shared.hideWidgetForGood(this, this.edit_mode_widget)
     shared.hideWidgetForGood(this, this.css_widget)
+    shared.hideWidgetForGood(this, this.theme_widget)
   }
   setupDialog() {
-    infoLogger(`Setup dialog`)
+    infoLogger('Setup dialog')
     // this.addWidget('button', 'Edit', 'Edit', this.openEditorDialog.bind(this))
 
     this.dialog = new app.ui.dialog.constructor()
@@ -261,7 +315,7 @@ class NotePlus extends LiteGraph.LGraphNode {
   }
 
   closeEditorDialog(accept) {
-    infoLogger(`Closing editor dialog`, accept)
+    infoLogger('Closing editor dialog', accept)
     if (accept) {
       this.updateHTML(this.html_editor.getValue())
       this.updateCSS(this.css_editor.getValue())
@@ -297,8 +351,8 @@ class NotePlus extends LiteGraph.LGraphNode {
     Object.assign(aceHTML.style, {
       width: '300px',
       height: '300px',
-      backgroundColor: 'rgb(30,30,30)',
-      color: 'whitesmoke',
+      // backgroundColor: 'rgb(30,30,30)',
+      // color: 'whitesmoke',
     })
 
     editorsContainer.append(aceHTML)
@@ -308,8 +362,8 @@ class NotePlus extends LiteGraph.LGraphNode {
     Object.assign(aceCSS.style, {
       width: '300px',
       height: '300px',
-      backgroundColor: 'rgb(30,30,30)',
-      color: 'whitesmoke',
+      // backgroundColor: 'rgb(30,30,30)',
+      // color: 'whitesmoke',
     })
 
     editorsContainer.append(aceCSS)
@@ -326,15 +380,15 @@ class NotePlus extends LiteGraph.LGraphNode {
     const syncUI = () => {
       let convert_to_html =
         this.dialog.element.querySelector('#convert-to-html')
-      if (this.edit_mode_widget.value == 'markdown') {
+      if (this.edit_mode_widget.value === 'markdown') {
         if (convert_to_html == null) {
           convert_to_html = document.createElement('button')
           convert_to_html.textContent = 'Convert to HTML (NO UNDO!)'
           convert_to_html.id = 'convert-to-html'
           convert_to_html.onclick = () => {
-            let select_mode = this.dialog.element.querySelector('#edit_mode')
+            const select_mode = this.dialog.element.querySelector('#edit_mode')
 
-            let md = this.html_editor.getValue()
+            const md = this.html_editor.getValue()
             this.edit_mode_widget.value = 'html'
             select_mode.value = 'html'
             const html = this.markdownConverter.makeHtml(md)
@@ -357,10 +411,37 @@ class NotePlus extends LiteGraph.LGraphNode {
       select_mode.value = this.edit_mode_widget.value
     }
     //- combobox
+    let theme_select = this.dialog.element.querySelector('#theme_select')
+    if (!theme_select) {
+      infoLogger('Creating combobox for select')
+      theme_select = document.createElement('select')
+      theme_select.name = 'theme'
+      theme_select.id = 'theme_select'
+
+      const addOption = (label) => {
+        const option = document.createElement('option')
+        option.value = label
+        option.textContent = label
+        theme_select.append(option)
+      }
+      for (const t of themes) {
+        addOption(t)
+      }
+
+      theme_select.addEventListener('change', (event) => {
+        const val = event.target.value
+        this.setTheme(val)
+      })
+
+      container.prepend(theme_select)
+    }
+
+    theme_select.value = this.theme_widget.value
+
     let select_mode = this.dialog.element.querySelector('#edit_mode')
 
     if (!select_mode) {
-      infoLogger(`Creating combobox for select`)
+      infoLogger('Creating combobox for select')
       select_mode = document.createElement('select')
       select_mode.name = 'mode'
       select_mode.id = 'edit_mode'
@@ -385,7 +466,6 @@ class NotePlus extends LiteGraph.LGraphNode {
         }
       })
 
-      // firstButton.before(select_mode)
       container.append(select_mode)
     }
     select_mode.value = this.edit_mode_widget.value
@@ -409,7 +489,7 @@ class NotePlus extends LiteGraph.LGraphNode {
   loadAceEditor() {
     shared
       .loadScript(
-        'https://cdn.jsdelivr.net/npm/ace-builds@1.16.0/src-min-noconflict/ace.min.js'
+        'https://cdn.jsdelivr.net/npm/ace-builds@1.16.0/src-min-noconflict/ace.min.js',
       )
       .catch((e) => {
         errorLogger(e)
@@ -424,6 +504,7 @@ class NotePlus extends LiteGraph.LGraphNode {
     // - update view from serialzed data
     this.html_widget.element.id = `note-plus-${this.uuid}`
     this.setMode(this.edit_mode_widget.value)
+    this.setTheme(this.theme_widget.value)
     this.updateHTML(this.html_widget.value)
     this.updateCSS(this.css_widget.value)
     this.setSize(info.size)
@@ -432,6 +513,7 @@ class NotePlus extends LiteGraph.LGraphNode {
     infoLogger('Node created', this.uuid)
     this.html_widget.element.id = `note-plus-${this.uuid}`
     this.setMode(this.edit_mode_widget.value)
+    this.setTheme(this.theme_widget.value)
     this.updateHTML(this.html_widget.value) // widget is populated here since we called super
     this.updateCSS(this.css_widget.value)
   }
@@ -439,7 +521,7 @@ class NotePlus extends LiteGraph.LGraphNode {
     infoLogger('Node removed', this.uuid)
   }
   getExtraMenuOptions() {
-    var options = []
+    const options = []
     // {
     //       content: string;
     //       callback?: ContextMenuEventListener;
@@ -467,7 +549,7 @@ class NotePlus extends LiteGraph.LGraphNode {
   }
 
   _setupEditor(editor) {
-    editor.setTheme('ace/theme/dracula')
+    this.setTheme(this.theme_widget.value)
 
     editor.setShowPrintMargin(false)
     editor.session.setUseWrapMode(true)
@@ -479,6 +561,16 @@ class NotePlus extends LiteGraph.LGraphNode {
     editor.setHighlightActiveLine(false)
     editor.setShowFoldWidgets(true)
     return editor
+  }
+
+  setTheme(theme) {
+    this.theme_widget.value = theme
+    if (this.html_editor) {
+      this.html_editor.setTheme(`ace/theme/${theme}`)
+    }
+    if (this.css_editor) {
+      this.css_editor.setTheme(`ace/theme/${theme}`)
+    }
   }
 
   setMode(mode) {
@@ -502,14 +594,14 @@ class NotePlus extends LiteGraph.LGraphNode {
     this._setupEditor(this.html_editor)
     this._setupEditor(this.css_editor)
 
-    this.css_editor.session.on('change', (delta) => {
+    this.css_editor.session.on('change', (_delta) => {
       // delta.start, delta.end, delta.lines, delta.action
       if (this.live) {
         this.updateCSS(this.css_editor.getValue())
       }
     })
 
-    this.html_editor.session.on('change', (delta) => {
+    this.html_editor.session.on('change', (_delta) => {
       // delta.start, delta.end, delta.lines, delta.action
       if (this.live) {
         this.updateHTML(this.html_editor.getValue())
@@ -557,7 +649,7 @@ class NotePlus extends LiteGraph.LGraphNode {
   }
   calculateHeight() {
     this.calculated_height = shared.calculateTotalChildrenHeight(
-      this.html_widget.element
+      this.html_widget.element,
     )
     this.setDirtyCanvas(true, true)
   }
@@ -566,7 +658,7 @@ class NotePlus extends LiteGraph.LGraphNode {
     // this.html_widget.element.style = css
     const scopedCss = this.scopeCss(
       `${CSS_RESET}\n${css}`,
-      `note-plus-${this.uuid}`
+      `note-plus-${this.uuid}`,
     )
 
     const cssDom = this.getCssDom()
