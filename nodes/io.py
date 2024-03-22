@@ -318,6 +318,7 @@ class SaveGif:
                 "fps": ("INT", {"default": 12, "min": 1, "max": 120}),
                 "resize_by": ("FLOAT", {"default": 1.0, "min": 0.1}),
                 "optimize": ("BOOLEAN", {"default": False}),
+                "use_ffmpeg": ("BOOLEAN", {"default": False}),
                 "pingpong": ("BOOLEAN", {"default": False}),
             },
             "optional": {
@@ -336,6 +337,7 @@ class SaveGif:
         fps=12,
         resize_by=1.0,
         optimize=False,
+        use_ffmpeg=False,
         pingpong=False,
         resample_filter=None,
     ):
@@ -356,29 +358,39 @@ class SaveGif:
         ruuid = ruuid.hex[:10]
         out_path = f"{folder_paths.output_directory}/{ruuid}.gif"
 
-        # Use FFmpeg to create the GIF from PIL images
-        command = [
-            "ffmpeg",
-            "-f",
-            "image2pipe",
-            "-vcodec",
-            "png",
-            "-r",
-            str(fps),
-            "-i",
-            "-",
-            "-vcodec",
-            "gif",
-            "-y",
-            out_path,
-        ]
-        process = subprocess.Popen(command, stdin=subprocess.PIPE)
-        for image in pil_images:
-            model_management.throw_exception_if_processing_interrupted()
-            image.save(process.stdin, "PNG")
-        process.stdin.close()
-        process.wait()
+        if use_ffmpeg:
+            # Use FFmpeg to create the GIF from PIL images
+            command = [
+                "ffmpeg",
+                "-f",
+                "image2pipe",
+                "-vcodec",
+                "png",
+                "-r",
+                str(fps),
+                "-i",
+                "-",
+                "-vcodec",
+                "gif",
+                "-y",
+                out_path,
+            ]
+            process = subprocess.Popen(command, stdin=subprocess.PIPE)
+            for image in pil_images:
+                model_management.throw_exception_if_processing_interrupted()
+                image.save(process.stdin, "PNG")
+            process.stdin.close()
+            process.wait()
 
+        else:
+            pil_images[0].save(
+                out_path,
+                save_all=True,
+                append_images=pil_images[1:],
+                optimize=optimize,
+                duration=int(1000 / fps),
+                loop=0,
+            )
         results = [
             {"filename": f"{ruuid}.gif", "subfolder": "", "type": "output"}
         ]
