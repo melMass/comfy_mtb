@@ -80,7 +80,7 @@ def load_nodes():
                 module = importlib.import_module(
                     f".nodes.{module_name}", package=__package__
                 )
-                _nodes = module.__nodes__
+                _nodes = getattr(module, "__nodes__", [])
                 nodes.extend(_nodes)
                 log.debug(f"Imported {module_name} nodes")
 
