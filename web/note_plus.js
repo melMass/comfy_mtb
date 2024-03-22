@@ -171,10 +171,10 @@ class NotePlus extends LiteGraph.LGraphNode {
 
     // Create a new Path2D object from SVG path data
     const pencilPath = new Path2D(
-      'M21.28 6.4l-9.54 9.54c-.95.95-3.77 1.39-4.4.76-.63-.63-.2-3.45.75-4.4l9.55-9.55a2.58 2.58 0 1 1 3.64 3.65z'
+      'M21.28 6.4l-9.54 9.54c-.95.95-3.77 1.39-4.4.76-.63-.63-.2-3.45.75-4.4l9.55-9.55a2.58 2.58 0 1 1 3.64 3.65z',
     )
     const folderPath = new Path2D(
-      'M11 4H6a4 4 0 0 0-4 4v10a4 4 0 0 0 4 4h11c2.21 0 3-1.8 3-4v-5'
+      'M11 4H6a4 4 0 0 0-4 4v10a4 4 0 0 0 4 4h11c2.21 0 3-1.8 3-4v-5',
     )
 
     // Draw the paths
@@ -222,7 +222,7 @@ class NotePlus extends LiteGraph.LGraphNode {
       (me) => successLogger(`Updating edit_mode`, me),
       {
         values: ['html', 'markdown', 'raw'],
-      }
+      },
     )
 
     this.css_widget = this.addWidget('text', 'CSS', DEFAULT_CSS, (val) => {
@@ -409,7 +409,7 @@ class NotePlus extends LiteGraph.LGraphNode {
   loadAceEditor() {
     shared
       .loadScript(
-        'https://cdn.jsdelivr.net/npm/ace-builds@1.16.0/src-min-noconflict/ace.min.js'
+        'https://cdn.jsdelivr.net/npm/ace-builds@1.16.0/src-min-noconflict/ace.min.js',
       )
       .catch((e) => {
         errorLogger(e)
@@ -557,7 +557,7 @@ class NotePlus extends LiteGraph.LGraphNode {
   }
   calculateHeight() {
     this.calculated_height = shared.calculateTotalChildrenHeight(
-      this.html_widget.element
+      this.html_widget.element,
     )
     this.setDirtyCanvas(true, true)
   }
@@ -566,7 +566,7 @@ class NotePlus extends LiteGraph.LGraphNode {
     // this.html_widget.element.style = css
     const scopedCss = this.scopeCss(
       `${CSS_RESET}\n${css}`,
-      `note-plus-${this.uuid}`
+      `note-plus-${this.uuid}`,
     )
 
     const cssDom = this.getCssDom()

@@ -13,7 +13,7 @@ import { app } from '../../scripts/app.js'
 export function makeUUID() {
   let dt = new Date().getTime()
   const uuid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-    const r = (dt + Math.random() * 16) % 16 | 0
+    const r = ((dt + Math.random() * 16) % 16) | 0
     dt = Math.floor(dt / 16)
     return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16)
   })
@@ -65,8 +65,8 @@ function createLogger(emoji, color, consoleMethod = 'log') {
   }
 }
 
-export const infoLogger = createLogger('ℹ️', 'yellow')
-export const warnLogger = createLogger('⚠️', 'orange', 'warn')
+export const infoLogger = createLogger('i', 'yellow')
+export const warnLogger = createLogger('!', 'orange', 'warn')
 export const errorLogger = createLogger('🔥', 'red', 'error')
 export const successLogger = createLogger('✅', 'green')
 
@@ -495,8 +495,225 @@ export const addDeprecation = (nodeType, reason) => {
     reason: 'font-size:1.2em',
   }
   console.log(
-    `%c⚠️  ${title} is deprecated:%c ${reason}`,
+    `%c!  ${title} is deprecated:%c ${reason}`,
     styles.title,
     styles.reason,
   )
+}
+
+const create_documentation_stylesheet = () => {
+  const tag = 'mtb-documentation-stylesheet'
+
+  let styleTag = document.head.querySelector(tag)
+
+  if (!styleTag) {
+    styleTag = document.createElement('style')
+    styleTag.type = 'text/css'
+    styleTag.id = tag
+
+    styleTag.innerHTML = `
+    .documentation-popup {
+       background: var(--bg-color);
+	     position: absolute;
+			 color: var(--fg-color);
+			 font: 12px monospace;
+			 line-height: 1.5em;
+		   padding: 3px;
+			 border-radius: 4px;
+			 pointer-events: "inherit";
+			 z-index: 5;
+    	 overflow:scroll;
+    }
+
+		.documentation-popup img {
+		   max-width: 100%;
+		}
+		.documentation-popup table {
+				border-collapse: collapse;
+		    border: 1px var(--border-color) solid;
+		}
+		.documentation-popup th, 
+		.documentation-popup td {
+			border: 1px var(--border-color) solid;
+		}
+	.documentation-popup th {
+      background-color: var(--comfy-input-bg);
+		}
+		`
+    document.head.appendChild(styleTag)
+  }
+}
+let documentationConverter
+
+/** Add documentation widget to the selected node */
+export const addDocumentation = (
+  nodeData,
+  nodeType,
+  opts = { icon_size: 14, icon_margin: 4 },
+) => {
+  if (!documentationConverter) {
+    documentationConverter = new showdown.Converter({
+      tables: true,
+      strikethrough: true,
+      emoji: true,
+      ghCodeBlocks: true,
+      tasklists: true,
+      ghMentions: true,
+      smoothLivePreview: true,
+      simplifiedAutoLink: true,
+      parseImgDimensions: true,
+      openLinksInNewWindow: true,
+    })
+  }
+
+  opts = opts || {}
+  const iconSize = opts.icon_size ? opts.icon_size : 14
+  const iconMargin = opts.icon_margin ? opts.icon_margin : 4
+  let docElement = null
+  let offsetX = 0
+  let offsetY = 0
+
+  if (!nodeData.description) {
+    return
+  }
+  const drawFg = nodeType.prototype.onDrawForeground
+  nodeType.prototype.onDrawForeground = function (ctx, canvas) {
+    const r = drawFg ? drawFg.apply(this, arguments) : undefined
+    if (this.flags.collapsed) return r
+
+    // icon position
+    const x = this.size[0] - iconSize - iconMargin
+    // const y = iconMargin * 1.5
+
+    // const questionMark = new Path2D(
+    //   'm15.901 25.36h3.84v-3.84h-3.84v3.84zm1.92-15.36c-2.88 0-5.76 2.88-5.76 5.76h3.84c0-.96.96-1.92 1.92-1.92s1.92.96 1.92 1.92c0 1.92-3.84 1.92-3.84 3.84h3.84c1.92-.66 3.84-1.92 3.84-4.8s-2.88-4.8-5.76-4.8zm0-7.68c-8.49 0-15.36 6.87-15.36 15.36s6.87 15.36 15.36 15.36 15.36-6.87 15.36-15.36-6.87-15.36-15.36-15.36zm0 26.88c-6.36 0-11.52-5.16-11.52-11.52s5.16-11.52 11.52-11.52 11.52 5.16 11.52 11.52-5.16 11.52-11.52 11.52z',
+    // )
+    //
+    // ctx.save()
+
+    if (this.show_doc && docElement === null) {
+      create_documentation_stylesheet()
+      docElement = document.createElement('div')
+      docElement.classList.add('documentation-popup')
+      docElement.innerHTML = documentationConverter.makeHtml(
+        nodeData.description,
+      )
+      // resize handle
+      const resizeHandle = document.createElement('div')
+      resizeHandle.style.width = '10px'
+      resizeHandle.style.height = '10px'
+      resizeHandle.style.background = 'gray'
+      resizeHandle.style.position = 'absolute'
+      resizeHandle.style.bottom = '0'
+      resizeHandle.style.right = '0'
+      resizeHandle.style.cursor = 'se-resize'
+
+      // TODO: fix resize logic
+      docElement.appendChild(resizeHandle)
+      let isResizing = false
+      let startX, startY, startWidth, startHeight
+
+      resizeHandle.addEventListener('mousedown', function (e) {
+        e.stopPropagation()
+        isResizing = true
+        startX = e.clientX
+        startY = e.clientY
+        startWidth = parseInt(
+          document.defaultView.getComputedStyle(docElement).width,
+          10,
+        )
+        startHeight = parseInt(
+          document.defaultView.getComputedStyle(docElement).height,
+          10,
+        )
+      })
+
+      document.addEventListener('mousemove', function (e) {
+        if (!isResizing) return
+        const newWidth = startWidth + e.clientX - startX
+        const newHeight = startHeight + e.clientY - startY
+        offsetX += newWidth - startWidth
+        offsetY += newHeight - startHeight
+
+        startWidth = newWidth
+        startHeight = newHeight
+      })
+
+      document.addEventListener('mouseup', function () {
+        isResizing = false
+      })
+      document.body.appendChild(docElement)
+    } else if (!this.show_doc && docElement !== null) {
+      docElement.parentNode.removeChild(docElement)
+      docElement = null
+    }
+
+    if (this.show_doc && docElement !== null) {
+      const rect = ctx.canvas.getBoundingClientRect()
+
+      const scaleX = rect.width / ctx.canvas.width
+      const scaleY = rect.height / ctx.canvas.height
+      const transform = new DOMMatrix()
+        .scaleSelf(scaleX, scaleY)
+        .multiplySelf(ctx.getTransform())
+
+        .translateSelf(this.size[0] * scaleX, 0)
+        .translateSelf(10, -32)
+      const scale = new DOMMatrix().scaleSelf(transform.a, transform.d)
+      Object.assign(docElement.style, {
+        transformOrigin: '0 0',
+        transform: scale,
+        left: `${transform.a + transform.e}px`,
+        top: `${transform.d + transform.f}px`,
+        width: `${this.size[0] * 2}px`,
+        // height: `${(widget.parent?.inputHeight || 32) - (margin * 2)}px`,
+        height: `${this.size[1] || this.parent?.inputHeight || 32}px`,
+
+        // background: !node.color ? "" : node.color,
+        // color: "blue", //!node.color ? "" : "white",
+      })
+      // docElement.style.left = 140 - rect.right + "px";
+      // docElement.style.top = rect.top + "px";
+    }
+    ctx.translate(x, iconSize - 34) // Position the icon on the canvas
+    ctx.scale(iconSize / 32, iconSize / 32) // Scale the icon to the desired size
+    ctx.strokeStyle = 'rgba(255,255,255,0.3)'
+
+    ctx.lineCap = 'round'
+    ctx.lineJoin = 'round'
+
+    ctx.lineWidth = 2.4
+    // ctx.stroke(questionMark);
+    ctx.font = '36px monospace'
+    ctx.fillText('?', 0, 24)
+    ctx.restore()
+
+    return r
+  }
+  const mouseDown = nodeType.prototype.onMouseDown
+
+  nodeType.prototype.onMouseDown = function (e, localPos, canvas) {
+    const r = mouseDown ? mouseDown.apply(this, arguments) : undefined
+    const iconX = this.size[0] - iconSize - iconMargin
+    const iconY = iconSize - 34
+    if (
+      localPos[0] > iconX &&
+      localPos[0] < iconX + iconSize &&
+      localPos[1] > iconY &&
+      localPos[1] < iconY + iconSize
+    ) {
+      // Pencil icon was clicked, open the editor
+      // this.openEditorDialog();
+      if (this.show_doc === undefined) {
+        this.show_doc = true
+      } else {
+        this.show_doc = !this.show_doc
+      }
+      return true // Return true to indicate the event was handled
+    }
+
+    return r // Return false to let the event propagate
+
+    // return r;
+  }
 }
