@@ -115,12 +115,11 @@ class ExportWithFfmpeg:
                 "playlist": ("PLAYLIST",),
             },
             "required": {
-                # "frames": ("FRAMES",),
                 "fps": ("FLOAT", {"default": 24, "min": 1}),
                 "prefix": ("STRING", {"default": "export"}),
-                "format": (["mov", "mp4", "mkv", "avi"], {"default": "mov"}),
+                "format": (["mov", "mp4", "mkv", "gif", "avi"], {"default": "mov"}),
                 "codec": (
-                    ["prores_ks", "libx264", "libx265"],
+                    ["prores_ks", "libx264", "libx265", "gif"],
                     {"default": "prores_ks"},
                 ),
             },
@@ -193,44 +192,62 @@ class ExportWithFfmpeg:
         log.debug(f"Frames type {type(frames[0])}")
         log.debug(f"Exporting {len(frames)} frames")
 
-        frames = [frame.astype(np.uint16) * 257 for frame in frames]
+        if codec == "gif":
+            out_path = (output_dir / file_id).as_posix()
+            command = [
+                "ffmpeg",
+                "-f", "image2pipe",
+                "-vcodec", "png",
+                "-r", str(fps),
+                "-i", "-",
+                "-vcodec", "gif",
+                "-y", out_path
+            ]
+            process = subprocess.Popen(command, stdin=subprocess.PIPE)
+            for frame in frames:
+                model_management.throw_exception_if_processing_interrupted()
+                Image.fromarray(frame).save(process.stdin, 'PNG')
+            process.stdin.close()
+            process.wait()
+        else:
+            frames = [frame.astype(np.uint16) * 257 for frame in frames]
 
-        height, width, _ = frames[0].shape
+            height, width, _ = frames[0].shape
 
-        out_path = (output_dir / file_id).as_posix()
+            out_path = (output_dir / file_id).as_posix()
 
-        # Prepare the FFmpeg command
-        command = [
-            "ffmpeg",
-            "-y",
-            "-f",
-            "rawvideo",
-            "-vcodec",
-            "rawvideo",
-            "-s",
-            f"{width}x{height}",
-            "-pix_fmt",
-            pix_fmt,
-            "-r",
-            str(fps),
-            "-i",
-            "-",
-            "-c:v",
-            codec,
-            "-r",
-            str(fps),
-            "-y",
-            out_path,
-        ]
+            # Prepare the FFmpeg command
+            command = [
+                "ffmpeg",
+                "-y",
+                "-f",
+                "rawvideo",
+                "-vcodec",
+                "rawvideo",
+                "-s",
+                f"{width}x{height}",
+                "-pix_fmt",
+                pix_fmt,
+                "-r",
+                str(fps),
+                "-i",
+                "-",
+                "-c:v",
+                codec,
+                "-r",
+                str(fps),
+                "-y",
+                out_path,
+            ]
 
-        process = subprocess.Popen(command, stdin=subprocess.PIPE)
+            process = subprocess.Popen(command, stdin=subprocess.PIPE)
 
-        for frame in frames:
-            model_management.throw_exception_if_processing_interrupted()
-            process.stdin.write(frame.tobytes())
+            for frame in frames:
+                model_management.throw_exception_if_processing_interrupted()
+                process.stdin.write(frame.tobytes())
 
-        process.stdin.close()
-        process.wait()
+            process.stdin.close()
+            process.wait()
 
         return (out_path,)
 
@@ -315,15 +332,21 @@ class SaveGif:
         ruuid = ruuid.hex[:10]
         out_path = f"{folder_paths.output_directory}/{ruuid}.gif"
 
-        # Create the GIF from PIL images
-        pil_images[0].save(
-            out_path,
-            save_all=True,
-            append_images=pil_images[1:],
-            optimize=optimize,
-            duration=int(1000 / fps),
-            loop=0,
-        )
+        # Use FFmpeg to create the GIF from PIL images
+        command = [
+            "ffmpeg",
+            "-f", "image2pipe",
+            "-vcodec", "png",
+            "-r", str(fps),
+            "-i", "-",
+            "-vcodec", "gif",
+            "-y", out_path
+        ]
+        process = subprocess.Popen(command, stdin=subprocess.PIPE)
+        for image in pil_images:
+            image.save(process.stdin, 'PNG')
+        process.stdin.close()
+        process.wait()
 
         results = [{"filename": f"{ruuid}.gif", "subfolder": "", "type": "output"}]
         return {"ui": {"gif": results}}
