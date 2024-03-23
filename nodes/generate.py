@@ -336,9 +336,15 @@ class TextToImage:
         else:  # bottom
             y_text = (height - (line_height_px * len(lines))) - v_offset
 
+        def get_width(line):
+            if hasattr(font, "getsize"):
+                return font.getsize(line)[0]
+            else:
+                return font.getlength(line)
+
         # Draw each line of text
         for line in lines:
-            line_width = font.getlength(line)
+            line_width = get_width(line)
             # Horizontal alignment
             if h_align == "left":
                 x_text = h_offset

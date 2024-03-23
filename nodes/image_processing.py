@@ -3,12 +3,11 @@ import json
 import math
 import os
 
-import cv2
 import folder_paths
 import numpy as np
 import torch
 import torch.nn.functional as F
-from PIL import Image
+from PIL import Image, ImageOps
 from PIL.PngImagePlugin import PngInfo
 from skimage.filters import gaussian
 from skimage.util import compare_images
@@ -255,6 +254,7 @@ class LoadImageFromUrl_:
     def load(self, url):
         # get the image from the url
         image = Image.open(requests.get(url, stream=True).raw)
+        image = ImageOps.exif_transpose(image)
         return (pil2tensor(image),)
 
 
@@ -485,7 +485,7 @@ class ColoredImage:
 
         # Resize the image based on calculated scale
         new_size = (int(img.width * scale), int(img.height * scale))
-        img = img.resize(new_size, Image.ANTIALIAS)
+        img = img.resize(new_size, Image.LANCZOS)
 
         # Calculate cropping coordinates
         left = (img.width - target_size[0]) / 2
@@ -560,7 +560,7 @@ class ColoredImage:
             return img.crop((left, top, right, bottom))
 
     def resize_and_crop_thumbnails(self, img, target_size):
-        img.thumbnail(target_size, Image.ANTIALIAS)
+        img.thumbnail(target_size, Image.LANCZOS)
         left = (img.width - target_size[0]) / 2
         top = (img.height - target_size[1]) / 2
         right = (img.width + target_size[0]) / 2
@@ -588,7 +588,7 @@ class ColoredImage:
                     raise ValueError(
                         "Foreground image and mask must have same batch size"
                     )
-                fg_masks = tensor2pil(foreground_mask)
+                fg_masks = tensor2pil(foreground_mask.unsqueeze(-1))
 
             for fg_image, fg_mask in zip(fg_images, fg_masks):
                 # Resize and crop if dimensions mismatch
@@ -608,7 +608,8 @@ class ColoredImage:
                 else:
                     if fg_image.mode != "RGBA":
                         raise ValueError(
-                            "Foreground image must be in 'RGBA' mode when no mask is provided, got {fg_image.mode}"
+                            "Foreground image must be in 'RGBA' mode "
+                            f"when no mask is provided, got {fg_image.mode}"
                         )
                     output.append(
                         Image.alpha_composite(image, fg_image).convert("RGB")
