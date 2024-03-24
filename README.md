@@ -15,6 +15,11 @@
 
 [**Install Guide**](./INSTALL.md) | [**Examples**](https://github.com/melMass/comfy_mtb/wiki/Examples)
 
+There is now a dedicated `#mtb-nodes` channel on the Banodoco discord:  
+[![](https://dcbadge.vercel.app/api/server/AXhsabmDhn)](https://discord.gg/IAXhsabmDhn)
+
+---
+
 Welcome to the MTB Nodes project! This codebase is open for you to explore and utilize as you wish. Its primary purpose is to build proof-of-concepts (POCs) for implementation in [MLOPs](https://github.com/Bismuth-Consultancy-BV/MLOPs). Many nodes in this project are inspired by existing community contributions or built-in functionalities.
 
 Before proceeding, please be aware of the licenses associated with certain libraries used in this project. For example, the `deepbump` library is licensed under [GPLv3](https://github.com/HugoTini/DeepBump/blob/master/LICENSE).
@@ -41,6 +46,7 @@ mtb add a few widgets like `COLOR`
 A few nodes have the concept of "dynamic" inputs:  
 <img alt="dynamic inputs" width=450  src="https://github.com/melMass/comfy_mtb/assets/7041726/10b3976e-b212-4968-91eb-f34c02bb80c3" />
 
+<!-- NOTE: Here it should just be some examples and warnings, move the rest to the wiki -->
 
 # Node List
 
