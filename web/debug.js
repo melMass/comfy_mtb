@@ -10,7 +10,6 @@
 import { app } from '../../scripts/app.js'
 
 import * as shared from './comfy_shared.js'
-import { log } from './comfy_shared.js'
 import { MtbWidgets } from './mtb_widgets.js'
 
 // TODO: respect inputs order...
@@ -103,6 +102,17 @@ app.registerExtension({
           }
           // this.onResize?.(this.size);
           // this.resize?.(this.size)
+        }
+
+        if (message.geometry) {
+          for (const geom of message.geometry) {
+            console.log('Adding geom', geom, typeof geom)
+            const w = this.addCustomWidget(
+              MtbWidgets.DEBUG_GEOM(`${prefix}_${widgetI}`, geom)
+            )
+            w.parent = this
+            widgetI++
+          }
         }
 
         this.setSize(this.computeSize())

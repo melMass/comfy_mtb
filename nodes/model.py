@@ -6,7 +6,7 @@ from ..log import log
 
 
 class VaeDecode_:
-    """Wrapper for the 2 core decoders but also adding the sd seamless hack, taken from: FlyingFireCo/tiled_ksampler"""
+    """Wrapper for the 2 core decoders (nomarl and tiled) but also adding the sd seamless hack, taken from: FlyingFireCo/tiled_ksampler"""
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -56,7 +56,7 @@ class VaeDecode_:
 
 
 class ModelPatchSeamless:
-    """Uses the stable diffusion 'hack' to infer seamless images by setting the model layers padding mode to circular (experimental)"""
+    """Experimental patcher to enable the circular padding mode of the sd model layers, requires a custom VAE"""
 
     @classmethod
     def INPUT_TYPES(cls):

@@ -1,5 +1,8 @@
+import io
+import json
+import urllib.parse
+import urllib.request
 from typing import Optional
-import io, json, urllib.parse, urllib.request
 
 import numpy as np
 import torch
@@ -10,8 +13,9 @@ from ..utils import apply_easing, get_server_info, pil2tensor
 
 
 def get_image(filename, subfolder, folder_type):
+    """Use the comfyUI "/view" endpoint to get an image from the server."""
     log.debug(
-        f"Getting image {filename} from foldertype {folder_type} {f'in subfolder: {subfolder}' if subfolder else ''}"
+        f"Getting image {filename} from foldertype {folder_type} {f'in subfolder: {subfolder}' if subfolder else ''}"  # noqa: E501
     )
     data = {"filename": filename, "subfolder": subfolder, "type": folder_type}
     base_url, port = get_server_info()
@@ -19,7 +23,8 @@ def get_image(filename, subfolder, folder_type):
     url_values = urllib.parse.urlencode(data)
     url = f"http://{base_url}:{port}/view?{url_values}"
     log.debug(f"Fetching image from {url}")
-    with urllib.request.urlopen(url) as response:
+
+    with urllib.request.urlopen(url) as response:  # noqa: S310
         return io.BytesIO(response.read())
 
 
@@ -141,7 +146,7 @@ class GetBatchFromHistory:
         history_url = f"http://{base_url}:{port}/history"
         log.debug(f"Fetching history from {history_url}")
         output = torch.zeros(0)
-        with urllib.request.urlopen(history_url) as response:
+        with urllib.request.urlopen(history_url) as response:  # noqa: S310
             output = self.load_batch_frames(response, offset, count, frames)
 
         if output.size(0) == 0:
@@ -189,36 +194,38 @@ class AnyToString:
     @classmethod
     def INPUT_TYPES(cls):
         return {
-            "required": {"input": ("*")},
+            "required": {"value": ("*")},
         }
 
     RETURN_TYPES = ("STRING",)
     FUNCTION = "do_str"
     CATEGORY = "mtb/converters"
 
-    def do_str(self, input):
-        if isinstance(input, str):
-            return (input,)
-        elif isinstance(input, torch.Tensor):
-            return (f"Tensor of shape {input.shape} and dtype {input.dtype}",)
-        elif isinstance(input, Image.Image):
-            return (f"PIL Image of size {input.size} and mode {input.mode}",)
-        elif isinstance(input, np.ndarray):
+    def do_str(self, value):
+        if isinstance(value, str):
+            return (value,)
+        elif isinstance(value, torch.Tensor):
+            return (f"Tensor of shape {value.shape} and dtype {value.dtype}",)
+        elif isinstance(value, Image.Image):
+            return (f"PIL Image of size {value.size} and mode {value.mode}",)
+        elif isinstance(value, np.ndarray):
             return (
-                f"Numpy array of shape {input.shape} and dtype {input.dtype}",
+                f"Numpy array of shape {value.shape} and dtype {value.dtype}",
             )
 
-        elif isinstance(input, dict):
+        elif isinstance(value, dict):
             return (
-                f"Dictionary of {len(input)} items, with keys {input.keys()}",
+                f"Dictionary of {len(value)} items, with keys {value.keys()}",
             )
 
         else:
-            log.debug(f"Falling back to string conversion of {input}")
-            return (str(input),)
+            log.debug(f"Falling back to string conversion of {value}")
+            return (str(value),)
 
 
 class StringReplace:
+    """Basic string replacement."""
+
     """Basic string replacement."""
 
     @classmethod
@@ -247,8 +254,8 @@ class StringReplace:
         return (string,)
 
 
-class MTB_MathExpression:
-    """Node to evaluate a simple math expression string"""
+class MTBMathExpression:
+    """Node to evaluate a simple math expression string."""
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -266,8 +273,7 @@ class MTB_MathExpression:
         "evaluate a simple math expression string (!! Fallsback to eval)"
     )
 
-    def eval_expression(self, expression, **kwargs):
-        import math
+    def eval_expression(self, expression: str, **kwargs):
         from ast import literal_eval
 
         for key, value in kwargs.items():
@@ -285,9 +291,8 @@ class MTB_MathExpression:
         except ValueError:
             try:
                 expression = expression.replace("^", "**")
-                result = eval(expression)
+                result = eval(expression)  # noqa: S307
             except Exception as e:
-                # Handle any other exceptions and provide a meaningful error message
                 raise ValueError(
                     f"Error evaluating expression '{expression}': {e}"
                 ) from e
@@ -296,7 +301,7 @@ class MTB_MathExpression:
 
 
 class FitNumber:
-    """Fit the input float using a source and target range"""
+    """Fit the input float using a source and target range."""
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -345,13 +350,14 @@ class FitNumber:
 
     def set_range(
         self,
+        *,
         value: float,
         clamp: bool,
-        source_min: float,
-        source_max: float,
-        target_min: float,
-        target_max: float,
-        easing: str,
+        source_min=0.0,
+        source_max=1.0,
+        target_min=0.0,
+        target_max=1.0,
+        easing="Linear",
     ):
         if source_min == source_max:
             normalized_value = 0
@@ -381,7 +387,7 @@ class ConcatImages:
             "required": {"reverse": ("BOOLEAN", {"default": False})},
         }
 
-    def concatenate_tensors(self, reverse, **kwargs):
+    def concatenate_tensors(self, *, reverse: bool, **kwargs):
         tensors = tuple(kwargs.values())
         batch_sizes = [tensor.size(0) for tensor in tensors]
 
@@ -401,7 +407,7 @@ __nodes__ = [
     GetBatchFromHistory,
     AnyToString,
     ConcatImages,
-    MTB_MathExpression,
+    MTBMathExpression,
     MTB_ToDevice,
     MTB_ApplyTextTemplate,
 ]

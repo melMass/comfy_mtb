@@ -47,19 +47,29 @@ def process_list(anything):
         text.append(
             f"List of Tensors: {first_element.shape} (x{len(anything)})"
         )
+        text.append(
+            f"List of Tensors: {first_element.shape} (x{len(anything)})"
+        )
 
     return {"text": text}
 
 
 def process_dict(anything):
-    text = []
+    if "mesh" in anything:
+        m = {"geometry": {}}
+        m["geometry"]["mesh"] = mesh_to_json(anything["mesh"])
+        if "material" in anything:
+            m["geometry"]["material"] = anything["material"]
+        return m
+
+    res = []
     if "samples" in anything:
         is_empty = (
             "(empty)" if torch.count_nonzero(anything["samples"]) == 0 else ""
         )
-        text.append(f"Latent Samples: {anything['samples'].shape} {is_empty}")
+        res.append(f"Latent Samples: {anything['samples'].shape} {is_empty}")
 
-    return {"text": text}
+    return {"text": res}
 
 
 def process_bool(anything):
@@ -70,7 +80,15 @@ def process_text(anything):
     return {"text": [str(anything)]}
 
 
+# NOT USED ANYMORE
+def process_geometry(anything):
+    return {"geometry": [mesh_to_json(anything)]}
+
+
+import open3d as o3d
+
 # endregion
+from .geo_tools import mesh_to_json
 
 
 class Debug:
@@ -92,7 +110,7 @@ class Debug:
 
     def do_debug(self, output_to_console, **kwargs):
         output = {
-            "ui": {"b64_images": [], "text": []},
+            "ui": {"b64_images": [], "text": [], "geometry": []},
             # "result": ("A"),
         }
 
@@ -101,16 +119,36 @@ class Debug:
             list: process_list,
             dict: process_dict,
             bool: process_bool,
+            o3d.geometry.Geometry: process_geometry,
         }
-        if output_to_console:
-            print("bouh!")
 
         for anything in kwargs.values():
-            processor = processors.get(type(anything), process_text)
+            processor = processors.get(type(anything))
+            if processor is None:
+                if isinstance(anything, o3d.geometry.Geometry):
+                    processor = process_geometry
+                else:
+                    processor = process_text
+            log.debug(
+                f"Processing: {anything} with processor: {processor.__name__} for type {type(anything)}"
+            )
             processed_data = processor(anything)
 
             for ui_key, ui_value in processed_data.items():
-                output["ui"][ui_key].extend(ui_value)
+                if isinstance(ui_value, list):
+                    output["ui"][ui_key].extend(ui_value)
+                else:
+                    output["ui"][ui_key].append(ui_value)
+            # log.debug(
+            #     f"Processed input {k}, found {len(processed_data.get('b64_images', []))} images and {len(processed_data.get('text', []))} text items."
+            # )
+
+        if output_to_console:
+            from rich.console import Console
+
+            cons = Console()
+            cons.print("OUTPUT:")
+            cons.print(output)
 
         return output
 

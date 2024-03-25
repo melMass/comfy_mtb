@@ -1,13 +1,162 @@
-import hashlib, json, os, re
+import hashlib
+import json
+import os
+import re
 from pathlib import Path
 
+import comfy.utils
 import folder_paths
+import imageio.v3 as iio
 import numpy as np
 import torch
+from comfy.model_management import get_torch_device
 from PIL import Image, ImageOps
 from PIL.PngImagePlugin import PngInfo
 
 from ..log import log
+from ..utils import np2tensor
+
+SUPPORTED_FORMATS = ["avi", "mov", "webm", "mp4", "mkv", "gif"]
+
+
+class MTBLiveVideo:
+    @classmethod
+    def INPUT_TYPES(s):
+        input_dir = Path(folder_paths.get_input_directory())
+        files = [
+            f.name
+            for f in input_dir.iterdir()
+            if f.is_file() and f.suffix[1:] in SUPPORTED_FORMATS
+        ]
+        return {
+            "required": {
+                "video": (["custom"] + sorted(files), {"default": "custom"}),
+                "video_path": ("STRING", {"default": ""}),
+                "frame_in": (
+                    "INT",
+                    {"default": 0, "min": 0, "step": 1},
+                ),
+                "frame_out": (
+                    "INT",
+                    {"default": -1, "min": -1, "step": 1},
+                ),
+                "frame_steps": (
+                    "INT",
+                    {"default": 1, "min": 1, "step": 1},
+                ),
+                "device": (["auto", "cpu"], {"default": "auto"}),
+            },
+        }
+
+    CATEGORY = "mtb/video"
+    FUNCTION = "video"
+    RETURN_TYPES = ("IMAGE",)
+    RETURN_NAMES = ("video frames",)
+
+    def video(
+        self,
+        video: str,
+        video_path: str,
+        frame_in=0,
+        frame_out=-1,
+        frame_steps=1,
+        device="auto",
+    ):
+        device = get_torch_device() if device == "auto" else device
+
+        if video == "custom":
+            pth = Path(video_path)
+            if not pth.exists():
+                raise FileNotFoundError(
+                    "The video {pth} doesn't seem to exist"
+                )
+            video = pth.as_posix()
+        else:
+            video = folder_paths.get_annotated_filepath(video.strip('"'))
+
+        frames = []
+        # total = 5
+        # pbar = comfy.utils.ProgressBar(total)
+        for i, frame in enumerate(iio.imiter(video, plugin="FFMPEG")):
+            if (
+                i >= frame_in  # first frame
+                and (i <= frame_out or frame_out == -1)  # in range
+                and i % frame_steps == 0  # stepping
+            ):
+                frames.append(frame)
+
+        return (np2tensor(frames).to(device),)
+
+    @classmethod
+    def IS_CHANGED(cls, video, **parms):
+        image_path = folder_paths.get_annotated_filepath(video)
+        m = hashlib.sha256()
+        with open(image_path, "rb") as f:
+            m.update(f.read())
+        return m.digest().hex()
+
+    @classmethod
+    def VALIDATE_INPUTS(cls, video, **parms):
+        if not folder_paths.exists_annotated_filepath(video):
+            return f"Invalid video file: {video}"
+        return True
+
+
+class MTBCotracker2:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "image": ("IMAGE",),
+                "grid_size": (
+                    "INT",
+                    {"default": 10, "min": 1, "max": 100},
+                ),
+            }
+        }
+
+    CATEGORY = "mtb/video"
+    FUNCTION = "track"
+    RETURN_TYPES = ("COTRACK_DATA",)
+    RETURN_NAMES = ("tracking data",)
+
+    def track(self, image: torch.Tensor, grid_size=10):
+        device = get_torch_device()
+        cotracker = torch.hub.load(
+            "facebookresearch/co-tracker", "cotracker2"
+        ).to(device)
+
+        video = (
+            image.permute(0, 3, 1, 2).unsqueeze(0).float().to(device)
+        )  # B T C H W
+        pred_tracks, pred_visibility = cotracker(
+            video, grid_size=grid_size
+        ).to(device)  # B T N 2,  B T N 1
+
+        return (
+            {"pred_tracks": pred_tracks, "pred_visibility": pred_visibility},
+        )
+
+    @staticmethod
+    def IS_CHANGED(path="", current_frame=0):
+        print(f"Checking if changed: {path}, {current_frame}")
+        # resolved_path = resolve_path(path, current_frame)
+        # image_path = folder_paths.get_annotated_filepath(resolved_path)
+        # if os.path.exists(image_path):
+        #     m = hashlib.sha256()
+        #     with open(image_path, "rb") as f:
+        #         m.update(f.read())
+        #     return m.digest().hex()
+        # return "NONE"
+
+    # @staticmethod
+    # def VALIDATE_INPUTS(path="", current_frame=0):
+
+    #     print(f"Validating inputs: {path}, {current_frame}")
+    #     resolved_path = resolve_path(path, current_frame)
+    #     if not folder_paths.exists_annotated_filepath(resolved_path):
+    #         return f"Invalid image file: {resolved_path}"
+    #     return True
 
 
 class LoadImageSequence:
@@ -252,5 +401,7 @@ class SaveImageSequence:
 
 __nodes__ = [
     LoadImageSequence,
+    MTBLiveVideo,
     SaveImageSequence,
+    MTBCotracker2,
 ]
