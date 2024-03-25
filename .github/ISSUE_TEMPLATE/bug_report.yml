@@ -13,7 +13,7 @@ body:
         - Make sure to read the README & INSTALL instructions.  
         - Please search for [existing issues](https://github.com/melMass/comfy_mtb/issues?q=is%3Aissue) around your problem before filing a report.
         - Optionally check the `#mtb-nodes` channel on the Banodoco discord:  
-          [![](https://dcbadge.vercel.app/api/server/AXhsabmDhn)](https://discord.gg/IAXhsabmDhn)
+          [![](https://dcbadge.vercel.app/api/server/AXhsabmDhn?style=flat)](https://discord.gg/IAXhsabmDhn)
 
         ### Try using the debug mode to get more info
 
