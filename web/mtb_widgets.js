@@ -17,7 +17,7 @@ import * as shared from './comfy_shared.js'
 import { log } from './comfy_shared.js'
 
 // NOTE: new widget types registered by MTB Widgets
-const newTypes = [, /*'BOOL'*/ 'COLOR', 'BBOX']
+const newTypes = [/*'BOOL'*/ , 'COLOR', 'BBOX']
 
 const deprecated_nodes = {
   //  'Animation Builder':
@@ -572,6 +572,10 @@ const mtb_widgets = {
     if (!nodeData.name.endsWith('(mtb)')) {
       return
     }
+    // console.log('MTB Node', { description: nodeData.description, nodeType })
+
+    shared.addDocumentation(nodeData, nodeType)
+
     const deprecation = deprecated_nodes[nodeData.name.replace(' (mtb)', '')]
 
     if (deprecation) {
