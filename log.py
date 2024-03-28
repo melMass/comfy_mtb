@@ -1,17 +1,22 @@
 import logging
 import os
 import re
+from typing import Optional
 
 base_log_level = logging.DEBUG if os.environ.get("MTB_DEBUG") else logging.INFO
 
 
 # Custom object that discards the output
 class NullWriter:
+    """Custom object that discards the output."""
+
     def write(self, text):
         pass
 
 
-class Formatter(logging.Formatter):
+class ConsoleFormatter(logging.Formatter):
+    """Formatter for console based log, using base ansi colors."""
+
     grey = "\x1b[38;20m"
     cyan = "\x1b[36;20m"
     purple = "\x1b[35;20m"
@@ -19,24 +24,39 @@ class Formatter(logging.Formatter):
     red = "\x1b[31;20m"
     bold_red = "\x1b[31;1m"
     reset = "\x1b[0m"
-    # format = "%(asctime)s - [%(name)s] - %(levelname)s - %(message)s (%(filename)s:%(lineno)d)"
-    format = "[%(name)s] | %(levelname)s -> %(message)s"
+    # format = ("%(asctime)s - [%(name)s] - %(levelname)s "
+    # "- %(message)s (%(filename)s:%(lineno)d)")
+    fmt = "[%(name)s] | %(levelname)s -> %(message)s"
 
     FORMATS = {
-        logging.DEBUG: purple + format + reset,
-        logging.INFO: cyan + format + reset,
-        logging.WARNING: yellow + format + reset,
-        logging.ERROR: red + format + reset,
-        logging.CRITICAL: bold_red + format + reset,
+        logging.DEBUG: f"{purple}{fmt}{reset}",
+        logging.INFO: f"{cyan}{fmt}{reset}",
+        logging.WARNING: f"{yellow}{fmt}{reset}",
+        logging.ERROR: f"{red}{fmt}{reset}",
+        logging.CRITICAL: f"{bold_red}{fmt}{reset}",
     }
 
     def format(self, record):
         log_fmt = self.FORMATS.get(record.levelno)
+
         formatter = logging.Formatter(log_fmt)
         return formatter.format(record)
 
 
-def mklog(name, level=base_log_level):
+class FileFormatter(logging.Formatter):
+    """Formatter for file base logs."""
+
+    # File specific formatting
+    fmt = (
+        "%(asctime)s - [%(name)s] - "
+        "%(levelname)s - %(message)s (%(filename)s:%(lineno)d)"
+    )
+
+    def __init__(self):
+        super().__init__(self.fmt, "%Y-%m-%d %H:%M:%S")
+
+
+def mklog(name, level=base_log_level, log_file: Optional[str] = None):
     logger = logging.getLogger(name)
     logger.setLevel(level)
 
@@ -45,8 +65,15 @@ def mklog(name, level=base_log_level):
 
     ch = logging.StreamHandler()
     ch.setLevel(level)
-    ch.setFormatter(Formatter())
+    ch.setFormatter(ConsoleFormatter())
     logger.addHandler(ch)
+
+    if log_file:
+        # file handler
+        fh = logging.FileHandler(log_file)
+        fh.setLevel(level)
+        fh.setFormatter(FileFormatter())
+        logger.addHandler(fh)
 
     # Disable log propagation
     logger.propagate = False
@@ -59,7 +86,7 @@ log = mklog(__package__, base_log_level)
 
 
 def log_user(arg):
-    print("\033[34mComfy MTB Utils:\033[0m {arg}")
+    print(f"\033[34mComfy MTB Utils:\033[0m {arg}")
 
 
 def get_summary(docstring):

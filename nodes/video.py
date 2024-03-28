@@ -160,9 +160,10 @@ class MTBCotracker2:
 
 
 class LoadImageSequence:
-    """Load an image sequence from a folder. The current frame is used to determine which image to load.
+    """Load an image sequence from a template string or folder.
 
-    Usually used in conjunction with the `Primitive` node set to increment to load a sequence of images from a folder.
+    The current_frame property is used to determine which image to load.
+    Usually used in conjunction with the `Primitive` node set to increment
     Use -1 to load all matching frames as a batch.
     """
 
@@ -216,10 +217,11 @@ class LoadImageSequence:
             )
 
         log.debug(f"Loading image: {path}, {current_frame}")
-        print(f"Loading image: {path}, {current_frame}")
+
         resolved_path = resolve_path(path, current_frame)
         image_path = folder_paths.get_annotated_filepath(resolved_path)
         image, mask = img_from_path(image_path)
+
         return (
             image,
             mask,

@@ -4,10 +4,12 @@ from pathlib import Path
 from typing import Optional
 
 import folder_paths
+import open3d as o3d
 import torch
 
 from ..log import log
 from ..utils import tensor2pil
+from .geo_tools import mesh_to_json
 
 
 # region processors
@@ -27,8 +29,8 @@ def process_tensor(tensor):
     return {"b64_images": b64_imgs}
 
 
-def process_list(anything):
-    text = []
+def process_list(anything: list[object]) -> dict[str, list[str]]:
+    text: list[str] = []
     if not anything:
         return {"text": []}
 
@@ -40,13 +42,10 @@ def process_list(anything):
     ):
         text.append(
             "List of List of Tensors: "
-            f"{first_element[0].shape} (x{len(anything)})"
+            + f"{first_element[0].shape} (x{len(anything)})"
         )
 
     elif isinstance(first_element, torch.Tensor):
-        text.append(
-            f"List of Tensors: {first_element.shape} (x{len(anything)})"
-        )
         text.append(
             f"List of Tensors: {first_element.shape} (x{len(anything)})"
         )
@@ -54,7 +53,7 @@ def process_list(anything):
     return {"text": text}
 
 
-def process_dict(anything):
+def process_dict(anything: dict[str, dict[str, any]]) -> dict[str, str]:
     if "mesh" in anything:
         m = {"geometry": {}}
         m["geometry"]["mesh"] = mesh_to_json(anything["mesh"])
@@ -72,7 +71,7 @@ def process_dict(anything):
     return {"text": res}
 
 
-def process_bool(anything):
+def process_bool(anything: bool) -> dict[str, str]:
     return {"text": ["True" if anything else "False"]}
 
 
@@ -85,10 +84,7 @@ def process_geometry(anything):
     return {"geometry": [mesh_to_json(anything)]}
 
 
-import open3d as o3d
-
 # endregion
-from .geo_tools import mesh_to_json
 
 
 class Debug:
