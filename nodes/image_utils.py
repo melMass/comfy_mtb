@@ -1,8 +1,9 @@
 import torch
+
 from ..log import log
 
 
-class StackImages:
+class MTB_StackImages:
     """Stack the input images horizontally or vertically."""
 
     @classmethod
@@ -67,7 +68,7 @@ class StackImages:
             )
 
 
-class PickFromBatch:
+class MTB_PickFromBatch:
     """Pick a specific number of images from a batch.
 
     either from the start or end.
@@ -106,4 +107,4 @@ class PickFromBatch:
         return (selected_tensors,)
 
 
-__nodes__ = [StackImages, PickFromBatch]
+__nodes__ = [MTB_StackImages, MTB_PickFromBatch]

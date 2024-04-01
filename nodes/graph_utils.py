@@ -1,5 +1,8 @@
+import io
+import json
+import urllib.parse
+import urllib.request
 from typing import Optional
-import io, json, urllib.parse, urllib.request
 
 import numpy as np
 import torch
@@ -94,7 +97,7 @@ class MTB_ApplyTextTemplate:
         return (res,)
 
 
-class GetBatchFromHistory:
+class MTB_GetBatchFromHistory:
     """Very experimental node to load images from the history of the server.
 
     Queue items without output are ignored in the count.
@@ -183,7 +186,7 @@ class GetBatchFromHistory:
         return pil2tensor(frames)
 
 
-class AnyToString:
+class MTB_AnyToString:
     """Tries to take any input and convert it to a string."""
 
     @classmethod
@@ -218,7 +221,7 @@ class AnyToString:
             return (str(input),)
 
 
-class StringReplace:
+class MTB_StringReplace:
     """Basic string replacement."""
 
     @classmethod
@@ -267,7 +270,6 @@ class MTB_MathExpression:
     )
 
     def eval_expression(self, expression, **kwargs):
-        import math
         from ast import literal_eval
 
         for key, value in kwargs.items():
@@ -295,7 +297,7 @@ class MTB_MathExpression:
         return (result, int(result))
 
 
-class FitNumber:
+class MTB_FitNumber:
     """Fit the input float using a source and target range"""
 
     @classmethod
@@ -368,7 +370,7 @@ class FitNumber:
         return (res,)
 
 
-class ConcatImages:
+class MTB_ConcatImages:
     """Add images to batch."""
 
     RETURN_TYPES = ("IMAGE",)
@@ -396,11 +398,11 @@ class ConcatImages:
 
 
 __nodes__ = [
-    StringReplace,
-    FitNumber,
-    GetBatchFromHistory,
-    AnyToString,
-    ConcatImages,
+    MTB_StringReplace,
+    MTB_FitNumber,
+    MTB_GetBatchFromHistory,
+    MTB_AnyToString,
+    MTB_ConcatImages,
     MTB_MathExpression,
     MTB_ToDevice,
     MTB_ApplyTextTemplate,

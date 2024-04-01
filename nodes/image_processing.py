@@ -35,7 +35,7 @@ def gaussian_kernel(
     return g / g.sum()
 
 
-class ColorCorrect:
+class MTB_ColorCorrect:
     """Various color correction methods"""
 
     @classmethod
@@ -195,7 +195,7 @@ class ColorCorrect:
         return (image,)
 
 
-class ImageCompare_:
+class MTB_ImageCompare:
     """Compare two images and return a difference image"""
 
     @classmethod
@@ -231,7 +231,7 @@ class ImageCompare_:
 import requests
 
 
-class LoadImageFromUrl_:
+class MTB_LoadImageFromUrl:
     """Load an image from the given URL"""
 
     @classmethod
@@ -258,7 +258,7 @@ class LoadImageFromUrl_:
         return (pil2tensor(image),)
 
 
-class Blur_:
+class MTB_Blur:
     """Blur an image using a Gaussian filter."""
 
     @classmethod
@@ -268,11 +268,11 @@ class Blur_:
                 "image": ("IMAGE",),
                 "sigmaX": (
                     "FLOAT",
-                    {"default": 3.0, "min": 0.0, "max": 10.0, "step": 0.01},
+                    {"default": 3.0, "min": 0.0, "max": 200.0, "step": 0.01},
                 ),
                 "sigmaY": (
                     "FLOAT",
-                    {"default": 3.0, "min": 0.0, "max": 10.0, "step": 0.01},
+                    {"default": 3.0, "min": 0.0, "max": 200.0, "step": 0.01},
                 ),
             }
         }
@@ -289,7 +289,7 @@ class Blur_:
         return (torch.from_numpy(image),)
 
 
-class Sharpen_:
+class MTB_Sharpen:
     """Sharpens an image using a Gaussian kernel."""
 
     @classmethod
@@ -392,7 +392,7 @@ class Sharpen_:
 #         return (np2tensor(deglaze_np_img(tensor2np(image))),)
 
 
-class MaskToImage:
+class MTB_MaskToImage:
     """Converts a mask (alpha) to an RGB image with a color and background"""
 
     @classmethod
@@ -439,7 +439,7 @@ class MaskToImage:
 from typing import Optional
 
 
-class ColoredImage:
+class MTB_ColoredImage:
     """Constant color image of given size."""
 
     def __init__(self) -> None:
@@ -552,7 +552,7 @@ class ColoredImage:
         return (output,)
 
 
-class ImagePremultiply:
+class MTB_ImagePremultiply:
     """Premultiply image with mask"""
 
     @classmethod
@@ -591,7 +591,7 @@ class ImagePremultiply:
         return (pil2tensor(out),)
 
 
-class ImageResizeFactor:
+class MTB_ImageResizeFactor:
     """Extracted mostly from WAS Node Suite, with a few edits (most notably multiple image support) and less features."""
 
     @classmethod
@@ -685,7 +685,7 @@ class ImageResizeFactor:
         return (resized_image,)
 
 
-class SaveImageGrid_:
+class MTB_SaveImageGrid:
     """Save all the images in the input batch as a grid of images."""
 
     def __init__(self):
@@ -794,7 +794,7 @@ class SaveImageGrid_:
         return {"ui": {"images": results}}
 
 
-class ImageTileOffset:
+class MTB_ImageTileOffset:
     """Mimics an old photoshop technique to check for seamless textures"""
 
     @classmethod
@@ -843,16 +843,16 @@ class ImageTileOffset:
 
 
 __nodes__ = [
-    ColorCorrect,
-    ImageCompare_,
-    ImageTileOffset,
-    Blur_,
+    MTB_ColorCorrect,
+    MTB_ImageCompare,
+    MTB_ImageTileOffset,
+    MTB_Blur,
     # DeglazeImage,
-    MaskToImage,
-    ColoredImage,
-    ImagePremultiply,
-    ImageResizeFactor,
-    SaveImageGrid_,
-    LoadImageFromUrl_,
-    Sharpen_,
+    MTB_MaskToImage,
+    MTB_ColoredImage,
+    MTB_ImagePremultiply,
+    MTB_ImageResizeFactor,
+    MTB_SaveImageGrid,
+    MTB_LoadImageFromUrl,
+    MTB_Sharpen,
 ]

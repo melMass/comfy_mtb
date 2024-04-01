@@ -18,7 +18,7 @@ def hex_to_rgb(hex_color, bgr=False):
     return tuple(int(hex_color[i : i + 2], 16) for i in (0, 2, 4))
 
 
-class BatchMake:
+class MTB_BatchMake:
     """Simply duplicates the input frame as a batch"""
 
     @classmethod
@@ -41,7 +41,7 @@ class BatchMake:
         return (image.repeat(count, 1, 1, 1),)
 
 
-class BatchShape:
+class MTB_BatchShape:
     """Generates a batch of 2D shapes with optional shading (experimental)"""
 
     @classmethod
@@ -138,7 +138,7 @@ class BatchShape:
         return (pil2tensor(res),)
 
 
-class BatchFloatFill:
+class MTB_BatchFloatFill:
     """Fills a batch float with a single value until it reaches the target length"""
 
     @classmethod
@@ -171,7 +171,7 @@ class BatchFloatFill:
         return (floats,)
 
 
-class BatchFloatAssemble:
+class MTB_BatchFloatAssemble:
     """Assembles mutiple batches of floats into a single stream (batch)"""
 
     @classmethod
@@ -194,7 +194,7 @@ class BatchFloatAssemble:
         return (res,)
 
 
-class BatchFloat:
+class MTB_BatchFloat:
     """Generates a batch of float values with interpolation"""
 
     @classmethod
@@ -257,7 +257,7 @@ class BatchFloat:
         return (keyframes,)
 
 
-class BatchMerge:
+class MTB_BatchMerge:
     """Merges multiple image batches with different frame counts"""
 
     @classmethod
@@ -313,7 +313,7 @@ class BatchMerge:
         return (merged_image,)
 
 
-class Batch2dTransform:
+class MTB_Batch2dTransform:
     """Transform a batch of images using a batch of keyframes"""
 
     @classmethod
@@ -385,7 +385,8 @@ class Batch2dTransform:
         if y and self.get_num_elements(y) > 0:
             keyframes["y"] = y
         if zoom and self.get_num_elements(zoom) > 0:
-            keyframes["zoom"] = zoom
+            # some easing types like elastic can pull back... maybe it should abs the value?
+            keyframes["zoom"] = [max(x, 0.00001) for x in zoom]
         if angle and self.get_num_elements(angle) > 0:
             keyframes["angle"] = angle
         if shear and self.get_num_elements(shear) > 0:
@@ -417,7 +418,7 @@ class Batch2dTransform:
         return (torch.cat(res, dim=0),)
 
 
-class PlotBatchFloat:
+class MTB_PlotBatchFloat:
     """Plot floats"""
 
     @classmethod
@@ -552,7 +553,7 @@ class PlotBatchFloat:
 DEFAULT_INTERPOLANT = lambda t: t * t * t * (t * (t * 6 - 15) + 10)
 
 
-class BatchShake:
+class MTB_BatchShake:
     """Applies a shaking effect to batches of images."""
 
     @classmethod
@@ -757,7 +758,7 @@ class BatchShake:
         # rotations = torch.tensor(rotations, dtype=torch.float32)
 
         # Create an instance of Batch2dTransform
-        transform = Batch2dTransform()
+        transform = MTB_Batch2dTransform()
 
         log.debug(
             f"Applying shaking with parameters: \nposition {position_amount_x}, {position_amount_y}\nrotation {rotation_amount}\nfrequency {frequency}\noctaves {octaves}"
@@ -777,13 +778,13 @@ class BatchShake:
 
 
 __nodes__ = [
-    BatchFloat,
-    Batch2dTransform,
-    BatchShape,
-    BatchMake,
-    BatchFloatAssemble,
-    BatchFloatFill,
-    BatchMerge,
-    BatchShake,
-    PlotBatchFloat,
+    MTB_BatchFloat,
+    MTB_Batch2dTransform,
+    MTB_BatchShape,
+    MTB_BatchMake,
+    MTB_BatchFloatAssemble,
+    MTB_BatchFloatFill,
+    MTB_BatchMerge,
+    MTB_BatchShake,
+    MTB_PlotBatchFloat,
 ]
