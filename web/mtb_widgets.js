@@ -17,7 +17,7 @@ import * as shared from './comfy_shared.js'
 import { log } from './comfy_shared.js'
 
 // NOTE: new widget types registered by MTB Widgets
-const newTypes = [, /*'BOOL'*/ 'COLOR', 'BBOX']
+const newTypes = [/*'BOOL'n,*/ 'COLOR', 'BBOX']
 
 const deprecated_nodes = {
   //  'Animation Builder':
@@ -895,6 +895,10 @@ const mtb_widgets = {
       }
       case 'Apply Text Template (mtb)': {
         shared.setupDynamicConnections(nodeType, 'var', '*')
+        break
+      }
+      case 'Save Data Bundle (mtb)': {
+        shared.setupDynamicConnections(nodeType, 'data', '*') // [MASK,IMAGE]
         break
       }
       case 'Add To Playlist (mtb)': {
