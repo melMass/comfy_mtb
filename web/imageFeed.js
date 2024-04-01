@@ -11,7 +11,7 @@
 
 import { api } from '../../scripts/api.js'
 import { app } from '../../scripts/app.js'
-import { LocalStorageManager } from "./comfy_shared.js"
+import { LocalStorageManager } from './comfy_shared.js'
 const styles = {
   lighbox: {
     position: 'fixed',
@@ -53,9 +53,9 @@ let currentImageIndex = 0
 const imageUrls = []
 
 let image_menu = null
-const storage = new LocalStorageManager('mtb');
+const storage = new LocalStorageManager('mtb')
 
-let activated = storage.get("image_feed", true)
+let activated = storage.get('image_feed', false)
 
 app.registerExtension({
   name: 'mtb.ImageFeed',
@@ -71,19 +71,21 @@ app.registerExtension({
         },
       },
       async onChange(value) {
-        storage.set("image_feed", value)
+        storage.set('image_feed', value)
         activated = value
       },
     })
   },
   init: async () => {
-    if (!activated) { return }
+    if (!activated) {
+      return
+    }
     const pythongossFeed = app.extensions.find(
-      (e) => e.name == 'pysssss.ImageFeed'
+      (e) => e.name === 'pysssss.ImageFeed',
     )
     if (pythongossFeed) {
       console.warn(
-        "[mtb] - Aborting the loading of mtb's imageFeed in favor of pysssss.ImageFeed"
+        "[mtb] - Aborting the loading of mtb's imageFeed in favor of pysssss.ImageFeed",
       )
       activated = false // just in case other methods are added later on
       return
@@ -114,7 +116,7 @@ app.registerExtension({
     const lightboxCloseBtn = document.createElement('button')
     Object.assign(
       lightboxCloseBtn.style,
-      styles.lightboxBtn({ right: '0', top: '0' })
+      styles.lightboxBtn({ right: '0', top: '0' }),
     )
     lightboxCloseBtn.textContent = '❌'
 
@@ -184,7 +186,7 @@ app.registerExtension({
     //- append to DOM
     document.body.append(imageListContainer)
 
-    showBtn.textContent = '🖼️'
+    showBtn.textContent = '🖼'
     showBtn.onclick = () => {
       imageListContainer.style.display = 'block'
       showBtn.style.display = 'none'
@@ -250,8 +252,9 @@ app.registerExtension({
         objectFit: 'cover',
       })
 
-      img.src = `/view?filename=${encodeURIComponent(src.filename)}&type=${src.type
-        }&subfolder=${encodeURIComponent(src.subfolder)}`
+      img.src = `/view?filename=${encodeURIComponent(src.filename)}&type=${
+        src.type
+      }&subfolder=${encodeURIComponent(src.subfolder)}`
 
       imageUrls.push(img.src)
 

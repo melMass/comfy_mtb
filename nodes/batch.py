@@ -199,8 +199,8 @@ class BatchFloat:
                     {"default": "Steps"},
                 ),
                 "count": ("INT", {"default": 1}),
-                "min": ("FLOAT", {"default": 0.0}),
-                "max": ("FLOAT", {"default": 1.0}),
+                "min": ("FLOAT", {"default": 0.0, "step": 0.001}),
+                "max": ("FLOAT", {"default": 1.0, "step": 0.001}),
                 "easing": (
                     [
                         "Linear",
@@ -276,7 +276,7 @@ class BatchMerge:
     FUNCTION = "merge_batches"
     CATEGORY = "mtb/batch"
 
-    def merge_batches(self, fusion_mode, fill, **kwargs):
+    def merge_batches(self, fusion_mode: str, fill: str, **kwargs):
         images = kwargs.values()
         max_frames = max(img.shape[0] for img in images)
 
@@ -340,9 +340,12 @@ class Batch2dTransform:
     FUNCTION = "transform_batch"
     CATEGORY = "mtb/batch"
 
-    def get_num_elements(self, param) -> int:
+    def get_num_elements(
+        self, param: None | torch.Tensor | list[torch.Tensor] | list[float]
+    ) -> int:
         if isinstance(param, torch.Tensor):
             return torch.numel(param)
+
         elif isinstance(param, list):
             return len(param)
 
@@ -367,20 +370,26 @@ class Batch2dTransform:
                 "At least one transform parameter must be provided"
             )
 
-        keyframes = {"x": [], "y": [], "zoom": [], "angle": [], "shear": []}
+        keyframes: dict[str, list[float]] = {
+            "x": [],
+            "y": [],
+            "zoom": [],
+            "angle": [],
+            "shear": [],
+        }
 
         default_vals = {"x": 0, "y": 0, "zoom": 1.0, "angle": 0, "shear": 0}
 
-        if self.get_num_elements(x) > 0:
-            keyframes["x"] = x  # type: ignore
-        if self.get_num_elements(y) > 0:
-            keyframes["y"] = y  # type: ignore
-        if self.get_num_elements(zoom) > 0:
-            keyframes["zoom"] = zoom  # type: ignore
-        if self.get_num_elements(angle) > 0:
-            keyframes["angle"] = angle  # type: ignore
-        if self.get_num_elements(shear) > 0:
-            keyframes["shear"] = shear  # type: ignore
+        if x and self.get_num_elements(x) > 0:
+            keyframes["x"] = x
+        if y and self.get_num_elements(y) > 0:
+            keyframes["y"] = y
+        if zoom and self.get_num_elements(zoom) > 0:
+            keyframes["zoom"] = zoom
+        if angle and self.get_num_elements(angle) > 0:
+            keyframes["angle"] = angle
+        if shear and self.get_num_elements(shear) > 0:
+            keyframes["shear"] = shear
 
         for name, values in keyframes.items():
             count = len(values)

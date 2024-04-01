@@ -140,9 +140,6 @@ const themes = [
   'vscode',
 ]
 class NotePlus extends LiteGraph.LGraphNode {
-  title = 'Note+ (mtb)'
-  category = 'mtb/utils'
-
   // same values as the comfy note
   color = LGraphCanvas.node_colors.yellow.color
   bgcolor = LGraphCanvas.node_colors.yellow.bgcolor
@@ -691,6 +688,9 @@ app.registerExtension({
 
   registerCustomNodes() {
     LiteGraph.registerNodeType('Note Plus (mtb)', NotePlus)
+
+    NotePlus.category = 'mtb/utils'
+    NotePlus.title = 'Note+ (mtb)'
 
     NotePlus.title_mode = LiteGraph.NO_TITLE
   },
