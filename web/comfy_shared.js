@@ -54,7 +54,7 @@ export class LocalStorageManager {
 // - log utilities
 
 function createLogger(emoji, color, consoleMethod = 'log') {
-  return function (message, ...args) {
+  return function(message, ...args) {
     if (window.MTB?.DEBUG) {
       console[consoleMethod](
         `%c${emoji} ${message}`,
@@ -155,14 +155,16 @@ export function getWidgetType(config) {
 }
 export const setupDynamicConnections = (nodeType, prefix, inputType) => {
   const onNodeCreated = nodeType.prototype.onNodeCreated
-  nodeType.prototype.onNodeCreated = function () {
+  // check if it's a list
+  const inputList = typeof inputType === 'object'
+  nodeType.prototype.onNodeCreated = function() {
     const r = onNodeCreated ? onNodeCreated.apply(this, arguments) : undefined
-    this.addInput(`${prefix}_1`, inputType)
+    this.addInput(`${prefix}_1`, inputList ? '*' : inputType)
     return r
   }
 
   const onConnectionsChange = nodeType.prototype.onConnectionsChange
-  nodeType.prototype.onConnectionsChange = function (
+  nodeType.prototype.onConnectionsChange = function(
     type,
     index,
     connected,
@@ -171,7 +173,7 @@ export const setupDynamicConnections = (nodeType, prefix, inputType) => {
     const r = onConnectionsChange
       ? onConnectionsChange.apply(this, arguments)
       : undefined
-    dynamic_connection(this, index, connected, `${prefix}_`, inputType)
+    dynamic_connection(this, index, connected, `${prefix}_`, inputList)
   }
 }
 export const dynamic_connection = (
@@ -182,9 +184,12 @@ export const dynamic_connection = (
   connectionType = 'PSDLAYER',
   nameArray = [],
 ) => {
+
   if (!node.inputs[index].name.startsWith(connectionPrefix)) {
     return
   }
+  const listConnection = typeof connectionType === 'object'
+
   // remove all non connected inputs
   if (!connected && node.inputs.length > 1) {
     log(`Removing input ${index} (${node.inputs[index].name})`)
@@ -198,12 +203,12 @@ export const dynamic_connection = (
     node.removeInput(index)
 
     // make inputs sequential again
-    for (let i = 0; i < node.inputs.length; i++) {
-      const name =
-        i < nameArray.length ? nameArray[i] : `${connectionPrefix}${i + 1}`
-      node.inputs[i].label = name
-      node.inputs[i].name = name
-    }
+    // for (let i = 0; i < node.inputs.length; i++) {
+    //   const name =
+    //     i < nameArray.length ? nameArray[i] : `${connectionPrefix}${i + 1}`
+    //   node.inputs[i].label = name
+    //   node.inputs[i].name = name
+    // }
   }
 
   // add an extra input
@@ -216,7 +221,7 @@ export const dynamic_connection = (
 
     log(`Adding input ${nextIndex + 1} (${name})`)
 
-    node.addInput(name, connectionType)
+    node.addInput(name, listConnection ? '*' : connectionType)
   }
 }
 
@@ -246,7 +251,7 @@ export function calculateTotalChildrenHeight(parentElement) {
  */
 export function addMenuHandler(nodeType, cb) {
   const getOpts = nodeType.prototype.getExtraMenuOptions
-  nodeType.prototype.getExtraMenuOptions = function () {
+  nodeType.prototype.getExtraMenuOptions = function() {
     const r = getOpts.apply(this, arguments)
     cb.apply(this, arguments)
     return r
@@ -409,7 +414,7 @@ function getBrightness(rgbObj) {
     (parseInt(rgbObj[0]) * 299 +
       parseInt(rgbObj[1]) * 587 +
       parseInt(rgbObj[2]) * 114) /
-      1000,
+    1000,
   )
 }
 
