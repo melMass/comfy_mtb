@@ -50,8 +50,8 @@ class MTB_BatchShape:
             "required": {
                 "count": ("INT", {"default": 1}),
                 "shape": (
-                    ["Box", "Circle", "Diamond"],
-                    {"default": "Box"},
+                    ["Box", "Circle", "Diamond", "Tube"],
+                    {"default": "Circle"},
                 ),
                 "image_width": ("INT", {"default": 512}),
                 "image_height": ("INT", {"default": 512}),
@@ -59,6 +59,7 @@ class MTB_BatchShape:
                 "color": ("COLOR", {"default": "#ffffff"}),
                 "bg_color": ("COLOR", {"default": "#000000"}),
                 "shade_color": ("COLOR", {"default": "#000000"}),
+                "thickness": ("INT", {"default": 5}),
                 "shadex": ("FLOAT", {"default": 0.0}),
                 "shadey": ("FLOAT", {"default": 0.0}),
             },
@@ -78,12 +79,13 @@ class MTB_BatchShape:
         color,
         bg_color,
         shade_color,
+        thickness,
         shadex,
         shadey,
     ):
-        print(f"COLOR: {color}")
-        print(f"BG_COLOR: {bg_color}")
-        print(f"SHADE_COLOR: {shade_color}")
+        log.debug(f"COLOR: {color}")
+        log.debug(f"BG_COLOR: {bg_color}")
+        log.debug(f"SHADE_COLOR: {shade_color}")
 
         # Parse color input to BGR tuple for OpenCV
         color = hex_to_rgb(color)
@@ -117,6 +119,18 @@ class MTB_BatchShape:
                     ]
                 )
                 cv2.fillPoly(mask, [pts], 255)
+
+            elif shape == "Tube":
+                cv2.ellipse(
+                    mask,
+                    center,
+                    (shape_size // 2, shape_size // 2),
+                    0,
+                    0,
+                    360,
+                    255,
+                    thickness,
+                )
 
             # Color the shape
             canvas[mask == 255] = color
