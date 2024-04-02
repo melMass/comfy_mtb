@@ -484,10 +484,11 @@ class NotePlus extends LiteGraph.LGraphNode {
     this.setupEditors()
   }
   loadAceEditor() {
+
+    // should be relative to this script regardless of where HTML is
+    const acepath = new URL('./extern/ace.min.js', import.meta.url);
     shared
-      .loadScript(
-        'https://cdn.jsdelivr.net/npm/ace-builds@1.16.0/src-min-noconflict/ace.min.js',
-      )
+      .loadScript(acepath)
       .catch((e) => {
         errorLogger(e)
       })
