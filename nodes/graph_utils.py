@@ -76,6 +76,14 @@ class MTB_ToDevice:
 
 # class MTB_ApplyTextTemplate:
 class MTB_ApplyTextTemplate:
+    """
+    Experimental node to interpolate strings from inputs.
+
+    Interpolation just requires {}, for instance:
+
+    Some string {var_1} and {var_2}
+    """
+
     @classmethod
     def INPUT_TYPES(cls):
         return {
