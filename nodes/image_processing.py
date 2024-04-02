@@ -13,7 +13,7 @@ from skimage.filters import gaussian
 from skimage.util import compare_images
 
 from ..log import log
-from ..utils import pil2tensor, tensor2np, tensor2pil
+from ..utils import np2tensor, pil2tensor, tensor2np, tensor2pil
 
 # try:
 #     from cv2.ximgproc import guidedFilter
@@ -274,19 +274,47 @@ class MTB_Blur:
                     "FLOAT",
                     {"default": 3.0, "min": 0.0, "max": 200.0, "step": 0.01},
                 ),
-            }
+            },
+            "optional": {"sigmasX": ("FLOATS",), "sigmasY": ("FLOATS",)},
         }
 
     RETURN_TYPES = ("IMAGE",)
     FUNCTION = "blur"
     CATEGORY = "mtb/image processing"
 
-    def blur(self, image: torch.Tensor, sigmaX, sigmaY):
-        image = image.numpy()
-        image = image.transpose(1, 2, 3, 0)
-        image = gaussian(image, sigma=(sigmaX, sigmaY, 0, 0))
-        image = image.transpose(3, 0, 1, 2)
-        return (torch.from_numpy(image),)
+    def blur(
+        self, image: torch.Tensor, sigmaX, sigmaY, sigmasX=None, sigmasY=None
+    ):
+        image_np = image.numpy() * 255
+
+
+        blurred_images = []
+        if sigmasX is not None:
+            if sigmasY is None:
+                sigmasY = sigmasX
+            if len(sigmasX) != image.size(0):
+                raise ValueError(
+                    f"SigmasX must have same length as image, sigmasX is {len(sigmasX)} but the batch size is {image.size(0)}"
+                )
+
+            for i in range(image.size(0)):
+                blurred = gaussian(
+                    image_np[i],
+                    sigma=(sigmasX[i], sigmasY[i], 0),
+                    channel_axis=2,
+                )
+                blurred_images.append(blurred)
+
+            image_np = np.array(blurred_images)
+        else:
+            for i in range(image.size(0)):
+                blurred = gaussian(
+                    image_np[i], sigma=(sigmaX, sigmaY, 0), channel_axis=2
+                )
+                blurred_images.append(blurred)
+
+            image_np = np.array(blurred_images)
+        return (np2tensor(image_np).squeeze(0),)
 
 
 class MTB_Sharpen:
@@ -436,9 +464,6 @@ class MTB_MaskToImage:
         return (pil2tensor(images),)
 
 
-from typing import Optional
-
-
 class MTB_ColoredImage:
     """Constant color image of given size."""
 
@@ -499,23 +524,30 @@ class MTB_ColoredImage:
         color,
         width,
         height,
-        foreground_image: Optional[torch.Tensor] = None,
-        foreground_mask: Optional[torch.Tensor] = None,
+        foreground_image: torch.Tensor | None = None,
+        foreground_mask: torch.Tensor | None = None,
     ):
         image = Image.new("RGBA", (width, height), color=color)
         output = []
         if foreground_image is not None:
-            fg_images = tensor2pil(foreground_image)
-            fg_masks = [None] * len(
-                fg_images
-            )  # Default to None for each foreground image
+            fg_masks = [None] * foreground_image.size()[0]
 
             if foreground_mask is not None:
+                fg_size = foreground_image.size()[0]
+                mask_size = foreground_mask.size()[0]
+
+                if fg_size == 1 and mask_size > fg_size:
+                    foreground_image = foreground_image.repeat(
+                        mask_size, 1, 1, 1
+                    )
+
                 if foreground_image.size()[0] != foreground_mask.size()[0]:
                     raise ValueError(
                         "Foreground image and mask must have same batch size"
                     )
                 fg_masks = tensor2pil(foreground_mask.unsqueeze(-1))
+
+            fg_images = tensor2pil(foreground_image)
 
             for fg_image, fg_mask in zip(fg_images, fg_masks):
                 # Resize and crop if dimensions mismatch
