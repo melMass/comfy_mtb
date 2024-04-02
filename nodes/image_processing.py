@@ -412,7 +412,7 @@ class MTB_MaskToImage:
     FUNCTION = "render_mask"
 
     def render_mask(self, mask, color, background):
-        masks = tensor2np(mask)
+        masks = tensor2np(mask)[0]
         images = []
         for m in masks:
             _mask = Image.fromarray(m).convert("L")
