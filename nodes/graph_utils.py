@@ -35,6 +35,7 @@ class MTB_ToDevice:
         if torch.backends.mps.is_available():
             devices.append("mps")
         if torch.cuda.is_available():
+            devices.append("cuda")
             for i in range(torch.cuda.device_count()):
                 devices.append(f"cuda{i}")
 

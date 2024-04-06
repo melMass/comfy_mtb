@@ -287,7 +287,6 @@ class MTB_Blur:
     ):
         image_np = image.numpy() * 255
 
-
         blurred_images = []
         if sigmasX is not None:
             if sigmasY is None:
@@ -834,7 +833,8 @@ class MTB_ImageTileOffset:
         return {
             "required": {
                 "image": ("IMAGE",),
-                "tiles": ("INT", {"default": 2}),
+                "tilesX": ("INT", {"default": 2, "min": 1}),
+                "tilesY": ("INT", {"default": 2, "min": 1}),
             }
         }
 
@@ -844,17 +844,19 @@ class MTB_ImageTileOffset:
 
     FUNCTION = "tile_image"
 
-    def tile_image(self, image: torch.Tensor, tiles: int = 2):
-        if tiles < 1:
+    def tile_image(
+        self, image: torch.Tensor, tilesX: int = 2, tilesY: int = 2
+    ):
+        if tilesX < 1 or tilesY < 1:
             raise ValueError("The number of tiles must be at least 1.")
 
         batch_size, height, width, channels = image.shape
-        tile_height = height // tiles
-        tile_width = width // tiles
+        tile_height = height // tilesY
+        tile_width = width // tilesX
 
         output_image = torch.zeros_like(image)
 
-        for i, j in itertools.product(range(tiles), range(tiles)):
+        for i, j in itertools.product(range(tilesY), range(tilesX)):
             start_h = i * tile_height
             end_h = start_h + tile_height
             start_w = j * tile_width
@@ -862,8 +864,8 @@ class MTB_ImageTileOffset:
 
             tile = image[:, start_h:end_h, start_w:end_w, :]
 
-            output_start_h = (i + 1) % tiles * tile_height
-            output_start_w = (j + 1) % tiles * tile_width
+            output_start_h = (i + 1) % tilesY * tile_height
+            output_start_w = (j + 1) % tilesX * tile_width
             output_end_h = output_start_h + tile_height
             output_end_w = output_start_w + tile_width
 
