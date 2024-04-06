@@ -6,6 +6,7 @@ from typing import Optional
 
 import numpy as np
 import torch
+import torchvision.transforms.functional as F
 from PIL import Image
 
 from ..log import log
@@ -104,6 +105,58 @@ class MTB_ApplyTextTemplate:
             res = res.replace(f"{{{k}}}", f"{v}")
 
         return (res,)
+
+
+class MTB_MatchDimensions:
+    """Match images dimensions along the given dimension, preserving aspect ratio."""
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "source": ("IMAGE",),
+                "reference": ("IMAGE",),
+                "match": (["height", "width"], {"default": "height"}),
+            },
+        }
+
+    RETURN_TYPES = ("IMAGE", "INT", "INT")
+    RETURN_NAMES = ("image", "new_width", "new_height")
+    CATEGORY = "mtb/utils"
+    FUNCTION = "execute"
+
+    def execute(
+        self, source: torch.Tensor, reference: torch.Tensor, match: str
+    ):
+        _batch_size, height, width, _channels = source.shape
+        _rbatch_size, rheight, rwidth, _rchannels = reference.shape
+
+        source_aspect_ratio = width / height
+        # reference_aspect_ratio = rwidth / rheight
+
+        source = source.permute(0, 3, 1, 2)
+        reference = reference.permute(0, 3, 1, 2)
+
+        if match == "height":
+            new_height = rheight
+            new_width = int(rheight * source_aspect_ratio)
+        else:
+            new_width = rwidth
+            new_height = int(rwidth / source_aspect_ratio)
+
+        resized_images = [
+            F.resize(
+                source[i],
+                (new_height, new_width),
+                antialias=True,
+                interpolation=Image.BICUBIC,
+            )
+            for i in range(_batch_size)
+        ]
+        resized_source = torch.stack(resized_images, dim=0)
+        resized_source = resized_source.permute(0, 2, 3, 1)
+
+        return (resized_source, new_width, new_height)
 
 
 class MTB_GetBatchFromHistory:
@@ -415,4 +468,5 @@ __nodes__ = [
     MTB_MathExpression,
     MTB_ToDevice,
     MTB_ApplyTextTemplate,
+    MTB_MatchDimensions,
 ]
