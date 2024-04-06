@@ -1,7 +1,7 @@
 from ..log import log
 
 
-class AnimationBuilder:
+class MTB_AnimationBuilder:
     """Simple maths for animation."""
 
     @classmethod
@@ -41,4 +41,4 @@ class AnimationBuilder:
         return (frame, scaled, raw_loop, (frame == (total_frames - 1)))
 
 
-__nodes__ = [AnimationBuilder]
+__nodes__ = [MTB_AnimationBuilder]

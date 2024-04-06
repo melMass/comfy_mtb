@@ -11,8 +11,16 @@ from ..utils import apply_easing, hex_to_rgb, pil2tensor
 from .transform import TransformImage
 
 
-class BatchMake:
-    """Simply duplicates the input frame as a batch."""
+def hex_to_rgb(hex_color, bgr=False):
+    hex_color = hex_color.lstrip("#")
+    if bgr:
+        return tuple(int(hex_color[i : i + 2], 16) for i in (4, 2, 0))
+
+    return tuple(int(hex_color[i : i + 2], 16) for i in (0, 2, 4))
+
+
+class MTB_BatchMake:
+    """Simply duplicates the input frame as a batch"""
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -34,8 +42,8 @@ class BatchMake:
         return (image.repeat(count, 1, 1, 1),)
 
 
-class BatchShape:
-    """Generates a batch of 2D shapes with optional shading (experimental)."""
+class MTB_BatchShape:
+    """Generates a batch of 2D shapes with optional shading (experimental)"""
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -43,8 +51,8 @@ class BatchShape:
             "required": {
                 "count": ("INT", {"default": 1}),
                 "shape": (
-                    ["Box", "Circle", "Diamond"],
-                    {"default": "Box"},
+                    ["Box", "Circle", "Diamond", "Tube"],
+                    {"default": "Circle"},
                 ),
                 "image_width": ("INT", {"default": 512}),
                 "image_height": ("INT", {"default": 512}),
@@ -52,6 +60,7 @@ class BatchShape:
                 "color": ("COLOR", {"default": "#ffffff"}),
                 "bg_color": ("COLOR", {"default": "#000000"}),
                 "shade_color": ("COLOR", {"default": "#000000"}),
+                "thickness": ("INT", {"default": 5}),
                 "shadex": ("FLOAT", {"default": 0.0}),
                 "shadey": ("FLOAT", {"default": 0.0}),
             },
@@ -71,12 +80,13 @@ class BatchShape:
         color,
         bg_color,
         shade_color,
+        thickness,
         shadex,
         shadey,
     ):
-        print(f"COLOR: {color}")
-        print(f"BG_COLOR: {bg_color}")
-        print(f"SHADE_COLOR: {shade_color}")
+        log.debug(f"COLOR: {color}")
+        log.debug(f"BG_COLOR: {bg_color}")
+        log.debug(f"SHADE_COLOR: {shade_color}")
 
         # Parse color input to BGR tuple for OpenCV
         color = hex_to_rgb(color)
@@ -111,6 +121,18 @@ class BatchShape:
                 )
                 cv2.fillPoly(mask, [pts], 255)  # type: ignore
 
+            elif shape == "Tube":
+                cv2.ellipse(
+                    mask,
+                    center,
+                    (shape_size // 2, shape_size // 2),
+                    0,
+                    0,
+                    360,
+                    255,
+                    thickness,
+                )
+
             # Color the shape
             canvas[mask == 255] = color
 
@@ -131,8 +153,8 @@ class BatchShape:
         return (pil2tensor(res),)
 
 
-class BatchFloatFill:
-    """Fills a batch float with a single value."""
+class MTB_BatchFloatFill:
+    """Fills a batch float with a single value until it reaches the target length"""
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -164,8 +186,8 @@ class BatchFloatFill:
         return (floats,)
 
 
-class BatchFloatAssemble:
-    """Assembles mutiple batches of floats into a single stream (batch)."""
+class MTB_BatchFloatAssemble:
+    """Assembles mutiple batches of floats into a single stream (batch)"""
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -187,8 +209,8 @@ class BatchFloatAssemble:
         return (res,)
 
 
-class BatchFloat:
-    """Generates a batch of float values with interpolation."""
+class MTB_BatchFloat:
+    """Generates a batch of float values with interpolation"""
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -257,8 +279,8 @@ class BatchFloat:
         return (keyframes,)
 
 
-class BatchMerge:
-    """Merges multiple image batches with different frame counts."""
+class MTB_BatchMerge:
+    """Merges multiple image batches with different frame counts"""
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -313,8 +335,8 @@ class BatchMerge:
         return (merged_image,)
 
 
-class Batch2dTransform:
-    """Transform a batch of images using a batch of keyframes."""
+class MTB_Batch2dTransform:
+    """Transform a batch of images using a batch of keyframes"""
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -385,7 +407,8 @@ class Batch2dTransform:
         if y and self.get_num_elements(y) > 0:
             keyframes["y"] = y
         if zoom and self.get_num_elements(zoom) > 0:
-            keyframes["zoom"] = zoom
+            # some easing types like elastic can pull back... maybe it should abs the value?
+            keyframes["zoom"] = [max(x, 0.00001) for x in zoom]
         if angle and self.get_num_elements(angle) > 0:
             keyframes["angle"] = angle
         if shear and self.get_num_elements(shear) > 0:
@@ -418,8 +441,8 @@ class Batch2dTransform:
         return (torch.cat(res, dim=0),)
 
 
-class PlotBatchFloat:
-    """Plot floats."""
+class MTB_PlotBatchFloat:
+    """Plot floats"""
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -551,7 +574,7 @@ def _DEFAULT_INTERPOLANT(t):
     return t * t * t * (t * (t * 6 - 15) + 10)
 
 
-class BatchShake:
+class MTB_BatchShake:
     """Applies a shaking effect to batches of images."""
 
     @classmethod
@@ -769,7 +792,7 @@ class BatchShake:
         # rotations = torch.tensor(rotations, dtype=torch.float32)
 
         # Create an instance of Batch2dTransform
-        transform = Batch2dTransform()
+        transform = MTB_Batch2dTransform()
 
         log.debug(
             f"Applying shaking with parameters: \n \
@@ -794,13 +817,13 @@ class BatchShake:
 
 
 __nodes__ = [
-    BatchFloat,
-    Batch2dTransform,
-    BatchShape,
-    BatchMake,
-    BatchFloatAssemble,
-    BatchFloatFill,
-    BatchMerge,
-    BatchShake,
-    PlotBatchFloat,
+    MTB_BatchFloat,
+    MTB_Batch2dTransform,
+    MTB_BatchShape,
+    MTB_BatchMake,
+    MTB_BatchFloatAssemble,
+    MTB_BatchFloatFill,
+    MTB_BatchMerge,
+    MTB_BatchShake,
+    MTB_PlotBatchFloat,
 ]

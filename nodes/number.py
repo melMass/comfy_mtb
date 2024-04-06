@@ -1,4 +1,4 @@
-class IntToBool:
+class MTB_IntToBool:
     """Basic int to bool conversion"""
 
     @classmethod
@@ -22,7 +22,7 @@ class IntToBool:
         return (bool(int),)
 
 
-class IntToNumber:
+class MTB_IntToNumber:
     """Node addon for the WAS Suite. Converts a "comfy" INT to a NUMBER."""
 
     @classmethod
@@ -50,7 +50,7 @@ class IntToNumber:
         return (int,)
 
 
-class FloatToNumber:
+class MTB_FloatToNumber:
     """Node addon for the WAS Suite. Converts a "comfy" FLOAT to a NUMBER."""
 
     @classmethod
@@ -81,7 +81,7 @@ class FloatToNumber:
 
 
 __nodes__ = [
-    FloatToNumber,
-    IntToBool,
-    IntToNumber,
+    MTB_FloatToNumber,
+    MTB_IntToBool,
+    MTB_IntToNumber,
 ]

@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding:utf-8 -*-
 ###
 # File: __init__.py
 # Project: comfy_mtb
@@ -43,7 +42,7 @@ __version__ = "0.2.0"
 def extract_nodes_from_source(filename):
     source_code = ""
 
-    with open(filename, "r", encoding="utf8") as file:
+    with open(filename, encoding="utf8") as file:
         source_code = file.read()
 
     nodes = []
@@ -81,7 +80,7 @@ def load_nodes():
                 module = importlib.import_module(
                     f".nodes.{module_name}", package=__package__
                 )
-                _nodes = getattr(module, "__nodes__")
+                _nodes = module.__nodes__
                 nodes.extend(_nodes)
                 log.debug(f"Imported {module_name} nodes")
 
@@ -97,7 +96,7 @@ def load_nodes():
 
     if errors:
         log.debug(
-            f"Some nodes failed to load:\n\t"
+            "Some nodes failed to load:\n\t"
             + "\n\t".join(errors)
             + "\n\n"
             + "Check that you properly installed the dependencies.\n"
@@ -147,7 +146,7 @@ for node_class in nodes:
             )
 
 log.debug(
-    f"Loaded the following nodes:\n\t"
+    "Loaded the following nodes:\n\t"
     + "\n\t".join(
         f"{cyan_text(k)}: {blue_text(get_summary(doc)) if doc else '-'}"
         for k, doc in NODE_CLASS_MAPPINGS_DEBUG.items()
@@ -180,6 +179,12 @@ if hasattr(PromptServer, "instance"):
 
     PromptServer.instance.app.router.add_static(
         "/mtb-assets/", path=(here / "html").as_posix()
+    )
+
+    # NOTE: we add an extra static path to avoid comfy mechanism
+    # that loads every script in web.
+    PromptServer.instance.app.add_routes(
+        [web.static("/mtb_async", (here / "web_async").as_posix())]
     )
 
     @PromptServer.instance.routes.get("/mtb/manage")

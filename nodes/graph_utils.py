@@ -37,6 +37,7 @@ class MTB_ToDevice:
         if torch.backends.mps.is_available():
             devices.append("mps")
         if torch.cuda.is_available():
+            devices.append("cuda")
             for i in range(torch.cuda.device_count()):
                 devices.append(f"cuda{i}")
 
@@ -78,6 +79,14 @@ class MTB_ToDevice:
 
 # class MTB_ApplyTextTemplate:
 class MTB_ApplyTextTemplate:
+    """
+    Experimental node to interpolate strings from inputs.
+
+    Interpolation just requires {}, for instance:
+
+    Some string {var_1} and {var_2}
+    """
+
     @classmethod
     def INPUT_TYPES(cls):
         return {
@@ -99,7 +108,7 @@ class MTB_ApplyTextTemplate:
         return (res,)
 
 
-class GetBatchFromHistory:
+class MTB_GetBatchFromHistory:
     """Very experimental node to load images from the history of the server.
 
     Queue items without output are ignored in the count.
@@ -188,7 +197,7 @@ class GetBatchFromHistory:
         return pil2tensor(frames)
 
 
-class AnyToString:
+class MTB_AnyToString:
     """Tries to take any input and convert it to a string."""
 
     @classmethod
@@ -223,7 +232,7 @@ class AnyToString:
             return (str(value),)
 
 
-class StringReplace:
+class MTB_StringReplace:
     """Basic string replacement."""
 
     """Basic string replacement."""
@@ -273,7 +282,8 @@ class MTBMathExpression:
         "evaluate a simple math expression string (!! Fallsback to eval)"
     )
 
-    def eval_expression(self, expression: str, **kwargs):
+    def eval_expression(self, expression, **kwargs):
+        import math
         from ast import literal_eval
 
         for key, value in kwargs.items():
@@ -300,8 +310,8 @@ class MTBMathExpression:
         return (result, int(result))
 
 
-class FitNumber:
-    """Fit the input float using a source and target range."""
+class MTB_FitNumber:
+    """Fit the input float using a source and target range"""
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -374,7 +384,7 @@ class FitNumber:
         return (res,)
 
 
-class ConcatImages:
+class MTB_ConcatImages:
     """Add images to batch."""
 
     RETURN_TYPES = ("IMAGE",)
@@ -402,12 +412,12 @@ class ConcatImages:
 
 
 __nodes__ = [
-    StringReplace,
-    FitNumber,
-    GetBatchFromHistory,
-    AnyToString,
-    ConcatImages,
-    MTBMathExpression,
+    MTB_StringReplace,
+    MTB_FitNumber,
+    MTB_GetBatchFromHistory,
+    MTB_AnyToString,
+    MTB_ConcatImages,
+    MTB_MathExpression,
     MTB_ToDevice,
     MTB_ApplyTextTemplate,
 ]

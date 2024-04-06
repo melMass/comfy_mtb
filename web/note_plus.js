@@ -484,13 +484,9 @@ class NotePlus extends LiteGraph.LGraphNode {
     this.setupEditors()
   }
   loadAceEditor() {
-    shared
-      .loadScript(
-        'https://cdn.jsdelivr.net/npm/ace-builds@1.16.0/src-min-noconflict/ace.min.js',
-      )
-      .catch((e) => {
-        errorLogger(e)
-      })
+    shared.loadScript('/mtb_async/ace/ace.js').catch((e) => {
+      errorLogger(e)
+    })
   }
   onCreate() {
     errorLogger('NotePlus onCreate')

@@ -87,7 +87,7 @@ def process_geometry(anything):
 # endregion
 
 
-class Debug:
+class MTB_Debug:
     """Experimental node to debug any Comfy values.
 
     support for more types and widgets is planned.
@@ -149,7 +149,7 @@ class Debug:
         return output
 
 
-class SaveTensors:
+class MTB_SaveTensors:
     """Save torch tensors (image, mask or latent) to disk.
 
     useful to debug things outside comfy.
@@ -214,4 +214,4 @@ class SaveTensors:
         return f"{filename_prefix}_{counter:05}"
 
 
-__nodes__ = [Debug, SaveTensors]
+__nodes__ = [MTB_Debug, MTB_SaveTensors]

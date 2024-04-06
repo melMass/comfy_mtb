@@ -196,7 +196,7 @@ def bbox_dim(bbox):
 # TODO: Auto install the base font to ComfyUI/fonts
 
 
-class TextToImage:
+class MTB_TextToImage:
     """Utils to convert text to image using a font.
 
     The tool looks for any .ttf file in the Comfy folder hierarchy.
@@ -225,7 +225,7 @@ class TextToImage:
 
         for font in fonts:
             log.debug(f"Adding font {font}")
-            TextToImage.fonts[font.stem] = font.as_posix()
+            MTB_TextToImage.fonts[font.stem] = font.as_posix()
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -389,7 +389,6 @@ class UvMap:
 __nodes__ = [
     QrCode,
     UnsplashImage,
-    TextToImage,
-    UvMap,
+    MTB_TextToImage,
     #  MtbExamples,
 ]

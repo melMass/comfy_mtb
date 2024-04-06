@@ -13,7 +13,7 @@ from skimage.filters import gaussian
 from skimage.util import compare_images
 
 from ..log import log
-from ..utils import pil2tensor, tensor2np, tensor2pil
+from ..utils import np2tensor, pil2tensor, tensor2np, tensor2pil
 
 # try:
 #     from cv2.ximgproc import guidedFilter
@@ -35,7 +35,7 @@ def gaussian_kernel(
     return g / g.sum()
 
 
-class ColorCorrect:
+class MTB_ColorCorrect:
     """Various color correction methods"""
 
     @classmethod
@@ -195,7 +195,7 @@ class ColorCorrect:
         return (image,)
 
 
-class ImageCompare_:
+class MTB_ImageCompare:
     """Compare two images and return a difference image"""
 
     @classmethod
@@ -231,7 +231,7 @@ class ImageCompare_:
 import requests
 
 
-class LoadImageFromUrl_:
+class MTB_LoadImageFromUrl:
     """Load an image from the given URL"""
 
     @classmethod
@@ -258,7 +258,7 @@ class LoadImageFromUrl_:
         return (pil2tensor(image),)
 
 
-class Blur_:
+class MTB_Blur:
     """Blur an image using a Gaussian filter."""
 
     @classmethod
@@ -268,28 +268,55 @@ class Blur_:
                 "image": ("IMAGE",),
                 "sigmaX": (
                     "FLOAT",
-                    {"default": 3.0, "min": 0.0, "max": 10.0, "step": 0.01},
+                    {"default": 3.0, "min": 0.0, "max": 200.0, "step": 0.01},
                 ),
                 "sigmaY": (
                     "FLOAT",
-                    {"default": 3.0, "min": 0.0, "max": 10.0, "step": 0.01},
+                    {"default": 3.0, "min": 0.0, "max": 200.0, "step": 0.01},
                 ),
-            }
+            },
+            "optional": {"sigmasX": ("FLOATS",), "sigmasY": ("FLOATS",)},
         }
 
     RETURN_TYPES = ("IMAGE",)
     FUNCTION = "blur"
     CATEGORY = "mtb/image processing"
 
-    def blur(self, image: torch.Tensor, sigmaX, sigmaY):
-        image = image.numpy()
-        image = image.transpose(1, 2, 3, 0)
-        image = gaussian(image, sigma=(sigmaX, sigmaY, 0, 0))
-        image = image.transpose(3, 0, 1, 2)
-        return (torch.from_numpy(image),)
+    def blur(
+        self, image: torch.Tensor, sigmaX, sigmaY, sigmasX=None, sigmasY=None
+    ):
+        image_np = image.numpy() * 255
+
+        blurred_images = []
+        if sigmasX is not None:
+            if sigmasY is None:
+                sigmasY = sigmasX
+            if len(sigmasX) != image.size(0):
+                raise ValueError(
+                    f"SigmasX must have same length as image, sigmasX is {len(sigmasX)} but the batch size is {image.size(0)}"
+                )
+
+            for i in range(image.size(0)):
+                blurred = gaussian(
+                    image_np[i],
+                    sigma=(sigmasX[i], sigmasY[i], 0),
+                    channel_axis=2,
+                )
+                blurred_images.append(blurred)
+
+            image_np = np.array(blurred_images)
+        else:
+            for i in range(image.size(0)):
+                blurred = gaussian(
+                    image_np[i], sigma=(sigmaX, sigmaY, 0), channel_axis=2
+                )
+                blurred_images.append(blurred)
+
+            image_np = np.array(blurred_images)
+        return (np2tensor(image_np).squeeze(0),)
 
 
-class Sharpen_:
+class MTB_Sharpen:
     """Sharpens an image using a Gaussian kernel."""
 
     @classmethod
@@ -392,7 +419,7 @@ class Sharpen_:
 #         return (np2tensor(deglaze_np_img(tensor2np(image))),)
 
 
-class MaskToImage:
+class MTB_MaskToImage:
     """Converts a mask (alpha) to an RGB image with a color and background"""
 
     @classmethod
@@ -412,7 +439,7 @@ class MaskToImage:
     FUNCTION = "render_mask"
 
     def render_mask(self, mask, color, background):
-        masks = tensor2np(mask)
+        masks = tensor2np(mask)[0]
         images = []
         for m in masks:
             _mask = Image.fromarray(m).convert("L")
@@ -436,10 +463,7 @@ class MaskToImage:
         return (pil2tensor(images),)
 
 
-from typing import Optional
-
-
-class ColoredImage:
+class MTB_ColoredImage:
     """Constant color image of given size."""
 
     def __init__(self) -> None:
@@ -572,23 +596,30 @@ class ColoredImage:
         color,
         width,
         height,
-        foreground_image: Optional[torch.Tensor] = None,
-        foreground_mask: Optional[torch.Tensor] = None,
+        foreground_image: torch.Tensor | None = None,
+        foreground_mask: torch.Tensor | None = None,
     ):
         image = Image.new("RGBA", (width, height), color=color)
         output = []
         if foreground_image is not None:
-            fg_images = tensor2pil(foreground_image)
-            fg_masks = [None] * len(
-                fg_images
-            )  # Default to None for each foreground image
+            fg_masks = [None] * foreground_image.size()[0]
 
             if foreground_mask is not None:
+                fg_size = foreground_image.size()[0]
+                mask_size = foreground_mask.size()[0]
+
+                if fg_size == 1 and mask_size > fg_size:
+                    foreground_image = foreground_image.repeat(
+                        mask_size, 1, 1, 1
+                    )
+
                 if foreground_image.size()[0] != foreground_mask.size()[0]:
                     raise ValueError(
                         "Foreground image and mask must have same batch size"
                     )
                 fg_masks = tensor2pil(foreground_mask.unsqueeze(-1))
+
+            fg_images = tensor2pil(foreground_image)
 
             for fg_image, fg_mask in zip(fg_images, fg_masks):
                 # Resize and crop if dimensions mismatch
@@ -625,7 +656,7 @@ class ColoredImage:
         return (output,)
 
 
-class ImagePremultiply:
+class MTB_ImagePremultiply:
     """Premultiply image with mask"""
 
     @classmethod
@@ -664,7 +695,7 @@ class ImagePremultiply:
         return (pil2tensor(out),)
 
 
-class ImageResizeFactor:
+class MTB_ImageResizeFactor:
     """Extracted mostly from WAS Node Suite, with a few edits (most notably multiple image support) and less features."""
 
     @classmethod
@@ -758,7 +789,7 @@ class ImageResizeFactor:
         return (resized_image,)
 
 
-class SaveImageGrid_:
+class MTB_SaveImageGrid:
     """Save all the images in the input batch as a grid of images."""
 
     def __init__(self):
@@ -867,7 +898,7 @@ class SaveImageGrid_:
         return {"ui": {"images": results}}
 
 
-class ImageTileOffset:
+class MTB_ImageTileOffset:
     """Mimics an old photoshop technique to check for seamless textures"""
 
     @classmethod
@@ -875,7 +906,8 @@ class ImageTileOffset:
         return {
             "required": {
                 "image": ("IMAGE",),
-                "tiles": ("INT", {"default": 2}),
+                "tilesX": ("INT", {"default": 2, "min": 1}),
+                "tilesY": ("INT", {"default": 2, "min": 1}),
             }
         }
 
@@ -885,17 +917,19 @@ class ImageTileOffset:
 
     FUNCTION = "tile_image"
 
-    def tile_image(self, image: torch.Tensor, tiles: int = 2):
-        if tiles < 1:
+    def tile_image(
+        self, image: torch.Tensor, tilesX: int = 2, tilesY: int = 2
+    ):
+        if tilesX < 1 or tilesY < 1:
             raise ValueError("The number of tiles must be at least 1.")
 
         batch_size, height, width, channels = image.shape
-        tile_height = height // tiles
-        tile_width = width // tiles
+        tile_height = height // tilesY
+        tile_width = width // tilesX
 
         output_image = torch.zeros_like(image)
 
-        for i, j in itertools.product(range(tiles), range(tiles)):
+        for i, j in itertools.product(range(tilesY), range(tilesX)):
             start_h = i * tile_height
             end_h = start_h + tile_height
             start_w = j * tile_width
@@ -903,8 +937,8 @@ class ImageTileOffset:
 
             tile = image[:, start_h:end_h, start_w:end_w, :]
 
-            output_start_h = (i + 1) % tiles * tile_height
-            output_start_w = (j + 1) % tiles * tile_width
+            output_start_h = (i + 1) % tilesY * tile_height
+            output_start_w = (j + 1) % tilesX * tile_width
             output_end_h = output_start_h + tile_height
             output_end_w = output_start_w + tile_width
 
@@ -916,16 +950,16 @@ class ImageTileOffset:
 
 
 __nodes__ = [
-    ColorCorrect,
-    ImageCompare_,
-    ImageTileOffset,
-    Blur_,
+    MTB_ColorCorrect,
+    MTB_ImageCompare,
+    MTB_ImageTileOffset,
+    MTB_Blur,
     # DeglazeImage,
-    MaskToImage,
-    ColoredImage,
-    ImagePremultiply,
-    ImageResizeFactor,
-    SaveImageGrid_,
-    LoadImageFromUrl_,
-    Sharpen_,
+    MTB_MaskToImage,
+    MTB_ColoredImage,
+    MTB_ImagePremultiply,
+    MTB_ImageResizeFactor,
+    MTB_SaveImageGrid,
+    MTB_LoadImageFromUrl,
+    MTB_Sharpen,
 ]
