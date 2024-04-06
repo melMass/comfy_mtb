@@ -13,7 +13,7 @@ import { app } from '../../scripts/app.js'
 export function makeUUID() {
   let dt = new Date().getTime()
   const uuid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-    const r = (dt + Math.random() * 16) % 16 | 0
+    const r = ((dt + Math.random() * 16) % 16) | 0
     dt = Math.floor(dt / 16)
     return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16)
   })
@@ -54,7 +54,7 @@ export class LocalStorageManager {
 // - log utilities
 
 function createLogger(emoji, color, consoleMethod = 'log') {
-  return function(message, ...args) {
+  return function (message, ...args) {
     if (window.MTB?.DEBUG) {
       console[consoleMethod](
         `%c${emoji} ${message}`,
@@ -65,8 +65,8 @@ function createLogger(emoji, color, consoleMethod = 'log') {
   }
 }
 
-export const infoLogger = createLogger('ℹ️', 'yellow')
-export const warnLogger = createLogger('⚠️', 'orange', 'warn')
+export const infoLogger = createLogger('i', 'yellow')
+export const warnLogger = createLogger('!', 'orange', 'warn')
 export const errorLogger = createLogger('🔥', 'red', 'error')
 export const successLogger = createLogger('✅', 'green')
 
@@ -157,14 +157,14 @@ export const setupDynamicConnections = (nodeType, prefix, inputType) => {
   const onNodeCreated = nodeType.prototype.onNodeCreated
   // check if it's a list
   const inputList = typeof inputType === 'object'
-  nodeType.prototype.onNodeCreated = function() {
+  nodeType.prototype.onNodeCreated = function () {
     const r = onNodeCreated ? onNodeCreated.apply(this, arguments) : undefined
     this.addInput(`${prefix}_1`, inputList ? '*' : inputType)
     return r
   }
 
   const onConnectionsChange = nodeType.prototype.onConnectionsChange
-  nodeType.prototype.onConnectionsChange = function(
+  nodeType.prototype.onConnectionsChange = function (
     type,
     index,
     connected,
@@ -184,7 +184,6 @@ export const dynamic_connection = (
   connectionType = 'PSDLAYER',
   nameArray = [],
 ) => {
-
   if (!node.inputs[index].name.startsWith(connectionPrefix)) {
     return
   }
@@ -203,12 +202,12 @@ export const dynamic_connection = (
     node.removeInput(index)
 
     // make inputs sequential again
-    // for (let i = 0; i < node.inputs.length; i++) {
-    //   const name =
-    //     i < nameArray.length ? nameArray[i] : `${connectionPrefix}${i + 1}`
-    //   node.inputs[i].label = name
-    //   node.inputs[i].name = name
-    // }
+    for (let i = 0; i < node.inputs.length; i++) {
+      const name =
+        i < nameArray.length ? nameArray[i] : `${connectionPrefix}${i + 1}`
+      node.inputs[i].label = name
+      node.inputs[i].name = name
+    }
   }
 
   // add an extra input
@@ -251,7 +250,7 @@ export function calculateTotalChildrenHeight(parentElement) {
  */
 export function addMenuHandler(nodeType, cb) {
   const getOpts = nodeType.prototype.getExtraMenuOptions
-  nodeType.prototype.getExtraMenuOptions = function() {
+  nodeType.prototype.getExtraMenuOptions = function () {
     const r = getOpts.apply(this, arguments)
     cb.apply(this, arguments)
     return r
@@ -414,7 +413,7 @@ function getBrightness(rgbObj) {
     (parseInt(rgbObj[0]) * 299 +
       parseInt(rgbObj[1]) * 587 +
       parseInt(rgbObj[2]) * 114) /
-    1000,
+      1000,
   )
 }
 
@@ -500,7 +499,7 @@ export const addDeprecation = (nodeType, reason) => {
     reason: 'font-size:1.2em',
   }
   console.log(
-    `%c⚠️  ${title} is deprecated:%c ${reason}`,
+    `%c!  ${title} is deprecated:%c ${reason}`,
     styles.title,
     styles.reason,
   )
