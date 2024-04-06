@@ -263,7 +263,7 @@ class MTB_StringReplace:
         return (string,)
 
 
-class MTBMathExpression:
+class MTB_MathExpression:
     """Node to evaluate a simple math expression string."""
 
     @classmethod
@@ -283,7 +283,6 @@ class MTBMathExpression:
     )
 
     def eval_expression(self, expression, **kwargs):
-        import math
         from ast import literal_eval
 
         for key, value in kwargs.items():
