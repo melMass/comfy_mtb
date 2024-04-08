@@ -2,15 +2,24 @@ import io
 import json
 import urllib.parse
 import urllib.request
+from math import pi
 from typing import Optional
 
+import comfy.model_management as model_management
+import comfy.utils
 import numpy as np
 import torch
 import torchvision.transforms.functional as F
 from PIL import Image
 
 from ..log import log
-from ..utils import apply_easing, get_server_info, pil2tensor
+from ..utils import (
+    apply_easing,
+    get_server_info,
+    numpy_NFOV,
+    pil2tensor,
+    tensor2np,
+)
 
 
 def get_image(filename, subfolder, folder_type):
@@ -128,7 +137,7 @@ class MTB_MatchDimensions:
     def execute(
         self, source: torch.Tensor, reference: torch.Tensor, match: str
     ):
-        _batch_size, height, width, _channels = source.shape
+        im_batch_size, height, width, _channels = source.shape
         _rbatch_size, rheight, rwidth, _rchannels = reference.shape
 
         source_aspect_ratio = width / height
@@ -157,6 +166,99 @@ class MTB_MatchDimensions:
         resized_source = resized_source.permute(0, 2, 3, 1)
 
         return (resized_source, new_width, new_height)
+
+
+class MTB_AutoPanEquilateral:
+    """Generate a 360 panning video from an equilateral image."""
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "equilateral_image": ("IMAGE",),
+                "fovX": ("FLOAT", {"default": 45.0}),
+                "fovY": ("FLOAT", {"default": 45.0}),
+                "elevation": ("FLOAT", {"default": 0.0}),
+                "frame_count": ("INT", {"default": 60}),
+                "width": ("INT", {"default": 768}),
+                "height": ("INT", {"default": 512}),
+            },
+            "optional": {
+                "floats_fovX": ("FLOATS",),
+                "floats_fovY": ("FLOATS",),
+                "floats_elevation": ("FLOATS",),
+            },
+        }
+
+    RETURN_TYPES = ("IMAGE",)
+    RETURN_NAMES = ("image",)
+    CATEGORY = "mtb/utils"
+    FUNCTION = "generate_frames"
+
+    def check_floats(self, f: list[float] | None, expected_count: int):
+        if f:
+            if len(f) == expected_count:
+                return True
+            return False
+        return True
+
+    def generate_frames(
+        self,
+        equilateral_image: torch.Tensor,
+        fovX: float,
+        fovY: float,
+        elevation: float,
+        frame_count: int,
+        width: int,
+        height: int,
+        floats_fovX: list[float] | None = None,
+        floats_fovY: list[float] | None = None,
+        floats_elevation: list[float] | None = None,
+    ):
+        source = tensor2np(equilateral_image)
+
+        if len(source) > 1:
+            log.warn(
+                "You provided more than one image in the equilateral_image input, only the first will be used."
+            )
+        if not all(
+            [
+                self.check_floats(x, frame_count)
+                for x in [floats_fovX, floats_fovY, floats_elevation]
+            ]
+        ):
+            raise ValueError(
+                "You provided less than the expected number of fovX, fovY, or elevation values."
+            )
+
+        source = source[0]
+        frames = []
+
+        pbar = comfy.utils.ProgressBar(frame_count)
+        for i in range(frame_count):
+            rotation_angle = (i / frame_count) * 2 * pi
+
+            if floats_elevation:
+                elevation = floats_elevation[i]
+
+            if floats_fovX:
+                fovX = floats_fovX[i]
+
+            if floats_fovY:
+                fovY = floats_fovY[i]
+
+            fov = [fovX / 100, fovY / 100]
+            center_point = [rotation_angle / (2 * pi), elevation]
+
+            nfov = numpy_NFOV(fov, height, width)
+            frame = nfov.to_nfov(source, center_point=center_point)
+
+            frames.append(frame)
+
+            model_management.throw_exception_if_processing_interrupted()
+            pbar.update(1)
+
+        return (pil2tensor(frames),)
 
 
 class MTB_GetBatchFromHistory:
@@ -469,4 +571,5 @@ __nodes__ = [
     MTB_ToDevice,
     MTB_ApplyTextTemplate,
     MTB_MatchDimensions,
+    MTB_AutoPanEquilateral,
 ]
