@@ -178,7 +178,7 @@ class MTB_AutoPanEquilateral:
                 "equilateral_image": ("IMAGE",),
                 "fovX": ("FLOAT", {"default": 45.0}),
                 "fovY": ("FLOAT", {"default": 45.0}),
-                "elevation": ("FLOAT", {"default": 0.0}),
+                "elevation": ("FLOAT", {"default": 0.5}),
                 "frame_count": ("INT", {"default": 100}),
                 "width": ("INT", {"default": 768}),
                 "height": ("INT", {"default": 512}),
