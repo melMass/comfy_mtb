@@ -76,3 +76,4 @@
     "Uv To Image (mtb)": "Converts the UV map to an image. (Shallow converter)",
     "Vae Decode (mtb)": "Wrapper for the 2 core decoders (nomarl and tiled) but also adding the sd seamless hack, taken from: FlyingFireCo/tiled_ksampler"
 }
+
