@@ -139,7 +139,7 @@ class MTB_MatchDimensions:
     def execute(
         self, source: torch.Tensor, reference: torch.Tensor, match: str
     ):
-        im_batch_size, height, width, _channels = source.shape
+        _batch_size, height, width, _channels = source.shape
         _rbatch_size, rheight, rwidth, _rchannels = reference.shape
 
         source_aspect_ratio = width / height
@@ -168,6 +168,29 @@ class MTB_MatchDimensions:
         resized_source = resized_source.permute(0, 2, 3, 1)
 
         return (resized_source, new_width, new_height)
+
+
+class MTB_FloatsToFloat:
+    """AD, IPA, Fitz etc have commonly choose to mistype float lists as FLOAT.
+
+    This is just a hack to be compatible with these
+    """
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "floats": ("FLOATS",),
+            }
+        }
+
+    RETURN_TYPES = ("FLOAT",)
+    RETURN_NAMES = ("float",)
+    CATEGORY = "mtb/utils"
+    FUNCTION = "convert"
+
+    def convert(self, floats):
+        return (floats,)
 
 
 class MTB_AutoPanEquilateral:
@@ -576,4 +599,5 @@ __nodes__ = [
     MTB_ApplyTextTemplate,
     MTB_MatchDimensions,
     MTB_AutoPanEquilateral,
+    MTB_FloatsToFloat,
 ]
