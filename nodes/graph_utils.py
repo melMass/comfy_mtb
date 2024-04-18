@@ -168,6 +168,29 @@ class MTB_MatchDimensions:
         return (resized_source, new_width, new_height)
 
 
+class MTB_FloatsToFloat:
+    """AD, IPA, Fitz etc have commonly choose to mistype float lists as FLOAT.
+
+    This is just a hack to be compatible with these
+    """
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "floats": ("FLOATS",),
+            }
+        }
+
+    RETURN_TYPES = ("FLOAT",)
+    RETURN_NAMES = ("float",)
+    CATEGORY = "mtb/utils"
+    FUNCTION = "convert"
+
+    def convert(self, floats):
+        return (floats,)
+
+
 class MTB_AutoPanEquilateral:
     """Generate a 360 panning video from an equilateral image."""
 
@@ -572,4 +595,5 @@ __nodes__ = [
     MTB_ApplyTextTemplate,
     MTB_MatchDimensions,
     MTB_AutoPanEquilateral,
+    MTB_FloatsToFloat,
 ]
