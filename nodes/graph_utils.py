@@ -137,7 +137,7 @@ class MTB_MatchDimensions:
     def execute(
         self, source: torch.Tensor, reference: torch.Tensor, match: str
     ):
-        im_batch_size, height, width, _channels = source.shape
+        _batch_size, height, width, _channels = source.shape
         _rbatch_size, rheight, rwidth, _rchannels = reference.shape
 
         source_aspect_ratio = width / height
