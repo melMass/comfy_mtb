@@ -48,7 +48,7 @@ class LoadFaceAnalysisModel:
 
         face_analyser = insightface.app.FaceAnalysis(
             name=faceswap_model,
-            root=get_model_path("insightface"),
+            root=get_model_path("insightface").as_posix(),
         )
         return (face_analyser,)
 
@@ -57,9 +57,12 @@ class LoadFaceSwapModel:
     """Loads a faceswap model"""
 
     @staticmethod
-    def get_models() -> List[Path]:
-        models_path = get_model_path("insightface").iterdir()
-        return [x for x in models_path if x.suffix in [".onnx", ".pth"]]
+    def get_models() -> list[Path]:
+        models_path = get_model_path("insightface")
+        if models_path.exists():
+            models = models_path.iterdir()
+            return [x for x in models if x.suffix in [".onnx", ".pth"]]
+        return []
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -110,7 +113,10 @@ class FaceSwap:
                 "image": ("IMAGE",),
                 "reference": ("IMAGE",),
                 "faces_index": ("STRING", {"default": "0"}),
-                "faceanalysis_model": ("FACE_ANALYSIS_MODEL", {"default": "None"}),
+                "faceanalysis_model": (
+                    "FACE_ANALYSIS_MODEL",
+                    {"default": "None"},
+                ),
                 "faceswap_model": ("FACESWAP_MODEL", {"default": "None"}),
             },
             "optional": {},
@@ -133,10 +139,14 @@ class FaceSwap:
             img = tensor2pil(img)[0]
             ref = tensor2pil(reference)[0]
             face_ids = {
-                int(x) for x in faces_index.strip(",").split(",") if x.isnumeric()
+                int(x)
+                for x in faces_index.strip(",").split(",")
+                if x.isnumeric()
             }
             sys.stdout = NullWriter()
-            swapped = swap_face(faceanalysis_model, ref, img, faceswap_model, face_ids)
+            swapped = swap_face(
+                faceanalysis_model, ref, img, faceswap_model, face_ids
+            )
             sys.stdout = sys.__stdout__
             return pil2tensor(swapped)
 
@@ -170,7 +180,10 @@ def get_face_single(
         log.debug("No face ed, trying again with smaller image")
         det_size_half = (det_size[0] // 2, det_size[1] // 2)
         return get_face_single(
-            face_analyser, img_data, face_index=face_index, det_size=det_size_half
+            face_analyser,
+            img_data,
+            face_index=face_index,
+            det_size=det_size_half,
         )
 
     try:
@@ -194,7 +207,9 @@ def swap_face(
     if face_swapper_model is not None:
         cv_source_img = cv2.cvtColor(np.array(source_img), cv2.COLOR_RGB2BGR)
         cv_target_img = cv2.cvtColor(np.array(target_img), cv2.COLOR_RGB2BGR)
-        source_face = get_face_single(face_analyser, cv_source_img, face_index=0)
+        source_face = get_face_single(
+            face_analyser, cv_source_img, face_index=0
+        )
         if source_face is not None:
             result = cv_target_img
 
@@ -204,12 +219,16 @@ def swap_face(
                 )
                 if target_face is not None:
                     sys.stdout = NullWriter()
-                    result = face_swapper_model.get(result, target_face, source_face)
+                    result = face_swapper_model.get(
+                        result, target_face, source_face
+                    )
                     sys.stdout = sys.__stdout__
                 else:
                     log.warning(f"No target face found for {face_num}")
 
-            result_image = Image.fromarray(cv2.cvtColor(result, cv2.COLOR_BGR2RGB))
+            result_image = Image.fromarray(
+                cv2.cvtColor(result, cv2.COLOR_BGR2RGB)
+            )
         else:
             log.warning("No source face found")
     else:
