@@ -382,7 +382,7 @@ export const MtbWidgets = {
           75,
           size[0] / size[1],
           0.1,
-          1000
+          1000,
         )
         this.camera.position.z = 5
 
@@ -442,7 +442,7 @@ export const MtbWidgets = {
         if (this.inputEl) {
           this.inputEl.remove()
         }
-      }
+      },
     }
     log('Creating canvas')
     w.inputEl = document.createElement('canvas')

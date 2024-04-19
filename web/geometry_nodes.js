@@ -28,40 +28,46 @@ export const make_wireframe = (mesh) => {
 }
 
 export const three_to_o3d = (mesh) => {
-  const meshData = {};
+  const meshData = {}
 
   // vertices
   if (mesh.geometry.getAttribute('position')) {
-    meshData.vertices = Array.from(mesh.geometry.getAttribute('position').array);
+    meshData.vertices = Array.from(mesh.geometry.getAttribute('position').array)
   }
 
   // triangles (indices)
   if (mesh.geometry.index) {
-    meshData.triangles = Array.from(mesh.geometry.index.array);
+    meshData.triangles = Array.from(mesh.geometry.index.array)
   }
 
   // vertex normals
   if (mesh.geometry.getAttribute('normal')) {
-    meshData.vertex_normals = Array.from(mesh.geometry.getAttribute('normal').array);
+    meshData.vertex_normals = Array.from(
+      mesh.geometry.getAttribute('normal').array,
+    )
   }
 
   // vertex colors
   if (mesh.geometry.getAttribute('color')) {
-    meshData.vertex_colors = Array.from(mesh.geometry.getAttribute('color').array);
+    meshData.vertex_colors = Array.from(
+      mesh.geometry.getAttribute('color').array,
+    )
   }
 
   // UVs
   if (mesh.geometry.getAttribute('uv')) {
-    meshData.triangle_uvs = Array.from(mesh.geometry.getAttribute('uv').array);
+    meshData.triangle_uvs = Array.from(mesh.geometry.getAttribute('uv').array)
   }
 
   // Convert to JSON and send to Python backend
-  return JSON.stringify(meshData);
-};
+  return JSON.stringify(meshData)
+}
 
-export const o3d_to_three = (data, material_opts) => {
+export const o3d_to_three = (data, user_material_opts) => {
+  const material_opts = user_material_opts
+    ? { ...user_material_opts }
+    : { color: '0x00ff00' }
 
-  material_opts = material_opts || { color: "0x00ff00" }
   // Parse the JSON data
   const meshData = JSON.parse(data)
 
@@ -93,9 +99,12 @@ export const o3d_to_three = (data, material_opts) => {
     geometry.setAttribute('uv', new THREE.BufferAttribute(uvs, 2))
   }
 
-  if (material_opts.displacementB64 != undefined) {
-    material_opts.displacementMap = THREE.ImageUtils.loadTexture(material_opts.displacementB64)
-    delete (material_opts.displacementB64)
+  if (material_opts.displacementB64 !== undefined) {
+    material_opts.displacementMap = new THREE.TextureLoader().load(
+      material_opts.displacementB64,
+    )
+
+    // material_opts.displacementB64 = undefined
   }
 
   // For visualization, you might choose to use the MeshPhongMaterial to get the benefit of lighting with normals
@@ -110,16 +119,19 @@ export const o3d_to_three = (data, material_opts) => {
 
 app.registerExtension({
   name: 'mtb.geometry_nodes',
+  init: () => {},
 
-  async beforeRegisterNodeDef(nodeType, nodeData, app) {
+  async beforeRegisterNodeDef(nodeType, nodeData, ...args) {
     switch (nodeData.name) {
-      case 'Load Geometry (mtb)':
+      case 'Geometry Load (mtb)': {
         const onExecuted = nodeType.prototype.onExecuted
         nodeType.prototype.onExecuted = function (message) {
-          onExecuted?.apply(this, arguments)
-          console.log('Executed Load Geometry', arguments)
+          onExecuted?.apply(this, nodeType, nodeData, ...args)
+          console.log('Executed Load Geometry', ...args)
+          console.log('Message:', message)
         }
         break
+      }
     }
   },
 })
