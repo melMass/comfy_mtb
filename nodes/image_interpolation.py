@@ -1,12 +1,9 @@
-import glob
-import os
 from pathlib import Path
 from typing import List
 
 import comfy
 import comfy.model_management as model_management
 import comfy.utils
-import folder_paths
 import numpy as np
 import tensorflow as tf
 import torch
@@ -18,7 +15,7 @@ from ..utils import get_model_path
 
 
 class LoadFilmModel:
-    """Loads a FILM model"""
+    """Loads a FILM model."""
 
     @staticmethod
     def get_models() -> List[Path]:
@@ -59,7 +56,7 @@ class LoadFilmModel:
 
 
 class FilmInterpolation:
-    """Google Research FILM frame interpolation for large motion"""
+    """Google Research FILM frame interpolation for large motion."""
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -104,15 +101,21 @@ class FilmInterpolation:
         pbar = comfy.utils.ProgressBar(num_frames)
 
         for frame in util.interpolate_recursively_from_memory(
-            in_frames, interpolate, film_model
+            in_frames,  # type: ignore
+            interpolate,
+            film_model,
         ):
             out_tensors.append(
-                torch.from_numpy(frame) if isinstance(frame, np.ndarray) else frame
+                torch.from_numpy(frame)
+                if isinstance(frame, np.ndarray)
+                else frame
             )
             model_management.throw_exception_if_processing_interrupted()
             pbar.update(1)
 
-        out_tensors = torch.cat([tens.unsqueeze(0) for tens in out_tensors], dim=0)
+        out_tensors = torch.cat(
+            [tens.unsqueeze(0) for tens in out_tensors], dim=0
+        )
 
         log.debug(f"Returning {len(out_tensors)} tensors")
         log.debug(f"Output shape {out_tensors.shape}")

@@ -490,6 +490,16 @@ class MTB_ColoredImage:
     FUNCTION = "render_img"
 
     def resize_and_crop(self, img, target_size):
+        original_width, original_height = img.size
+        target_width, target_height = target_size
+
+        # If the target size is larger, center the image on a canvas of the target size
+        if target_width > original_width or target_height > original_height:
+            new_img = Image.new(img.mode, (target_width, target_height))
+            left = (target_width - original_width) // 2
+            top = (target_height - original_height) // 2
+            new_img.paste(img, (left, top))
+            return new_img
         # Calculate scaling factors for both dimensions
         scale_x = target_size[0] / img.width
         scale_y = target_size[1] / img.height
@@ -509,6 +519,69 @@ class MTB_ColoredImage:
 
         # Crop and return the image
         return img.crop((left, top, right, bottom))
+
+    def resize_and_crop_new(self, img, target_size):
+        original_width, original_height = img.size
+        target_width, target_height = target_size
+
+        # Determine the scaling factors for both dimensions
+        scale_x = target_width / original_width
+        scale_y = target_height / original_height
+
+        # Resize the image based on the scaling factor that requires the least change
+        scale = min(scale_x, scale_y)
+        new_width, new_height = (
+            int(original_width * scale),
+            int(original_height * scale),
+        )
+        resized_img = img.resize((new_width, new_height), Image.ANTIALIAS)
+
+        # Create a new canvas for the target size
+        new_img = Image.new(img.mode, (target_width, target_height))
+
+        # Calculate position to paste the resized image onto the canvas
+        left = (target_width - new_width) // 2
+        top = (target_height - new_height) // 2
+        new_img.paste(resized_img, (left, top))
+
+        return new_img
+
+    def resize_and_crop_(self, img, target_size):
+        original_width, original_height = img.size
+        target_width, target_height = target_size
+
+        # If the target size is larger, center the image on a canvas of the target size
+        if target_width > original_width or target_height > original_height:
+            new_img = Image.new(img.mode, (target_width, target_height))
+            left = (target_width - original_width) // 2
+            top = (target_height - original_height) // 2
+            new_img.paste(img, (left, top))
+            return new_img
+
+        # If the target size is smaller, resize and crop
+        else:
+            # Calculate scaling factors for both dimensions
+            scale_x = target_width / original_width
+            scale_y = target_height / original_height
+
+            # Use the larger scaling factor to maintain aspect ratio
+            scale = max(scale_x, scale_y)
+
+            # Resize the image based on calculated scale
+            new_size = (
+                int(original_width * scale),
+                int(original_height * scale),
+            )
+            img = img.resize(new_size, Image.ANTIALIAS)
+
+            # Calculate cropping coordinates
+            left = (img.width - target_width) / 2
+            top = (img.height - target_height) / 2
+            right = (img.width + target_width) / 2
+            bottom = (img.height + target_height) / 2
+
+            # Crop and return the image
+            return img.crop((left, top, right, bottom))
 
     def resize_and_crop_thumbnails(self, img, target_size):
         img.thumbnail(target_size, Image.LANCZOS)

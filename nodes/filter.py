@@ -1,8 +1,8 @@
 import torch
 
 
-class MTB_FilterZ:
-    """Filters an image based on a depth map"""
+class MTBFilterZ:
+    """Filters an image based on a depth map."""
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -66,4 +66,4 @@ class MTB_FilterZ:
         return (out_img,)
 
 
-__nodes__ = [MTB_FilterZ]
+__nodes__ = [MTBFilterZ]
