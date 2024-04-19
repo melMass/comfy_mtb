@@ -1,11 +1,8 @@
-import threading
-from typing import cast
-
 import qrcode
 from PIL import Image
 
 from ..log import log
-from ..utils import comfy_dir, font_path, pil2tensor
+from ..utils import comfy_dir, create_uv_map_tensor, font_path, pil2tensor
 
 # class MtbExamples:
 #     """MTB Example Images"""
@@ -359,7 +356,7 @@ class MTB_TextToImage:
         return (pil2tensor(img),)
 
 
-class UvMap:
+class MTB_UvMap:
     """Generates a UV Map tensor given a widht and height"""
 
     @classmethod
@@ -390,5 +387,6 @@ __nodes__ = [
     QrCode,
     UnsplashImage,
     MTB_TextToImage,
+    MTB_UvMap,
     #  MtbExamples,
 ]

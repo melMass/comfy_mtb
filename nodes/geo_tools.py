@@ -1,278 +1,23 @@
-import copy
-import itertools
-import json
 import os
 
 import numpy as np
 import open3d as o3d
 
-from ..utils import log
+from ..utils import (
+    create_box,
+    get_transformation_matrix,
+    log,
+    spread_geo,
+    tensor2b64,
+)
 
-
-def spread_geo(geo, *, cp=False):
-    """Spreads a GEOMETRY type into (mesh,material)."""
-    mesh = geo["mesh"] if not cp else copy.copy(geo["mesh"])
-    material = geo.get("material", {})
-    return (mesh, material)
-
-
-def euler_to_rotation_matrix(x_deg, y_deg, z_deg):
-    # Convert degrees to radians
-    x = np.radians(x_deg)
-    y = np.radians(y_deg)
-    z = np.radians(z_deg)
-
-    # Rotation matrix around x-axis
-    Rx = np.array(
-        [[1, 0, 0], [0, np.cos(x), -np.sin(x)], [0, np.sin(x), np.cos(x)]]
-    )
-
-    # Rotation matrix around y-axis
-    Ry = np.array(
-        [[np.cos(y), 0, np.sin(y)], [0, 1, 0], [-np.sin(y), 0, np.cos(y)]]
-    )
-
-    # Rotation matrix around z-axis
-    Rz = np.array(
-        [[np.cos(z), -np.sin(z), 0], [np.sin(z), np.cos(z), 0], [0, 0, 1]]
-    )
-
-    return Rz @ Ry @ Rx
-
-
-def rotate_mesh(mesh, x_deg, y_deg, z_deg, center=None):
-    R = euler_to_rotation_matrix(x_deg, y_deg, z_deg)
-    return mesh.rotate(R, center) if center is not None else mesh.rotate(R)
-
-
-def get_transformation_matrix(position, rotation, scale):
-    # Construct the translation matrix
-    T = np.eye(4)
-    T[:3, 3] = position
-
-    # Get the rotation matrix from Euler angles
-    R = euler_to_rotation_matrix(*rotation)
-    R_homo = np.eye(4)
-    R_homo[:3, :3] = R
-
-    # Construct the scaling matrix
-    S = np.eye(4)
-    S[0, 0] = scale[0]
-    S[1, 1] = scale[1]
-    S[2, 2] = scale[2]
-
-    # Combined transforms
-    return T @ R_homo @ S
-
-
-def json_to_mesh(json_data: str):
-    """Convert JSON to an Open3D mesh."""
-    data = json.loads(json_data)
-    mesh = o3d.geometry.TriangleMesh()
-
-    if "vertices" in data:
-        mesh.vertices = o3d.utility.Vector3dVector(
-            np.array(data["vertices"]).reshape(-1, 3)
-        )
-
-    if "triangles" in data:
-        mesh.triangles = o3d.utility.Vector3iVector(
-            np.array(data["triangles"]).reshape(-1, 3)
-        )
-
-    if "vertex_normals" in data:
-        mesh.vertex_normals = o3d.utility.Vector3dVector(
-            np.array(data["vertex_normals"]).reshape(-1, 3)
-        )
-
-    if "vertex_colors" in data:
-        mesh.vertex_colors = o3d.utility.Vector3dVector(
-            np.array(data["vertex_colors"]).reshape(-1, 3)
-        )
-
-    if "triangle_uvs" in data:
-        mesh.triangle_uvs = o3d.utility.Vector2dVector(
-            np.array(data["triangle_uvs"]).reshape(-1, 2)
-        )
-
-    return mesh
-
-
-def mesh_to_json(mesh: o3d.geometry.MeshBase):
-    """Convert an Open3D mesh to JSON."""
-    mesh_dict = {
-        "vertices": np.asarray(mesh.vertices).tolist(),
-        "triangles": np.asarray(mesh.triangles).tolist(),
-    }
-
-    if mesh.has_vertex_normals():
-        mesh_dict["vertex_normals"] = np.asarray(mesh.vertex_normals).tolist()
-
-    if mesh.has_vertex_colors():
-        mesh_dict["vertex_colors"] = np.asarray(mesh.vertex_colors).tolist()
-
-    if mesh.has_triangle_uvs():
-        mesh_dict["triangle_uvs"] = np.asarray(mesh.triangle_uvs).tolist()
-
-    return json.dumps(mesh_dict)
-
-
-def create_grid(scale=(1, 1, 1), rows=10, columns=10):
-    dx, dy, dz = scale
-
-    # Create vertices
-    vertices = []
-    for i in np.linspace(-dy / 2, dy / 2, rows + 1):
-        vertices.extend(
-            [j, 0, i] for j in np.linspace(-dx / 2, dx / 2, columns + 1)
-        )
-    # Generate triangles
-    triangles = []
-    for i, j in itertools.product(range(rows), range(columns)):
-        p1 = i * (columns + 1) + j
-        p2 = i * (columns + 1) + j + 1
-        p3 = (i + 1) * (columns + 1) + j
-        p4 = (i + 1) * (columns + 1) + j + 1
-
-        triangles.extend(([p1, p2, p3], [p2, p4, p3]))
-    vertices = o3d.utility.Vector3dVector(np.array(vertices))
-    triangles = o3d.utility.Vector3iVector(np.array(triangles))
-    mesh = o3d.geometry.TriangleMesh(vertices, triangles)
-
-    mesh.compute_vertex_normals()
-
-    return mesh
-
-
-def create_box(scale=(1, 1, 1), divisions=(1, 1, 1)):
-    dx, dy, dz = scale
-    div_x, div_y, div_z = divisions
-
-    vertices = []
-    for i in np.linspace(-dx / 2, dx / 2, div_x + 1):
-        for j in np.linspace(-dy / 2, dy / 2, div_y + 1):
-            vertices.extend(
-                [i, j, k] for k in np.linspace(-dz / 2, dz / 2, div_z + 1)
-            )
-    # Generate triangles for the box faces
-    triangles = []
-    for x, y in itertools.product(range(div_x), range(div_y)):
-        for z in range(div_z):
-            # Define base index for this cube
-            base = z * (div_x + 1) * (div_y + 1) + y * (div_x + 1) + x
-
-            # Indices for the 8 vertices of the cube
-            v0 = base
-            v1 = base + 1
-            v2 = base + (div_x + 1) + 1
-            v3 = base + (div_x + 1)
-            v4 = base + (div_x + 1) * (div_y + 1)
-            v5 = v4 + 1
-            v6 = v4 + (div_x + 1) + 1
-            v7 = v4 + (div_x + 1)
-
-            triangles.extend(
-                (
-                    [v0, v1, v2],
-                    [v2, v3, v0],
-                    [v4, v5, v6],
-                    [v6, v7, v4],
-                    [v0, v3, v7],
-                    [v7, v4, v0],
-                    [v1, v5, v6],
-                    [v6, v2, v1],
-                    [v0, v4, v5],
-                    [v5, v1, v0],
-                    [v3, v2, v6],
-                    [v6, v7, v3],
-                )
-            )
-    vertices = o3d.utility.Vector3dVector(np.array(vertices))
-    triangles = o3d.utility.Vector3iVector(np.array(triangles))
-    mesh = o3d.geometry.TriangleMesh(vertices, triangles)
-
-    mesh.compute_vertex_normals()
-
-    return mesh
-
-
-def create_sphere(radius=1, columns=10, rows=10):
-    # Create vertex positions
-    vertices = []
-    for i in range(rows + 1):
-        lat = i * np.pi / rows
-        sin_lat = np.sin(lat)
-        cos_lat = np.cos(lat)
-
-        for j in range(columns + 1):
-            lon = j * 2 * np.pi / columns
-            sin_lon = np.sin(lon)
-            cos_lon = np.cos(lon)
-
-            x = radius * cos_lon * sin_lat
-            y = radius * cos_lat
-            z = radius * sin_lon * sin_lat
-            vertices.append([x, y, z])
-
-    # Create triangles
-    triangles = []
-    for i in range(rows):
-        for j in range(columns):
-            p1 = i * (columns + 1) + j
-            p2 = i * (columns + 1) + j + 1
-            p3 = (i + 1) * (columns + 1) + j
-            p4 = (i + 1) * (columns + 1) + j + 1
-
-            triangles.extend(([p1, p2, p3], [p2, p4, p3]))
-    vertices = o3d.utility.Vector3dVector(np.array(vertices))
-    triangles = o3d.utility.Vector3iVector(np.array(triangles))
-    mesh = o3d.geometry.TriangleMesh(vertices, triangles)
-
-    # Assigning random colors to vertices
-    N = len(vertices)
-    mesh.vertex_colors = o3d.utility.Vector3dVector(
-        np.random.uniform(0, 1, size=(N, 3))
-    )
-    mesh.compute_vertex_normals()
-
-    return mesh
-
-
-def create_torus(torus_radius=1, ring_radius=0.5, rows=10, columns=10):
-    vertices = []
-    for i in range(rows + 1):
-        theta = i * 2 * np.pi / rows
-        cos_theta = np.cos(theta)
-        sin_theta = np.sin(theta)
-
-        circle_center = torus_radius + ring_radius * cos_theta
-
-        for j in range(columns + 1):
-            phi = j * 2 * np.pi / columns
-            cos_phi = np.cos(phi)
-            sin_phi = np.sin(phi)
-
-            x = circle_center * cos_phi
-            y = ring_radius * sin_theta
-            z = circle_center * sin_phi
-            vertices.append([x, y, z])
-
-    triangles = []
-    for i in range(rows):
-        for j in range(columns):
-            p1 = i * (columns + 1) + j
-            p2 = i * (columns + 1) + j + 1
-            p3 = (i + 1) * (columns + 1) + j
-            p4 = (i + 1) * (columns + 1) + j + 1
-
-            triangles.extend(([p1, p2, p3], [p2, p4, p3]))
-    vertices = o3d.utility.Vector3dVector(np.array(vertices))
-    triangles = o3d.utility.Vector3iVector(np.array(triangles))
-    mesh = o3d.geometry.TriangleMesh(vertices, triangles)
-
-    mesh.compute_vertex_normals()
-
-    return mesh
+# create_grid,
+# create_sphere,
+# create_torus,
+# mesh_to_json,
+# json_to_mesh
+# rotate_mesh,
+# euler_to_rotation_matrix,
 
 
 # class GeoPrimitive:
@@ -303,7 +48,7 @@ def default_material(color=None):
     }
 
 
-class MTBCamera:
+class MTB_Camera:
     """Make a Camera."""
 
     @classmethod
@@ -349,7 +94,7 @@ class MTBCamera:
         return (kwargs,)
 
 
-class MTBDrawGeometry:
+class MTB_GeometryDraw:
     @classmethod
     def INPUT_TYPES(cls):
         return {
@@ -371,7 +116,7 @@ class MTBDrawGeometry:
         o3d.visualization.draw_geometries([mesh], **camera)
 
 
-# class MTBRGBD_Image:
+# class MTB_RGBD_Image:
 #     @classmethod
 #     def INPUT_TYPES(cls):
 #         return {
@@ -395,7 +140,7 @@ class MTBDrawGeometry:
 #         print(rgbd_image)
 
 
-class MTBMaterial:
+class MTB_GeometryMaterial:
     """Make a std material."""
 
     @classmethod
@@ -442,10 +187,16 @@ class MTBMaterial:
     ):  # color, roughness, metalness, emissive, displacementScalen displacementMap=None):
         # TODO: convert image to b64 and remove the key/add the B64 one
         # TODO: we can just use the "wireframe" property instead of my current solution
+        if kwargs.get("displacementMap") is not None:
+            tens = kwargs.pop("displacementMap")
+            # TODO: alert about batch size > 1 ?
+            b64images = tensor2b64(tens)[0]
+            kwargs["displacementB64"] = b64images
+
         return (kwargs,)
 
 
-class MTBApplyMaterial:
+class MTB_GeometryApplyMaterial:
     """Apply a Material to a geometry."""
 
     @classmethod
@@ -477,7 +228,7 @@ class MTBApplyMaterial:
         return (geometry,)
 
 
-class TransformGeometry:
+class MTB_GeometryTransform:
     """Transforms the input geometry."""
 
     @classmethod
@@ -558,7 +309,7 @@ class TransformGeometry:
         )
 
 
-class GeometrySphere:
+class MTB_GeometrySphere:
     """Makes a Sphere 3D geometry.."""
 
     @classmethod
@@ -587,7 +338,7 @@ class GeometrySphere:
         return ({"mesh": mesh},)
 
 
-class GeometryTest:
+class MTB_GeometryTest:
     """Fetches an Open3D data geometry.."""
 
     @classmethod
@@ -625,7 +376,7 @@ class GeometryTest:
         return ({"mesh": mesh},)
 
 
-class GeometryBox:
+class MTB_GeometryBox:
     """Makes a Box 3D geometry."""
 
     @classmethod
@@ -675,7 +426,7 @@ class GeometryBox:
         return ({"mesh": mesh},)
 
 
-class LoadGeometry:
+class MTB_GeometryLoad:
     """Load a 3D geometry."""
 
     @classmethod
@@ -713,7 +464,7 @@ class LoadGeometry:
         }
 
 
-class GeometryInfo:
+class MTB_GeometryInfo:
     """Retrieve information about a 3D geometry."""
 
     @classmethod
@@ -731,7 +482,7 @@ class GeometryInfo:
         return (len(mesh.vertices), len(mesh.triangles), material)
 
 
-class GeometryDecimater:
+class MTB_GeometryDecimater:
     """Optimized the geometry to match the target number of triangles."""
 
     @classmethod
@@ -757,7 +508,7 @@ class GeometryDecimater:
         return ({"mesh": mesh},)
 
 
-class GeometrySceneSetup:
+class MTB_GeometrySceneSetup:
     """Scene setup for the renderer."""
 
     @classmethod
@@ -777,7 +528,7 @@ class GeometrySceneSetup:
         return ({"geometry": {"mesh": mesh}, "camera": cam},)
 
 
-class GeometryRender:
+class MTB_GeometryRender:
     """Renders a Geometry to an image."""
 
     @classmethod
@@ -809,14 +560,17 @@ class GeometryRender:
 
 
 __nodes__ = [
-    LoadGeometry,
-    GeometryInfo,
-    GeometryTest,
-    GeometryDecimater,
-    GeometrySphere,
-    GeometryRender,
-    TransformGeometry,
-    GeometryBox,
-    MTBApplyMaterial,
-    MTBMaterial,
+    MTB_Camera,
+    MTB_GeometryApplyMaterial,
+    MTB_GeometryBox,
+    MTB_GeometryDecimater,
+    MTB_GeometryDraw,
+    MTB_GeometryInfo,
+    MTB_GeometryLoad,
+    MTB_GeometryMaterial,
+    MTB_GeometryRender,
+    MTB_GeometrySceneSetup,
+    MTB_GeometrySphere,
+    MTB_GeometryTest,
+    MTB_GeometryTransform,
 ]

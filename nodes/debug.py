@@ -1,5 +1,3 @@
-import base64
-import io
 from pathlib import Path
 from typing import Optional
 
@@ -8,25 +6,14 @@ import open3d as o3d
 import torch
 
 from ..log import log
-from ..utils import tensor2pil
-from .geo_tools import mesh_to_json
+from ..utils import mesh_to_json, tensor2b64
 
 
 # region processors
-def process_tensor(tensor):
+def process_tensor(tensor: torch.Tensor):
     log.debug(f"Tensor: {tensor.shape}")
 
-    image = tensor2pil(tensor)
-    b64_imgs = []
-    for im in image:
-        buffered = io.BytesIO()
-        im.save(buffered, format="PNG")
-        b64_imgs.append(
-            "data:image/png;base64,"
-            + base64.b64encode(buffered.getvalue()).decode("utf-8")
-        )
-
-    return {"b64_images": b64_imgs}
+    return {"b64_images": tensor2b64(tensor)}
 
 
 def process_list(anything: list[object]) -> dict[str, list[str]]:
