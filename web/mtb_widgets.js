@@ -579,22 +579,6 @@ const mtb_widgets = {
     }
     //- Extending Python Nodes
     switch (nodeData.name) {
-      case 'Psd Save (mtb)': {
-        const onConnectionsChange = nodeType.prototype.onConnectionsChange
-        nodeType.prototype.onConnectionsChange = function (
-          type,
-          index,
-          connected,
-          link_info,
-        ) {
-          const r = onConnectionsChange
-            ? onConnectionsChange.apply(this, arguments)
-            : undefined
-          shared.dynamic_connection(this, index, connected)
-          return r
-        }
-        break
-      }
       //TODO: remove this non sense
       case 'Get Batch From History (mtb)': {
         const onNodeCreated = nodeType.prototype.onNodeCreated
@@ -767,23 +751,6 @@ const mtb_widgets = {
 
         break
       }
-      case 'Text Encore Frames (mtb)': {
-        const onConnectionsChange = nodeType.prototype.onConnectionsChange
-        nodeType.prototype.onConnectionsChange = function (
-          type,
-          index,
-          connected,
-          link_info,
-        ) {
-          const r = onConnectionsChange
-            ? onConnectionsChange.apply(this, arguments)
-            : undefined
-
-          shared.dynamic_connection(this, index, connected)
-          return r
-        }
-        break
-      }
       case 'Interpolate Clip Sequential (mtb)': {
         const onNodeCreated = nodeType.prototype.onNodeCreated
         nodeType.prototype.onNodeCreated = function () {
@@ -854,7 +821,8 @@ const mtb_widgets = {
                     window.MTB?.notify?.(
                       `Extracted positive from ${this.widgets[0].value}`,
                     )
-                    const tn = LiteGraph.createNode('Text box')
+                    // const tn = LiteGraph.createNode('Text box')
+                    const tn = LiteGraph.createNode('CLIPTextEncode')
                     app.graph.add(tn)
                     tn.title = `${this.widgets[0].value} (Positive)`
                     tn.widgets[0].value = style[0]
@@ -875,7 +843,7 @@ const mtb_widgets = {
                     window.MTB?.notify?.(
                       `Extracted negative from ${this.widgets[0].value}`,
                     )
-                    const tn = LiteGraph.createNode('Text box')
+                    const tn = LiteGraph.createNode('CLIPTextEncode')
                     app.graph.add(tn)
                     tn.title = `${this.widgets[0].value} (Negative)`
                     tn.widgets[0].value = style[1]
@@ -893,6 +861,7 @@ const mtb_widgets = {
 
         break
       }
+      //NOTE: dynamic nodes
       case 'Apply Text Template (mtb)': {
         shared.setupDynamicConnections(nodeType, 'var', '*')
         break
@@ -905,6 +874,14 @@ const mtb_widgets = {
         shared.setupDynamicConnections(nodeType, 'video', 'VIDEO')
         break
       }
+      case 'Psd Save (mtb)': {
+        shared.setupDynamicConnections(nodeType, 'input_', 'PSDLAYER')
+        break
+      }
+      // case 'Text Encode Frames (mtb)' : {
+      //   shared.setupDynamicConnections(nodeType, 'input_', 'IMAGE')
+      //   break
+      // }
       case 'Stack Images (mtb)':
       case 'Concat Images (mtb)': {
         shared.setupDynamicConnections(nodeType, 'image', 'IMAGE')
