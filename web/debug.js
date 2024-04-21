@@ -52,7 +52,7 @@ app.registerExtension({
         //- infer type
         if (link_info) {
           const fromNode = this.graph._nodes.find(
-            (otherNode) => otherNode.id == link_info.origin_id,
+            (otherNode) => otherNode.id === link_info.origin_id,
           )
           const type = fromNode.outputs[link_info.origin_slot].type
           this.inputs[index].type = type
@@ -83,7 +83,6 @@ app.registerExtension({
           this.widgets.length = 1
         }
         let widgetI = 1
-
         if (message.text) {
           for (const txt of message.text) {
             const w = this.addCustomWidget(

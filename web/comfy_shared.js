@@ -45,16 +45,18 @@ export class LocalStorageManager {
   }
 
   clear() {
-    Object.keys(localStorage)
-      .filter((k) => k.startsWith(this.namespace + ':'))
-      .forEach((k) => localStorage.removeItem(k))
+    for (const key of Object.keys(localStorage).filter((k) =>
+      k.startsWith(`${this.namespace}:`),
+    )) {
+      localStorage.removeItem(key)
+    }
   }
 }
 
 // - log utilities
 
 function createLogger(emoji, color, consoleMethod = 'log') {
-  return function (message, ...args) {
+  return (message, ...args) => {
     if (window.MTB?.DEBUG) {
       console[consoleMethod](
         `%c${emoji} ${message}`,
@@ -147,7 +149,7 @@ export function getWidgetType(config) {
   // Special handling for COMBO so we restrict links based on the entries
   let type = config?.[0]
   let linkType = type
-  if (type instanceof Array) {
+  if (Array.isArray(type)) {
     type = 'COMBO'
     linkType = linkType.join(',')
   }

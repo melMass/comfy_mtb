@@ -47,6 +47,8 @@ def process_list(anything):
         text.append(
             f"List of Tensors: {first_element.shape} (x{len(anything)})"
         )
+    else:
+        text.append(f"Array: {anything}")
 
     return {"text": text}
 
@@ -90,7 +92,7 @@ class MTB_Debug:
     CATEGORY = "mtb/debug"
     OUTPUT_NODE = True
 
-    def do_debug(self, output_to_console, **kwargs):
+    def do_debug(self, output_to_console: bool, **kwargs):
         output = {
             "ui": {"b64_images": [], "text": []},
             # "result": ("A"),
@@ -103,7 +105,8 @@ class MTB_Debug:
             bool: process_bool,
         }
         if output_to_console:
-            print("bouh!")
+            for k, v in kwargs.items():
+                print(f"{k}: {v}")
 
         for anything in kwargs.values():
             processor = processors.get(type(anything), process_text)
