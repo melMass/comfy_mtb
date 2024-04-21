@@ -15,6 +15,7 @@ import { api } from '../../scripts/api.js'
 import parseCss from './extern/parse-css.js'
 import * as shared from './comfy_shared.js'
 import { log } from './comfy_shared.js'
+import { Constant } from './constant.js'
 
 // NOTE: new widget types registered by MTB Widgets
 const newTypes = [/*'BOOL'n,*/ 'COLOR', 'BBOX']
@@ -297,6 +298,7 @@ export const MtbWidgets = {
 
             picker.addEventListener('change', () => {
               this.value = picker.value
+              this.callback?.(this.value)
               node.graph._version++
               node.setDirtyCanvas(true, true)
               picker.remove()
@@ -457,6 +459,12 @@ const mtb_widgets = {
           })
       },
     })
+  },
+  registerCustomNodes() {
+    LiteGraph.registerNodeType('Constant (mtb)', Constant)
+
+    Constant.category = 'mtb/utils'
+    Constant.title = 'Constant (mtb)'
   },
 
   getCustomWidgets: function () {
@@ -861,6 +869,7 @@ const mtb_widgets = {
 
         break
       }
+
       //NOTE: dynamic nodes
       case 'Apply Text Template (mtb)': {
         shared.setupDynamicConnections(nodeType, 'var', '*')
