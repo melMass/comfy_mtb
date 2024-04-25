@@ -7,6 +7,9 @@
  *
  */
 
+// Reference the shared typedefs file
+/// <reference path="../types/typedefs.js" />
+
 import { app } from '../../scripts/app.js'
 
 // - crude uuid
@@ -160,22 +163,23 @@ export const setupDynamicConnections = (nodeType, prefix, inputType) => {
   // check if it's a list
   const inputList = typeof inputType === 'object'
   nodeType.prototype.onNodeCreated = function () {
-    const r = onNodeCreated ? onNodeCreated.apply(this, arguments) : undefined
+    const r = onNodeCreated ? onNodeCreated.apply(this, []) : undefined
     this.addInput(`${prefix}_1`, inputList ? '*' : inputType)
     return r
   }
 
   const onConnectionsChange = nodeType.prototype.onConnectionsChange
-  nodeType.prototype.onConnectionsChange = function (
-    type,
-    index,
-    connected,
-    link_info,
-  ) {
+
+  /**
+   * @param {OnConnectionsChangeParams} args
+   */
+  nodeType.prototype.onConnectionsChange = function (...args) {
+    const [_type, index, connected, _link_info] = args
     const r = onConnectionsChange
-      ? onConnectionsChange.apply(this, arguments)
+      ? onConnectionsChange.apply(this, args)
       : undefined
     dynamic_connection(this, index, connected, `${prefix}_`, inputList)
+    return r
   }
 }
 export const dynamic_connection = (
@@ -213,7 +217,7 @@ export const dynamic_connection = (
   }
 
   // add an extra input
-  if (node.inputs[node.inputs.length - 1].link != undefined) {
+  if (node.inputs[node.inputs.length - 1].link !== undefined) {
     const nextIndex = node.inputs.length
     const name =
       nextIndex < nameArray.length
@@ -233,11 +237,11 @@ export function calculateTotalChildrenHeight(parentElement) {
     const style = window.getComputedStyle(child)
 
     // Get height as an integer (without 'px')
-    const height = parseInt(style.height, 10)
+    const height = Number.parseInt(style.height, 10)
 
     // Get vertical margin as integers
-    const marginTop = parseInt(style.marginTop, 10)
-    const marginBottom = parseInt(style.marginBottom, 10)
+    const marginTop = Number.parseInt(style.marginTop, 10)
+    const marginBottom = Number.parseInt(style.marginBottom, 10)
 
     // Sum up height and vertical margins
     totalHeight += height + marginTop + marginBottom
@@ -252,9 +256,12 @@ export function calculateTotalChildrenHeight(parentElement) {
  */
 export function addMenuHandler(nodeType, cb) {
   const getOpts = nodeType.prototype.getExtraMenuOptions
+  /**
+   * @returns {ContextMenuItem[]} items
+   */
   nodeType.prototype.getExtraMenuOptions = function () {
-    const r = getOpts.apply(this, arguments)
-    cb.apply(this, arguments)
+    const r = getOpts.apply(this, [])
+    cb.apply(this, [])
     return r
   }
 }
@@ -280,7 +287,7 @@ export function hideWidget(node, widget, suffix = '') {
   // Hide any linked widgets, e.g. seed+seedControl
   if (widget.linkedWidgets) {
     for (const w of widget.linkedWidgets) {
-      hideWidget(node, w, ':' + widget.name)
+      hideWidget(node, w, `:${widget.name}`)
     }
   }
 }
@@ -352,7 +359,7 @@ export function hideWidgetForGood(node, widget, suffix = '') {
   // Hide any linked widgets, e.g. seed+seedControl
   if (widget.linkedWidgets) {
     for (const w of widget.linkedWidgets) {
-      hideWidgetForGood(node, w, ':' + widget.name)
+      hideWidgetForGood(node, w, `:${widget.name}`)
     }
   }
 }
@@ -370,7 +377,7 @@ export function fixWidgets(node) {
           //     continue
           // }
           const w = node.widgets.find((w) => w.name === matching_widget.name)
-          if (w && w.type != CONVERTED_TYPE) {
+          if (w && w.type !== CONVERTED_TYPE) {
             log(w)
             log(`hidding ${w.name}(${w.type}) from ${node.type}`)
             log(node)
@@ -385,16 +392,16 @@ export function fixWidgets(node) {
     }
   }
 }
-export function inner_value_change(widget, value, event = undefined) {
-  if (widget.type == 'number' || widget.type == 'BBOX') {
+export function inner_value_change(widget, val, event = undefined) {
+  let value = val
+  if (widget.type === 'number' || widget.type === 'BBOX') {
     value = Number(value)
-  } else if (widget.type == 'BOOL') {
+  } else if (widget.type === 'BOOL') {
     value = Boolean(value)
   }
   widget.value = value
   if (
-    widget.options &&
-    widget.options.property &&
+    widget.options?.property &&
     node.properties[widget.options.property] !== undefined
   ) {
     node.setProperty(widget.options.property, value)
@@ -412,9 +419,9 @@ export function isColorBright(rgb, threshold = 240) {
 
 function getBrightness(rgbObj) {
   return Math.round(
-    (parseInt(rgbObj[0]) * 299 +
-      parseInt(rgbObj[1]) * 587 +
-      parseInt(rgbObj[2]) * 114) /
+    (Number.parseInt(rgbObj[0]) * 299 +
+      Number.parseInt(rgbObj[1]) * 587 +
+      Number.parseInt(rgbObj[2]) * 114) /
       1000,
   )
 }
@@ -439,14 +446,14 @@ export const loadScript = (
       scriptEle.async = async
       scriptEle.src = FILE_URL
 
-      scriptEle.addEventListener('load', (ev) => {
+      scriptEle.addEventListener('load', (_ev) => {
         resolve({ status: true })
       })
 
-      scriptEle.addEventListener('error', (ev) => {
+      scriptEle.addEventListener('error', (_ev) => {
         reject({
           status: false,
-          message: `Failed to load the script ＄{FILE_URL}`,
+          message: `Failed to load the script ${FILE_URL}`,
         })
       })
 
@@ -493,7 +500,7 @@ export function defineClass(className, classStyles) {
 /** Prefixes the node title with '[DEPRECATED]' and log the deprecation reason to the console.*/
 export const addDeprecation = (nodeType, reason) => {
   const title = nodeType.title
-  nodeType.title = '[DEPRECATED] ' + title
+  nodeType.title = `[DEPRECATED] ${title}`
   // console.log(nodeType)
 
   const styles = {
@@ -518,46 +525,88 @@ const create_documentation_stylesheet = () => {
     styleTag.id = tag
 
     styleTag.innerHTML = `
-    .documentation-popup {
-       background: var(--bg-color);
-	     position: absolute;
-			 color: var(--fg-color);
-			 font: 12px monospace;
-			 line-height: 1.5em;
-		   padding: 3px;
-			 border-radius: 4px;
-			 pointer-events: "inherit";
-			 z-index: 5;
-    	 overflow:scroll;
+.documentation-popup {
+    background: var(--comfy-menu-bg);
+    position: absolute;
+    color: var(--fg-color);
+    font: 12px monospace;
+    line-height: 1.5em;
+    padding: 10px;
+    border-radius: 6px;
+    pointer-events: "inherit";
+    z-index: 5;
+    overflow: hidden;
+}
+.documentation-wrapper {
+    padding: 0 2em;
+    overflow: auto;
+    max-height: 100%;
+    /* Scrollbar styling for Chrome */
+    &::-webkit-scrollbar {
+       width: 6px;
     }
+    &::-webkit-scrollbar-track {
+       background: var(--bg-color);
+    }
+    &::-webkit-scrollbar-thumb {
+       background-color: var(--fg-color);
+       border-radius: 6px;
+       border: 3px solid var(--bg-color);
+    }
+   
+    /* Scrollbar styling for Firefox */
+    scrollbar-width: thin;
+    scrollbar-color: var(--fg-color) var(--bg-color);
+    a {
+      color: yellow;
+    }
+    a:visited {
+      color: orange;
+    }
+    a:hover {
+      color: red;
+    }
+}
 
-		.documentation-popup img {
-		   max-width: 100%;
-		}
-		.documentation-popup table {
-				border-collapse: collapse;
-		    border: 1px var(--border-color) solid;
-		}
-		.documentation-popup th, 
-		.documentation-popup td {
-			border: 1px var(--border-color) solid;
-		}
-	.documentation-popup th {
-      background-color: var(--comfy-input-bg);
-		}
-		`
+.documentation-popup img {
+  max-width: 100%;
+}
+.documentation-popup table {
+  border-collapse: collapse;
+  border: 1px var(--border-color) solid;
+}
+.documentation-popup th, 
+.documentation-popup td {
+  border: 1px var(--border-color) solid;
+}
+.documentation-popup th {
+  background-color: var(--comfy-input-bg);
+}`
     document.head.appendChild(styleTag)
   }
 }
 let documentationConverter
 
-/** Add documentation widget to the selected node */
+/**
+ * Add documentation widget to the selected node
+ * @param {NodeData} nodeData
+ * @param {NodeType}  nodeType
+ * @param {DocumentationOptions} opts
+ */
 export const addDocumentation = (
   nodeData,
   nodeType,
   opts = { icon_size: 14, icon_margin: 4 },
 ) => {
+  if (!nodeData.description) {
+    infoLogger(
+      `Skipping ${nodeData.name} doesn't have a description, skipping...`,
+    )
+    return
+  }
+
   if (!documentationConverter) {
+    infoLogger('Initializing our mardown converter')
     documentationConverter = new showdown.Converter({
       tables: true,
       strikethrough: true,
@@ -572,88 +621,107 @@ export const addDocumentation = (
     })
   }
 
-  opts = opts || {}
-  const iconSize = opts.icon_size ? opts.icon_size : 14
-  const iconMargin = opts.icon_margin ? opts.icon_margin : 4
+  const options = opts || {}
+  const iconSize = options.icon_size || 14
+  const iconMargin = options.icon_margin || 4
   let docElement = null
-  let offsetX = 0
-  let offsetY = 0
-
-  if (!nodeData.description) {
-    return
-  }
+  let wrapper = null
   const drawFg = nodeType.prototype.onDrawForeground
-  nodeType.prototype.onDrawForeground = function (ctx, canvas) {
-    const r = drawFg ? drawFg.apply(this, arguments) : undefined
+
+  /**
+   * @param {OnDrawForegroundParams} args
+   */
+  nodeType.prototype.onDrawForeground = function (...args) {
+    const [ctx, _canvas] = args
+    const r = drawFg ? drawFg.apply(this, args) : undefined
+
     if (this.flags.collapsed) return r
 
     // icon position
     const x = this.size[0] - iconSize - iconMargin
-    // const y = iconMargin * 1.5
-
-    // const questionMark = new Path2D(
-    //   'm15.901 25.36h3.84v-3.84h-3.84v3.84zm1.92-15.36c-2.88 0-5.76 2.88-5.76 5.76h3.84c0-.96.96-1.92 1.92-1.92s1.92.96 1.92 1.92c0 1.92-3.84 1.92-3.84 3.84h3.84c1.92-.66 3.84-1.92 3.84-4.8s-2.88-4.8-5.76-4.8zm0-7.68c-8.49 0-15.36 6.87-15.36 15.36s6.87 15.36 15.36 15.36 15.36-6.87 15.36-15.36-6.87-15.36-15.36-15.36zm0 26.88c-6.36 0-11.52-5.16-11.52-11.52s5.16-11.52 11.52-11.52 11.52 5.16 11.52 11.52-5.16 11.52-11.52 11.52z',
-    // )
-    //
-    // ctx.save()
 
     if (this.show_doc && docElement === null) {
       create_documentation_stylesheet()
+
       docElement = document.createElement('div')
       docElement.classList.add('documentation-popup')
-      docElement.innerHTML = documentationConverter.makeHtml(
-        nodeData.description,
-      )
+      document.body.appendChild(docElement)
+      // docElement.innerHTML = documentationConverter.makeHtml(
+      //   nodeData.description,
+      // )
+
+      wrapper = document.createElement('div')
+      wrapper.classList.add('documentation-wrapper')
+      wrapper.innerHTML = documentationConverter.makeHtml(nodeData.description)
+      docElement.appendChild(wrapper)
+
       // resize handle
       const resizeHandle = document.createElement('div')
       resizeHandle.style.width = '10px'
       resizeHandle.style.height = '10px'
-      resizeHandle.style.background = 'gray'
+      // resizeHandle.style.background = 'gray'
       resizeHandle.style.position = 'absolute'
       resizeHandle.style.bottom = '0'
       resizeHandle.style.right = '0'
+      // resizeHandle.style.left = '95%'
       resizeHandle.style.cursor = 'se-resize'
+      resizeHandle.style.userSelect = 'none'
 
-      // TODO: fix resize logic
-      docElement.appendChild(resizeHandle)
+      const borderColor = getComputedStyle(document.documentElement)
+        .getPropertyValue('--border-color')
+        .trim()
+      resizeHandle.style.borderTop = '10px solid transparent'
+      resizeHandle.style.borderLeft = '10px solid transparent'
+      resizeHandle.style.borderBottom = `10px solid ${borderColor}`
+      resizeHandle.style.borderRight = `10px solid ${borderColor}`
+
+      wrapper.appendChild(resizeHandle)
       let isResizing = false
-      let startX, startY, startWidth, startHeight
 
-      resizeHandle.addEventListener('mousedown', function (e) {
+      let startX
+      let startY
+      let startWidth
+      let startHeight
+
+      resizeHandle.addEventListener('mousedown', (e) => {
         e.stopPropagation()
         isResizing = true
         startX = e.clientX
         startY = e.clientY
-        startWidth = parseInt(
+        startWidth = Number.parseInt(
           document.defaultView.getComputedStyle(docElement).width,
           10,
         )
-        startHeight = parseInt(
+        startHeight = Number.parseInt(
           document.defaultView.getComputedStyle(docElement).height,
           10,
         )
       })
 
-      document.addEventListener('mousemove', function (e) {
+      document.addEventListener('mousemove', (e) => {
+        console.log('Moving mouse')
         if (!isResizing) return
         const newWidth = startWidth + e.clientX - startX
         const newHeight = startHeight + e.clientY - startY
-        offsetX += newWidth - startWidth
-        offsetY += newHeight - startHeight
 
-        startWidth = newWidth
-        startHeight = newHeight
+        docElement.style.width = `${newWidth}px`
+        docElement.style.height = `${newHeight}px`
+
+        this.docPos = {
+          width: `${newWidth}px`,
+          height: `${newHeight}px`,
+        }
       })
 
-      document.addEventListener('mouseup', function () {
+      document.addEventListener('mouseup', () => {
         isResizing = false
       })
-      document.body.appendChild(docElement)
     } else if (!this.show_doc && docElement !== null) {
       docElement.parentNode.removeChild(docElement)
       docElement = null
     }
 
+    // reposition
     if (this.show_doc && docElement !== null) {
       const rect = ctx.canvas.getBoundingClientRect()
 
@@ -662,25 +730,38 @@ export const addDocumentation = (
       const transform = new DOMMatrix()
         .scaleSelf(scaleX, scaleY)
         .multiplySelf(ctx.getTransform())
-
         .translateSelf(this.size[0] * scaleX, 0)
         .translateSelf(10, -32)
+
       const scale = new DOMMatrix().scaleSelf(transform.a, transform.d)
+
       Object.assign(docElement.style, {
         transformOrigin: '0 0',
         transform: scale,
         left: `${transform.a + transform.e}px`,
         top: `${transform.d + transform.f}px`,
-        width: `${this.size[0] * 2}px`,
+        width: this.docPos ? this.docPos.width : `${this.size[0] * 1.5}px`,
+        height: this.docPos?.height,
+        // width: `${this.size[0] * 2}px`,
         // height: `${(widget.parent?.inputHeight || 32) - (margin * 2)}px`,
-        height: `${this.size[1] || this.parent?.inputHeight || 32}px`,
+        // height: `${this.size[1] || this.parent?.inputHeight || 32}px`,
 
         // background: !node.color ? "" : node.color,
         // color: "blue", //!node.color ? "" : "white",
       })
+
+      if (this.docPos === undefined) {
+        this.docPos = {
+          width: docElement.style.width,
+          height: docElement.style.height,
+        }
+      }
+
       // docElement.style.left = 140 - rect.right + "px";
       // docElement.style.top = rect.top + "px";
     }
+
+    ctx.save()
     ctx.translate(x, iconSize - 34) // Position the icon on the canvas
     ctx.scale(iconSize / 32, iconSize / 32) // Scale the icon to the desired size
     ctx.strokeStyle = 'rgba(255,255,255,0.3)'
@@ -690,7 +771,7 @@ export const addDocumentation = (
 
     ctx.lineWidth = 2.4
     // ctx.stroke(questionMark);
-    ctx.font = '36px monospace'
+    ctx.font = 'bold 36px monospace'
     ctx.fillText('?', 0, 24)
     ctx.restore()
 
@@ -698,8 +779,12 @@ export const addDocumentation = (
   }
   const mouseDown = nodeType.prototype.onMouseDown
 
-  nodeType.prototype.onMouseDown = function (e, localPos, canvas) {
-    const r = mouseDown ? mouseDown.apply(this, arguments) : undefined
+  /**
+   * @param {OnMouseDownParams} args
+   */
+  nodeType.prototype.onMouseDown = function (...args) {
+    const [_event, localPos, _graphCanvas] = args
+    const r = mouseDown ? mouseDown.apply(this, args) : undefined
     const iconX = this.size[0] - iconSize - iconMargin
     const iconY = iconSize - 34
     if (
