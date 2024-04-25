@@ -833,9 +833,7 @@ const mtb_widgets = {
       case 'Get Batch From History (mtb)': {
         const onNodeCreated = nodeType.prototype.onNodeCreated
         nodeType.prototype.onNodeCreated = function () {
-          const r = onNodeCreated
-            ? onNodeCreated.apply(this, arguments)
-            : undefined
+          const r = onNodeCreated ? onNodeCreated.apply(this, []) : undefined
           const internal_count = this.widgets.find(
             (w) => w.name === 'internal_count',
           )

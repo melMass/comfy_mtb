@@ -482,7 +482,6 @@ app.registerExtension({
 
   async beforeRegisterNodeDef(nodeType, nodeData, _app) {
     if (nodeData.name === 'Constant (mtb)') {
-      infoLogger('registering constant')
       new ConstantJs(nodeType)
     }
   },
