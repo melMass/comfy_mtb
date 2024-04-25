@@ -62,7 +62,7 @@ class ReadPlaylist:
         return (json.loads(playlist_path.read_text(encoding="utf-8")),)
 
 
-class AddToPlaylist:
+class MTB_AddToPlaylist:
     """Add a video to the playlist"""
 
     @classmethod
@@ -116,7 +116,7 @@ class AddToPlaylist:
         return ()
 
 
-class ExportWithFfmpeg:
+class MTB_ExportWithFfmpeg:
     """Export with FFmpeg (Experimental)"""
 
     @classmethod
@@ -307,7 +307,7 @@ def prepare_animated_batch(
 
 
 # todo: deprecate for apng
-class SaveGif:
+class MTB_SaveGif:
     """Save the images from the batch as a GIF"""
 
     @classmethod
@@ -395,4 +395,9 @@ class SaveGif:
         return {"ui": {"gif": results}}
 
 
-__nodes__ = [SaveGif, ExportWithFfmpeg, AddToPlaylist, ReadPlaylist]
+__nodes__ = [
+    MTB_SaveGif,
+    MTB_ExportWithFfmpeg,
+    MTB_AddToPlaylist,
+    ReadPlaylist,
+]

@@ -5,7 +5,7 @@ from rembg import remove
 from ..utils import pil2tensor, tensor2pil
 
 
-class ImageRemoveBackgroundRembg:
+class MTB_ImageRemoveBackgroundRembg:
     """Removes the background from the input using Rembg."""
 
     @classmethod
@@ -100,9 +100,13 @@ class ImageRemoveBackgroundRembg:
 
             pbar.update(1)
 
-        return (pil2tensor(out_img), pil2tensor(out_mask), pil2tensor(out_img_on_bg))
+        return (
+            pil2tensor(out_img),
+            pil2tensor(out_mask),
+            pil2tensor(out_img_on_bg),
+        )
 
 
 __nodes__ = [
-    ImageRemoveBackgroundRembg,
+    MTB_ImageRemoveBackgroundRembg,
 ]

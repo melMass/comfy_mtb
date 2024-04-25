@@ -47,6 +47,8 @@ def process_list(anything):
         text.append(
             f"List of Tensors: {first_element.shape} (x{len(anything)})"
         )
+    else:
+        text.append(f"Array: {anything}")
 
     return {"text": text}
 
@@ -73,7 +75,7 @@ def process_text(anything):
 # endregion
 
 
-class Debug:
+class MTB_Debug:
     """Experimental node to debug any Comfy values.
 
     support for more types and widgets is planned.
@@ -90,7 +92,7 @@ class Debug:
     CATEGORY = "mtb/debug"
     OUTPUT_NODE = True
 
-    def do_debug(self, output_to_console, **kwargs):
+    def do_debug(self, output_to_console: bool, **kwargs):
         output = {
             "ui": {"b64_images": [], "text": []},
             # "result": ("A"),
@@ -103,7 +105,8 @@ class Debug:
             bool: process_bool,
         }
         if output_to_console:
-            print("bouh!")
+            for k, v in kwargs.items():
+                print(f"{k}: {v}")
 
         for anything in kwargs.values():
             processor = processors.get(type(anything), process_text)
@@ -115,7 +118,7 @@ class Debug:
         return output
 
 
-class SaveTensors:
+class MTB_SaveTensors:
     """Save torch tensors (image, mask or latent) to disk.
 
     useful to debug things outside comfy.
@@ -180,4 +183,4 @@ class SaveTensors:
         return f"{filename_prefix}_{counter:05}"
 
 
-__nodes__ = [Debug, SaveTensors]
+__nodes__ = [MTB_Debug, MTB_SaveTensors]

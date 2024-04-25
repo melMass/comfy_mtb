@@ -1,6 +1,6 @@
 import numpy as np
 import torch
-from PIL import Image, ImageChops, ImageDraw, ImageFilter
+from PIL import Image, ImageDraw, ImageFilter
 
 from ..log import log
 from ..utils import np2tensor, pil2tensor, tensor2np, tensor2pil
@@ -14,8 +14,14 @@ class Bbox:
         return {
             "required": {
                 # "bbox": ("BBOX",),
-                "x": ("INT", {"default": 0, "max": 10000000, "min": 0, "step": 1}),
-                "y": ("INT", {"default": 0, "max": 10000000, "min": 0, "step": 1}),
+                "x": (
+                    "INT",
+                    {"default": 0, "max": 10000000, "min": 0, "step": 1},
+                ),
+                "y": (
+                    "INT",
+                    {"default": 0, "max": 10000000, "min": 0, "step": 1},
+                ),
                 "width": (
                     "INT",
                     {"default": 256, "max": 10000000, "min": 0, "step": 1},
@@ -31,9 +37,8 @@ class Bbox:
     FUNCTION = "do_crop"
     CATEGORY = "mtb/crop"
 
-    def do_crop(self, x, y, width, height):  # bbox
+    def do_crop(self, x: int, y: int, width: int, height: int):  # bbox
         return ((x, y, width, height),)
-        # return bbox
 
 
 class BboxFromMask:
@@ -62,7 +67,9 @@ class BboxFromMask:
     FUNCTION = "extract_bounding_box"
     CATEGORY = "mtb/crop"
 
-    def extract_bounding_box(self, mask: torch.Tensor, invert: bool, image=None):
+    def extract_bounding_box(
+        self, mask: torch.Tensor, invert: bool, image=None
+    ):
         # if image != None:
         #     if mask.size(0) != image.size(0):
         #         if mask.size(0) != 1:
@@ -118,8 +125,14 @@ class Crop:
             },
             "optional": {
                 "mask": ("MASK",),
-                "x": ("INT", {"default": 0, "max": 10000000, "min": 0, "step": 1}),
-                "y": ("INT", {"default": 0, "max": 10000000, "min": 0, "step": 1}),
+                "x": (
+                    "INT",
+                    {"default": 0, "max": 10000000, "min": 0, "step": 1},
+                ),
+                "y": (
+                    "INT",
+                    {"default": 0, "max": 10000000, "min": 0, "step": 1},
+                ),
                 "width": (
                     "INT",
                     {"default": 256, "max": 10000000, "min": 0, "step": 1},
@@ -138,7 +151,14 @@ class Crop:
     CATEGORY = "mtb/crop"
 
     def do_crop(
-        self, image: torch.Tensor, mask=None, x=0, y=0, width=256, height=256, bbox=None
+        self,
+        image: torch.Tensor,
+        mask=None,
+        x=0,
+        y=0,
+        width=256,
+        height=256,
+        bbox=None,
     ):
         image = image.numpy()
         if mask is not None:
@@ -151,13 +171,17 @@ class Crop:
         cropped_mask = None
         if mask is not None:
             cropped_mask = (
-                mask[:, y : y + height, x : x + width] if mask is not None else None
+                mask[:, y : y + height, x : x + width]
+                if mask is not None
+                else None
             )
         crop_data = (x, y, width, height)
 
         return (
             torch.from_numpy(cropped_image),
-            torch.from_numpy(cropped_mask) if cropped_mask is not None else None,
+            torch.from_numpy(cropped_mask)
+            if cropped_mask is not None
+            else None,
             crop_data,
         )
 
@@ -198,7 +222,8 @@ class Uncrop:
     """Uncrops an image to a given bounding box
 
     The bounding box can be given as a tuple of (x, y, width, height) or as a BBOX type
-    The BBOX input takes precedence over the tuple input"""
+    The BBOX input takes precedence over the tuple input
+    """
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -222,11 +247,15 @@ class Uncrop:
     def do_crop(self, image, crop_image, bbox, border_blending):
         def inset_border(image, border_width=20, border_color=(0)):
             width, height = image.size
-            bordered_image = Image.new(image.mode, (width, height), border_color)
+            bordered_image = Image.new(
+                image.mode, (width, height), border_color
+            )
             bordered_image.paste(image, (0, 0))
             draw = ImageDraw.Draw(bordered_image)
             draw.rectangle(
-                (0, 0, width - 1, height - 1), outline=border_color, width=border_width
+                (0, 0, width - 1, height - 1),
+                outline=border_color,
+                width=border_width,
             )
             return bordered_image
 
@@ -249,7 +278,9 @@ class Uncrop:
             # uncrop the image based on the bounding box
             bb_x, bb_y, bb_width, bb_height = bbox
 
-            paste_region = bbox_to_region((bb_x, bb_y, bb_width, bb_height), img.size)
+            paste_region = bbox_to_region(
+                (bb_x, bb_y, bb_width, bb_height), img.size
+            )
             # log.debug(f"Paste region: {paste_region}")
             # new_region = adjust_paste_region(img.size, paste_region)
             # log.debug(f"Adjusted paste region: {new_region}")
@@ -275,12 +306,16 @@ class Uncrop:
 
             mask.paste(mask_block, paste_region)
             log.debug(f"Blend size: {blend.size} | kind {blend.mode}")
-            log.debug(f"Crop image size: {crop_img.size} | kind {crop_img.mode}")
+            log.debug(
+                f"Crop image size: {crop_img.size} | kind {crop_img.mode}"
+            )
             log.debug(f"BBox: {paste_region}")
             blend.paste(crop_img, paste_region)
 
             mask = mask.filter(ImageFilter.BoxBlur(radius=blend_ratio / 4))
-            mask = mask.filter(ImageFilter.GaussianBlur(radius=blend_ratio / 4))
+            mask = mask.filter(
+                ImageFilter.GaussianBlur(radius=blend_ratio / 4)
+            )
 
             blend.putalpha(mask)
             img = Image.alpha_composite(img.convert("RGBA"), blend)

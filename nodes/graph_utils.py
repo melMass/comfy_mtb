@@ -1,12 +1,25 @@
+import io
+import json
+import urllib.parse
+import urllib.request
+from math import pi
 from typing import Optional
-import io, json, urllib.parse, urllib.request
 
+import comfy.model_management as model_management
+import comfy.utils
 import numpy as np
 import torch
+import torchvision.transforms.functional as F
 from PIL import Image
 
 from ..log import log
-from ..utils import apply_easing, get_server_info, pil2tensor
+from ..utils import (
+    apply_easing,
+    get_server_info,
+    numpy_NFOV,
+    pil2tensor,
+    tensor2np,
+)
 
 
 def get_image(filename, subfolder, folder_type):
@@ -32,6 +45,7 @@ class MTB_ToDevice:
         if torch.backends.mps.is_available():
             devices.append("mps")
         if torch.cuda.is_available():
+            devices.append("cuda")
             for i in range(torch.cuda.device_count()):
                 devices.append(f"cuda{i}")
 
@@ -73,6 +87,14 @@ class MTB_ToDevice:
 
 # class MTB_ApplyTextTemplate:
 class MTB_ApplyTextTemplate:
+    """
+    Experimental node to interpolate strings from inputs.
+
+    Interpolation just requires {}, for instance:
+
+    Some string {var_1} and {var_2}
+    """
+
     @classmethod
     def INPUT_TYPES(cls):
         return {
@@ -94,7 +116,175 @@ class MTB_ApplyTextTemplate:
         return (res,)
 
 
-class GetBatchFromHistory:
+class MTB_MatchDimensions:
+    """Match images dimensions along the given dimension, preserving aspect ratio."""
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "source": ("IMAGE",),
+                "reference": ("IMAGE",),
+                "match": (["height", "width"], {"default": "height"}),
+            },
+        }
+
+    RETURN_TYPES = ("IMAGE", "INT", "INT")
+    RETURN_NAMES = ("image", "new_width", "new_height")
+    CATEGORY = "mtb/utils"
+    FUNCTION = "execute"
+
+    def execute(
+        self, source: torch.Tensor, reference: torch.Tensor, match: str
+    ):
+        _batch_size, height, width, _channels = source.shape
+        _rbatch_size, rheight, rwidth, _rchannels = reference.shape
+
+        source_aspect_ratio = width / height
+        # reference_aspect_ratio = rwidth / rheight
+
+        source = source.permute(0, 3, 1, 2)
+        reference = reference.permute(0, 3, 1, 2)
+
+        if match == "height":
+            new_height = rheight
+            new_width = int(rheight * source_aspect_ratio)
+        else:
+            new_width = rwidth
+            new_height = int(rwidth / source_aspect_ratio)
+
+        resized_images = [
+            F.resize(
+                source[i],
+                (new_height, new_width),
+                antialias=True,
+                interpolation=Image.BICUBIC,
+            )
+            for i in range(_batch_size)
+        ]
+        resized_source = torch.stack(resized_images, dim=0)
+        resized_source = resized_source.permute(0, 2, 3, 1)
+
+        return (resized_source, new_width, new_height)
+
+
+class MTB_FloatsToFloat:
+    """AD, IPA, Fitz etc have commonly choose to mistype float lists as FLOAT.
+
+    This is just a hack to be compatible with these
+    """
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "floats": ("FLOATS",),
+            }
+        }
+
+    RETURN_TYPES = ("FLOAT",)
+    RETURN_NAMES = ("float",)
+    CATEGORY = "mtb/utils"
+    FUNCTION = "convert"
+
+    def convert(self, floats):
+        return (floats,)
+
+
+class MTB_AutoPanEquilateral:
+    """Generate a 360 panning video from an equilateral image."""
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "equilateral_image": ("IMAGE",),
+                "fovX": ("FLOAT", {"default": 45.0}),
+                "fovY": ("FLOAT", {"default": 45.0}),
+                "elevation": ("FLOAT", {"default": 0.5}),
+                "frame_count": ("INT", {"default": 100}),
+                "width": ("INT", {"default": 768}),
+                "height": ("INT", {"default": 512}),
+            },
+            "optional": {
+                "floats_fovX": ("FLOATS",),
+                "floats_fovY": ("FLOATS",),
+                "floats_elevation": ("FLOATS",),
+            },
+        }
+
+    RETURN_TYPES = ("IMAGE",)
+    RETURN_NAMES = ("image",)
+    CATEGORY = "mtb/utils"
+    FUNCTION = "generate_frames"
+
+    def check_floats(self, f: list[float] | None, expected_count: int):
+        if f:
+            if len(f) == expected_count:
+                return True
+            return False
+        return True
+
+    def generate_frames(
+        self,
+        equilateral_image: torch.Tensor,
+        fovX: float,
+        fovY: float,
+        elevation: float,
+        frame_count: int,
+        width: int,
+        height: int,
+        floats_fovX: list[float] | None = None,
+        floats_fovY: list[float] | None = None,
+        floats_elevation: list[float] | None = None,
+    ):
+        source = tensor2np(equilateral_image)
+
+        if len(source) > 1:
+            log.warn(
+                "You provided more than one image in the equilateral_image input, only the first will be used."
+            )
+        if not all(
+            [
+                self.check_floats(x, frame_count)
+                for x in [floats_fovX, floats_fovY, floats_elevation]
+            ]
+        ):
+            raise ValueError(
+                "You provided less than the expected number of fovX, fovY, or elevation values."
+            )
+
+        source = source[0]
+        frames = []
+
+        pbar = comfy.utils.ProgressBar(frame_count)
+        for i in range(frame_count):
+            rotation_angle = (i / frame_count) * 2 * pi
+
+            if floats_elevation:
+                elevation = floats_elevation[i]
+
+            if floats_fovX:
+                fovX = floats_fovX[i]
+
+            if floats_fovY:
+                fovY = floats_fovY[i]
+
+            fov = [fovX / 100, fovY / 100]
+            center_point = [rotation_angle / (2 * pi), elevation]
+
+            nfov = numpy_NFOV(fov, height, width)
+            frame = nfov.to_nfov(source, center_point=center_point)
+
+            frames.append(frame)
+
+            model_management.throw_exception_if_processing_interrupted()
+            pbar.update(1)
+
+        return (pil2tensor(frames),)
+
+
+class MTB_GetBatchFromHistory:
     """Very experimental node to load images from the history of the server.
 
     Queue items without output are ignored in the count.
@@ -183,7 +373,7 @@ class GetBatchFromHistory:
         return pil2tensor(frames)
 
 
-class AnyToString:
+class MTB_AnyToString:
     """Tries to take any input and convert it to a string."""
 
     @classmethod
@@ -218,7 +408,7 @@ class AnyToString:
             return (str(input),)
 
 
-class StringReplace:
+class MTB_StringReplace:
     """Basic string replacement."""
 
     @classmethod
@@ -267,7 +457,6 @@ class MTB_MathExpression:
     )
 
     def eval_expression(self, expression, **kwargs):
-        import math
         from ast import literal_eval
 
         for key, value in kwargs.items():
@@ -295,7 +484,7 @@ class MTB_MathExpression:
         return (result, int(result))
 
 
-class FitNumber:
+class MTB_FitNumber:
     """Fit the input float using a source and target range"""
 
     @classmethod
@@ -368,7 +557,7 @@ class FitNumber:
         return (res,)
 
 
-class ConcatImages:
+class MTB_ConcatImages:
     """Add images to batch."""
 
     RETURN_TYPES = ("IMAGE",)
@@ -396,12 +585,15 @@ class ConcatImages:
 
 
 __nodes__ = [
-    StringReplace,
-    FitNumber,
-    GetBatchFromHistory,
-    AnyToString,
-    ConcatImages,
+    MTB_StringReplace,
+    MTB_FitNumber,
+    MTB_GetBatchFromHistory,
+    MTB_AnyToString,
+    MTB_ConcatImages,
     MTB_MathExpression,
     MTB_ToDevice,
     MTB_ApplyTextTemplate,
+    MTB_MatchDimensions,
+    MTB_AutoPanEquilateral,
+    MTB_FloatsToFloat,
 ]

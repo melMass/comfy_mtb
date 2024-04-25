@@ -1,11 +1,13 @@
 import copy
 
 import torch
+from torch.nn import functional as F
+from torch.nn.modules.utils import _pair
 
 from ..log import log
 
 
-class VaeDecode_:
+class MTB_VaeDecode:
     """Wrapper for the 2 core decoders but also adding the sd seamless hack, taken from: FlyingFireCo/tiled_ksampler"""
 
     @classmethod
@@ -29,7 +31,12 @@ class VaeDecode_:
     CATEGORY = "mtb/decode"
 
     def decode(
-        self, vae, samples, seamless_model, use_tiling_decoder=True, tile_size=512
+        self,
+        vae,
+        samples,
+        seamless_model,
+        use_tiling_decoder=True,
+        tile_size=512,
     ):
         if seamless_model:
             if use_tiling_decoder:
@@ -55,6 +62,24 @@ class VaeDecode_:
             return (vae.decode(samples["samples"]),)
 
 
+def conv_forward(lyr, tensor, weight, bias):
+    step = lyr.timestep
+    if (lyr.paddingStartStep < 0 or step >= lyr.paddingStartStep) and (
+        lyr.paddingStopStep < 0 or step <= lyr.paddingStopStep
+    ):
+        working = F.pad(tensor, lyr.paddingX, mode=lyr.padding_modeX)
+        working = F.pad(working, lyr.paddingY, mode=lyr.padding_modeY)
+    else:
+        working = F.pad(tensor, lyr.paddingX, mode="constant")
+        working = F.pad(working, lyr.paddingY, mode="constant")
+
+    lyr.timestep += 1
+
+    return F.conv2d(
+        working, weight, bias, lyr.stride, _pair(0), lyr.dilation, lyr.groups
+    )
+
+
 class ModelPatchSeamless:
     """Uses the stable diffusion 'hack' to infer seamless images by setting the model layers padding mode to circular (experimental)"""
 
@@ -63,10 +88,16 @@ class ModelPatchSeamless:
         return {
             "required": {
                 "model": ("MODEL",),
-                "tiling": (
+                "startStep": ("INT", {"default": 0}),
+                "stopStep": ("INT", {"default": 999}),
+                "tilingX": (
                     "BOOLEAN",
                     {"default": True},
-                ),  # kept for testing not sure why it should be false
+                ),
+                "tilingY": (
+                    "BOOLEAN",
+                    {"default": True},
+                ),
             }
         }
 
@@ -79,21 +110,46 @@ class ModelPatchSeamless:
 
     CATEGORY = "mtb/textures"
 
-    def apply_circular(self, model, enable):
+    def apply_circular(self, model, startStep, stopStep, x, y):
         for layer in [
-            layer for layer in model.modules() if isinstance(layer, torch.nn.Conv2d)
+            layer
+            for layer in model.modules()
+            if isinstance(layer, torch.nn.Conv2d)
         ]:
-            layer.padding_mode = "circular" if enable else "zeros"
+            layer.padding_modeX = "circular" if x else "constant"
+            layer.padding_modeY = "circular" if y else "constant"
+            layer.paddingX = (
+                layer._reversed_padding_repeated_twice[0],
+                layer._reversed_padding_repeated_twice[1],
+                0,
+                0,
+            )
+            layer.paddingY = (
+                0,
+                0,
+                layer._reversed_padding_repeated_twice[2],
+                layer._reversed_padding_repeated_twice[3],
+            )
+            layer.paddingStartStep = startStep
+            layer.paddingStopStep = stopStep
+            layer.timestep = 0
+            layer._conv_forward = conv_forward.__get__(layer, torch.nn.Conv2d)
+
         return model
 
     def hack(
         self,
         model,
-        tiling,
+        startStep,
+        stopStep,
+        tilingX,
+        tilingY,
     ):
         hacked_model = copy.deepcopy(model)
-        self.apply_circular(hacked_model.model, tiling)
+        self.apply_circular(
+            hacked_model.model, startStep, stopStep, tilingX, tilingY
+        )
         return (model, hacked_model)
 
 
-__nodes__ = [ModelPatchSeamless, VaeDecode_]
+__nodes__ = [ModelPatchSeamless, MTB_VaeDecode]

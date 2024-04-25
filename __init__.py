@@ -185,6 +185,12 @@ if hasattr(PromptServer, "instance"):
         "/mtb-assets/", path=(here / "html").as_posix()
     )
 
+    # NOTE: we add an extra static path to avoid comfy mechanism
+    # that loads every script in web.
+    PromptServer.instance.app.add_routes(
+        [web.static("/mtb_async", (here / "web_async").as_posix())]
+    )
+
     @PromptServer.instance.routes.get("/mtb/manage")
     async def manage(request):
         from . import endpoint

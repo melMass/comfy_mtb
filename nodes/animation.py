@@ -1,8 +1,8 @@
 from ..log import log
 
 
-class AnimationBuilder:
-    """Node built around the idea of values over a queue of frames."""
+class MTB_AnimationBuilder:
+    """Simple maths for animation."""
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -71,4 +71,4 @@ to create a zoom-in animation on a static image
         return (frame, scaled, raw_loop, (frame == (total_frames - 1)))
 
 
-__nodes__ = [AnimationBuilder]
+__nodes__ = [MTB_AnimationBuilder]
