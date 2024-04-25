@@ -80,7 +80,7 @@ def load_nodes():
                 module = importlib.import_module(
                     f".nodes.{module_name}", package=__package__
                 )
-                _nodes = module.__nodes__
+                _nodes = getattr(module, "__nodes__", [])
                 nodes.extend(_nodes)
                 log.debug(f"Imported {module_name} nodes")
 
@@ -126,6 +126,10 @@ if web_mtb.exists() and hasattr(nodes, "EXTENSION_WEB_DIRS"):
 nodes, failed = load_nodes()
 for node_class in nodes:
     class_name = node_class.__name__
+    # fallback to __doc__
+    if not hasattr(node_class, "DESCRIPTION") and node_class.__doc__:
+        node_class.DESCRIPTION = node_class.__doc__
+
     node_label = f"{get_label(class_name)} (mtb)"
     NODE_CLASS_MAPPINGS[node_label] = node_class
     NODE_DISPLAY_NAME_MAPPINGS[class_name] = node_label

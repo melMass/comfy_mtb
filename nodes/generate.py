@@ -200,6 +200,13 @@ class MTB_TextToImage:
     """
 
     fonts = {}
+    DESCRIPTION = """# Text to Image
+
+This node look for any font files in comfy_dir/fonts.  
+by default it fallsback to a default font.
+
+![img](https://i.imgur.com/3GT92hy.gif)
+"""
 
     def __init__(self):
         # - This is executed when the graph is executed,
