@@ -7,3 +7,6 @@
 [submodule "extern/frame_interpolation"]
 	path = extern/frame_interpolation
 	url = https://github.com/google-research/frame-interpolation
+[submodule "wiki"]
+	path = wiki
+	url = https://github.com/melMass/comfy_mtb.wiki.git
