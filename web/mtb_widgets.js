@@ -19,7 +19,7 @@ import { api } from '../../scripts/api.js'
 
 import parseCss from './extern/parse-css.js'
 import * as shared from './comfy_shared.js'
-import { log } from './comfy_shared.js'
+import { infoLogger } from './comfy_shared.js'
 import { NumberInputWidget } from './numberInput.js'
 
 // NOTE: new widget types registered by MTB Widgets
@@ -659,7 +659,7 @@ const mtb_widgets = {
   name: 'mtb.widgets',
 
   init: async () => {
-    log('Registering mtb.widgets')
+    infoLogger('Registering mtb.widgets')
     try {
       const res = await api.fetchApi('/mtb/debug')
       const msg = await res.json()
@@ -687,13 +687,14 @@ const mtb_widgets = {
         },
       },
       async onChange(value) {
-        if (value) {
-          console.log('Enabled DEBUG mode')
-        }
         if (!window.MTB) {
           window.MTB = {}
         }
         window.MTB.DEBUG = value
+        if (value) {
+          infoLogger('Enabled DEBUG mode')
+        }
+
         await api
           .fetchApi('/mtb/debug', {
             method: 'POST',
@@ -701,7 +702,7 @@ const mtb_widgets = {
               enabled: value,
             }),
           })
-          .then((response) => {})
+          .then((_response) => {})
           .catch((error) => {
             console.error('Error:', error)
           })
@@ -711,7 +712,7 @@ const mtb_widgets = {
 
   getCustomWidgets: () => {
     return {
-      BOOL: (node, inputName, inputData, app) => {
+      BOOL: (node, inputName, inputData, _app) => {
         console.debug('Registering bool')
 
         return {
@@ -723,7 +724,7 @@ const mtb_widgets = {
         }
       },
 
-      COLOR: (node, inputName, inputData, app) => {
+      COLOR: (node, inputName, inputData, _app) => {
         console.debug('Registering color')
         return {
           widget: node.addCustomWidget(
@@ -954,14 +955,11 @@ const mtb_widgets = {
             app.canvas.setDirty(true)
           }
 
-          const reset_button = this.addWidget(
-            'button',
-            `Reset`,
-            'reset',
-            onReset,
-          )
+          // reset button
+          this.addWidget('button', `Reset`, 'reset', onReset)
 
-          const run_button = this.addWidget('button', `Queue`, 'queue', () => {
+          // run button
+          this.addWidget('button', `Queue`, 'queue', () => {
             onReset() // this could maybe be a setting or checkbox
             app.queuePrompt(0, total_frames.value * loop_count.value)
             window.MTB?.notify?.(
