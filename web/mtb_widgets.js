@@ -7,6 +7,11 @@
  *
  */
 
+/**
+ * @typedef {import("../../../web/types/litegraph.d.ts").IWidget} IWidget
+ * @typedef {import("../../../web/types/litegraph.d.ts").IWidget<number[], { default: number[] }>} VectorWidget
+ */
+
 // TODO: Use the builtin addDOMWidget everywhere appropriate
 
 import { app } from '../../scripts/app.js'
@@ -15,7 +20,7 @@ import { api } from '../../scripts/api.js'
 import parseCss from './extern/parse-css.js'
 import * as shared from './comfy_shared.js'
 import { log } from './comfy_shared.js'
-import { Constant } from './constant.js'
+import { NumberInputWidget } from './numberInput.js'
 
 // NOTE: new widget types registered by MTB Widgets
 const newTypes = [/*'BOOL'n,*/ 'COLOR', 'BBOX']
@@ -55,7 +60,250 @@ const calculateTextDimensions = (ctx, value, width, fontSize = 16) => {
   return { textHeight, maxLineWidth }
 }
 
+export function addMultilineWidget(node, name, opts, callback) {
+  const inputEl = document.createElement('textarea')
+  inputEl.className = 'comfy-multiline-input'
+  inputEl.value = opts.defaultVal
+  inputEl.placeholder = opts.placeholder || name
+
+  const widget = node.addDOMWidget(name, 'textmultiline', inputEl, {
+    getValue() {
+      return inputEl.value
+    },
+    setValue(v) {
+      inputEl.value = v
+    },
+  })
+  widget.inputEl = inputEl
+
+  inputEl.addEventListener('input', () => {
+    callback?.(widget.value)
+    widget.callback?.(widget.value)
+  })
+  widget.onRemove = () => {
+    inputEl.remove()
+  }
+
+  return { minWidth: 400, minHeight: 200, widget }
+}
+
+export const VECTOR_AXIS = {
+  0: 'x',
+  1: 'y',
+  2: 'z',
+  3: 'w',
+}
+
+export function addVectorWidgetW(
+  node,
+  name,
+  value,
+  vector_size,
+  callback,
+  app,
+) {
+  // const inputEl = document.createElement('div')
+  // const vecEl = document.createElement('div')
+  //
+  // inputEl.style.background = 'red'
+  //
+  // inputEl.className = 'comfy-vector-container'
+  // vecEl.className = 'comfy-vector-input'
+  //
+  // vecEl.style.display = 'flex'
+  // inputEl.appendChild(vecEl)
+  const inputs = []
+
+  for (let i = 0; i < vector_size; i++) {
+    // const input = document.createElement('input')
+    // input.type = 'number'
+    // input.value = value[VECTOR_AXIS[i]]
+    const input = node.addWidget(
+      'number',
+      `${name}_${VECTOR_AXIS[i]}`,
+      value[VECTOR_AXIS[i]],
+      (val) => {},
+    )
+
+    inputs.push(input)
+    // vecEl.appendChild(input)
+  }
+  //
+  // const widget = node.addDOMWidget(name, 'vector', inputEl, {
+  //   getValue() {
+  //     return JSON.stringify(widget._value)
+  //   },
+  //   setValue(v) {
+  //     widget._value = v
+  //   },
+  //   afterResize(node, widget) {
+  //     console.log('After resize', { that: this, node, widget })
+  //   },
+  // })
+  //
+  // console.log('prev callback', widget.callback)
+  // widget.callback = callback
+  // widget._value = value
+  //
+  // for (let i = 0; i < vector_size; i++) {
+  //   const input = inputs[i]
+  //   input.addEventListener('change', (event) => {
+  //     widget._value[VECTOR_AXIS[i]] = Number.parseFloat(event.target.value)
+  //     widget.callback?.(widget._value)
+  //     node.graph._version++
+  //     node.setDirtyCanvas(true, true)
+  //   })
+  // }
+  // // document.body.append(inputEl)
+  //
+  // widget.inputEl = inputEl
+  // widget.vecEl = vecEl
+  //
+  // inputEl.addEventListener('input', () => {
+  //   widget.callback?.(widget.value)
+  // })
+  //
+  return { minWidth: 400, minHeight: 200, widget }
+}
+export function addVectorWidget(node, name, value, vector_size, callback, app) {
+  const inputEl = document.createElement('div')
+  const vecEl = document.createElement('div')
+
+  inputEl.className = 'comfy-vector-container'
+  vecEl.className = 'comfy-vector-input'
+  vecEl.id = 'vecEl'
+
+  vecEl.style.display = 'flex'
+  vecEl.style.flexDirection = 'column'
+  inputEl.appendChild(vecEl)
+  const inputs = []
+
+  //
+  // for (let i = 0; i < vector_size; i++) {
+  //   const input = document.createElement('input')
+  //   input.type = 'number'
+  //   input.value = value[VECTOR_AXIS[i]]
+  //   inputs.push(input)
+  //   vecEl.appendChild(input)
+  // }
+
+  const widget = node.addDOMWidget(name, 'vector', inputEl, {
+    getValue() {
+      return JSON.stringify(widget._value)
+    },
+    setValue(v) {
+      widget._value = v
+    },
+  })
+  const vec = new NumberInputWidget('vecEl', vector_size, true)
+  vec.setValue(...Object.values(value))
+  vec.onChange = (value) => {
+    for (let i = 0; i < value.length; i++) {
+      const val = value[i]
+      widget._value[VECTOR_AXIS[i]] = Number.parseFloat(val)
+    }
+
+    widget.callback?.(widget._value)
+    // widget._value[VECTOR_AXIS[index]] = Number.parseFloat(value)
+  }
+
+  console.log('prev callback', widget.callback)
+  widget.callback = callback
+  widget._value = value
+
+  // for (let i = 0; i < vector_size; i++) {
+  //   const input = inputs[i]
+  //   input.addEventListener('change', (event) => {
+  //     widget._value[VECTOR_AXIS[i]] = Number.parseFloat(event.target.value)
+  //     widget.callback?.(widget._value)
+  //     node.graph._version++
+  //     node.setDirtyCanvas(true, true)
+  //   })
+  // }
+
+  widget.inputEl = inputEl
+  widget.vecEl = vecEl
+  widget.vec = vec
+
+  return { minWidth: 400, minHeight: 200 * vector_size, widget }
+}
 export const MtbWidgets = {
+  //TODO: complete this properly
+
+  /**
+   * Creates a vector widget.
+   * @param {string} key - The key for the widget.
+   * @param {number[]} [val] - The initial value for the widget.
+   * @param {number} size - The size of the vector.
+   * @returns {VectorWidget} The vector widget.
+   */
+  VECTOR: (key, val, size) => {
+    shared.infoLogger('Adding VECTOR widget', { key, val, size })
+    /** @type {VectorWidget} */
+    const widget = {
+      name: key,
+      type: `vector${size}`,
+      y: 0,
+      options: { default: Array.from({ length: size }, () => 0.0) },
+      _value: val || Array.from({ length: size }, () => 0.0),
+      draw: function (ctx, node, width, widgetY, height) {
+        ctx.textAlign = 'left'
+        ctx.strokeStyle = outline_color
+        ctx.fillStyle = background_color
+        ctx.beginPath()
+        if (show_text)
+          ctx.roundRect(margin, y, widget_width - margin * 2, H, [H * 0.5])
+        else ctx.rect(margin, y, widget_width - margin * 2, H)
+        ctx.fill()
+        if (show_text) {
+          if (!w.disabled) ctx.stroke()
+          ctx.fillStyle = text_color
+          if (!w.disabled) {
+            ctx.beginPath()
+            ctx.moveTo(margin + 16, y + 5)
+            ctx.lineTo(margin + 6, y + H * 0.5)
+            ctx.lineTo(margin + 16, y + H - 5)
+            ctx.fill()
+            ctx.beginPath()
+            ctx.moveTo(widget_width - margin - 16, y + 5)
+            ctx.lineTo(widget_width - margin - 6, y + H * 0.5)
+            ctx.lineTo(widget_width - margin - 16, y + H - 5)
+            ctx.fill()
+          }
+          ctx.fillStyle = secondary_text_color
+          ctx.fillText(w.label || w.name, margin * 2 + 5, y + H * 0.7)
+          ctx.fillStyle = text_color
+          ctx.textAlign = 'right'
+          if (w.type === 'number') {
+            ctx.fillText(
+              Number(w.value).toFixed(
+                w.options.precision !== undefined ? w.options.precision : 3,
+              ),
+              widget_width - margin * 2 - 20,
+              y + H * 0.7,
+            )
+          } else {
+            let v = w.value
+            if (w.options.values) {
+              let values = w.options.values
+              if (values.constructor === Function) values = values()
+              if (values && values.constructor !== Array) v = values[w.value]
+            }
+            ctx.fillText(v, widget_width - margin * 2 - 20, y + H * 0.7)
+          }
+        }
+      },
+      get value() {
+        return this._value
+      },
+      set value(val) {
+        this._value = val
+        this.callback?.(this._value)
+      },
+    }
+
+    return widget
+  },
   BBOX: (key, val) => {
     /** @type {import("./types/litegraph").IWidget} */
     const widget = {
@@ -460,14 +708,8 @@ const mtb_widgets = {
       },
     })
   },
-  registerCustomNodes() {
-    LiteGraph.registerNodeType('Constant (mtb)', Constant)
 
-    Constant.category = 'mtb/utils'
-    Constant.title = 'Constant (mtb)'
-  },
-
-  getCustomWidgets: function () {
+  getCustomWidgets: () => {
     return {
       BOOL: (node, inputName, inputData, app) => {
         console.debug('Registering bool')
@@ -928,11 +1170,9 @@ const mtb_widgets = {
           const r = onConnectionsChange
             ? onConnectionsChange.apply(this, arguments)
             : undefined
-          shared.dynamic_connection(this, index, connected, 'var_', '*', [
-            'x',
-            'y',
-            'z',
-          ])
+          shared.dynamic_connection(this, index, connected, 'var_', '*', {
+            nameArray: ['x', 'y', 'z'],
+          })
 
           //- infer type
           if (link_info) {

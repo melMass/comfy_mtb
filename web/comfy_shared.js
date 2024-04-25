@@ -155,12 +155,14 @@ export function getWidgetType(config) {
   }
   return { type, linkType }
 }
-export const setupDynamicConnections = (nodeType, prefix, inputType) => {
+export const setupDynamicConnections = (nodeType, prefix, inputType, opts) => {
+  infoLogger('Setting up dynamic connections for', nodeType)
+  const options = opts || {}
   const onNodeCreated = nodeType.prototype.onNodeCreated
-  // check if it's a list
   const inputList = typeof inputType === 'object'
+
   nodeType.prototype.onNodeCreated = function () {
-    const r = onNodeCreated ? onNodeCreated.apply(this, arguments) : undefined
+    const r = onNodeCreated ? onNodeCreated.apply(this) : undefined
     this.addInput(`${prefix}_1`, inputList ? '*' : inputType)
     return r
   }
@@ -168,64 +170,208 @@ export const setupDynamicConnections = (nodeType, prefix, inputType) => {
   const onConnectionsChange = nodeType.prototype.onConnectionsChange
   nodeType.prototype.onConnectionsChange = function (
     type,
-    index,
-    connected,
-    link_info,
+    slotIndex,
+    isConnected,
+    link,
+    ioSlot,
   ) {
+    infoLogger(`Connection changed for ${this.type}`, {
+      node: this,
+      type,
+      slotIndex,
+      isConnected,
+      link,
+      ioSlot,
+    })
+    options.link = link
+    options.ioSlot = ioSlot
+
     const r = onConnectionsChange
-      ? onConnectionsChange.apply(this, arguments)
+      ? onConnectionsChange.apply(
+          this,
+          type,
+          slotIndex,
+          isConnected,
+          link,
+          ioSlot,
+        )
       : undefined
-    dynamic_connection(this, index, connected, `${prefix}_`, inputList)
+    dynamic_connection(
+      this,
+      slotIndex,
+      isConnected,
+      `${prefix}_`,
+      inputType,
+      options,
+    )
+    return r
   }
 }
+/**
+ * cleanup dynamic inputs
+ *
+ * @param {import("../../../web/types/litegraph.d.ts").LGraphNode} node - The target node
+ * @param {bool} connected - Was this event connecting or disconnecting
+ * @param {string} connectionPrefix - The common prefix of the dynamic inputs
+ * @param {string|[string]} connectionType - The type of the dynamic connection
+ * @param {{nameInput?:[string]}} [opts] - extra options
+ */
+
+const clean_dynamic_state = (
+  node,
+  connected,
+  connectionPrefix,
+  connectionType,
+  opts,
+) => {
+  infoLogger('CLEANING', { node, connectionPrefix, connectionType, opts })
+  const options = opts || {}
+  const nameArray = options.nameArray || []
+
+  const listConnection = typeof connectionType === 'object'
+  const conType = listConnection ? '*' : connectionType
+  infoLogger('connected', connected)
+
+  if (connected) {
+    // Remove inputs and their widget if not linked.
+    for (let n = 0; n < node.inputs.length; n++) {
+      const element = node.inputs[n]
+      if (!element.link) {
+        if (node.widgets) {
+          const w = node.widgets.find((w) => w.name === element.name)
+          if (w) {
+            w.onRemoved?.()
+            node.widgets.length = node.widgets.length - 1
+          }
+        }
+        node.removeInput(n)
+      }
+    }
+  }
+  // make inputs sequential again
+  for (let i = 0; i < node.inputs.length; i++) {
+    let name = `${connectionPrefix}${i + 1}`
+
+    if (nameArray.length > 0) {
+      name = i < nameArray.length ? nameArray[i] : name
+    }
+
+    node.inputs[i].label = name
+    node.inputs[i].name = name
+  }
+  // add an extra input
+  if (node.inputs[node.inputs.length - 1].link !== undefined) {
+    const nextIndex = node.inputs.length
+    let name = `${connectionPrefix}${nextIndex + 1}`
+    if (nameArray.length > 0) {
+      name = nextIndex < nameArray.length ? nameArray[nextIndex] : name
+    }
+    log(`Adding input ${nextIndex + 1} (${name})`)
+    node.addInput(name, conType)
+  }
+}
+
+/**
+ * Main logic around dynamic inputs
+ *
+ * @param {import("../../../web/types/litegraph.d.ts").LGraphNode} node - The target node
+ * @param {number} index - The slot index of the currently changed connection
+ * @param {bool} connected - Was this event connecting or disconnecting
+ * @param {string} [connectionPrefix] - The common prefix of the dynamic inputs
+ * @param {string|[string]} [connectionType] - The type of the dynamic connection
+ * @param {{nameInput?:[string]}} [opts] - extra options
+ */
 export const dynamic_connection = (
   node,
   index,
   connected,
   connectionPrefix = 'input_',
-  connectionType = 'PSDLAYER',
-  nameArray = [],
+  connectionType = '*',
+  opts = undefined,
 ) => {
+  infoLogger('MTB Dynamic Connection', {
+    node,
+    node_inputs: node.inputs,
+    index,
+    connected,
+    connectionPrefix,
+    connectionType,
+    opts,
+  })
+  const options = opts || {}
   if (!node.inputs[index].name.startsWith(connectionPrefix)) {
     return
   }
+
   const listConnection = typeof connectionType === 'object'
 
-  // remove all non connected inputs
-  if (!connected && node.inputs.length > 1) {
-    log(`Removing input ${index} (${node.inputs[index].name})`)
-    if (node.widgets) {
-      const w = node.widgets.find((w) => w.name === node.inputs[index].name)
-      if (w) {
-        w.onRemoved?.()
-        node.widgets.length = node.widgets.length - 1
+  const conType = listConnection ? '*' : connectionType
+  const nameArray = options.nameArray || []
+
+  // clean_dynamic_state(
+  //   node,
+  //   connected,
+  //   connectionPrefix,
+  //   connectionType,
+  //   options,
+  // )
+  //
+
+  if (connected) {
+    // Remove inputs and their widget if not linked.
+    for (let n = 0; n < node.inputs.length; n++) {
+      const element = node.inputs[n]
+      if (!element.link) {
+        if (node.widgets) {
+          const w = node.widgets.find((w) => w.name === element.name)
+          if (w) {
+            w.onRemoved?.()
+            node.widgets.length = node.widgets.length - 1
+          }
+        }
+        node.removeInput(n)
       }
     }
-    node.removeInput(index)
+  }
+  // make inputs sequential again
+  for (let i = 0; i < node.inputs.length; i++) {
+    let name = `${connectionPrefix}${i + 1}`
 
-    // make inputs sequential again
-    for (let i = 0; i < node.inputs.length; i++) {
-      const name =
-        i < nameArray.length ? nameArray[i] : `${connectionPrefix}${i + 1}`
-      node.inputs[i].label = name
-      node.inputs[i].name = name
+    if (nameArray.length > 0) {
+      name = i < nameArray.length ? nameArray[i] : name
     }
+
+    node.inputs[i].label = name
+    node.inputs[i].name = name
   }
 
   // add an extra input
-  if (node.inputs[node.inputs.length - 1].link != undefined) {
-    const nextIndex = node.inputs.length
-    const name =
-      nextIndex < nameArray.length
-        ? nameArray[nextIndex]
-        : `${connectionPrefix}${nextIndex + 1}`
-
-    log(`Adding input ${nextIndex + 1} (${name})`)
-
-    node.addInput(name, listConnection ? '*' : connectionType)
+  if (node.inputs.length === 0) {
+    let name = `${connectionPrefix}1`
+    if (nameArray.length > 0) {
+      name = nameArray.length[0]
+    }
+    log(`Adding input 1 (${name})`)
+    node.addInput(name, conType)
+  } else {
+    if (node.inputs[node.inputs.length - 1].link !== undefined) {
+      const nextIndex = node.inputs.length
+      let name = `${connectionPrefix}${nextIndex + 1}`
+      if (nameArray.length > 0) {
+        name = nextIndex < nameArray.length ? nameArray[nextIndex] : name
+      }
+      log(`Adding input ${nextIndex + 1} (${name})`)
+      node.addInput(name, conType)
+    }
   }
 }
 
+/**
+ * Calculate total height of DOM element child
+ *
+ * @param {HTMLElement} parentElement - The target dom element
+ * @returns {number} the total height
+ */
 export function calculateTotalChildrenHeight(parentElement) {
   let totalHeight = 0
 
@@ -233,11 +379,11 @@ export function calculateTotalChildrenHeight(parentElement) {
     const style = window.getComputedStyle(child)
 
     // Get height as an integer (without 'px')
-    const height = parseInt(style.height, 10)
+    const height = Number.parseInt(style.height, 10)
 
     // Get vertical margin as integers
-    const marginTop = parseInt(style.marginTop, 10)
-    const marginBottom = parseInt(style.marginBottom, 10)
+    const marginTop = Number.parseInt(style.marginTop, 10)
+    const marginBottom = Number.parseInt(style.marginBottom, 10)
 
     // Sum up height and vertical margins
     totalHeight += height + marginTop + marginBottom
@@ -252,9 +398,9 @@ export function calculateTotalChildrenHeight(parentElement) {
  */
 export function addMenuHandler(nodeType, cb) {
   const getOpts = nodeType.prototype.getExtraMenuOptions
-  nodeType.prototype.getExtraMenuOptions = function () {
-    const r = getOpts.apply(this, arguments)
-    cb.apply(this, arguments)
+  nodeType.prototype.getExtraMenuOptions = function (node, options) {
+    const r = getOpts.apply(this, [node, options])
+    cb.apply(this, [node, options])
     return r
   }
 }
@@ -280,11 +426,16 @@ export function hideWidget(node, widget, suffix = '') {
   // Hide any linked widgets, e.g. seed+seedControl
   if (widget.linkedWidgets) {
     for (const w of widget.linkedWidgets) {
-      hideWidget(node, w, ':' + widget.name)
+      hideWidget(node, w, `:${widget.name}`)
     }
   }
 }
 
+/**
+ * Show widget
+ *
+ * @param {import("../../../web/types/litegraph.d.ts").IWidget} widget - target widget
+ */
 export function showWidget(widget) {
   widget.type = widget.origType
   widget.computeSize = widget.origComputeSize
@@ -352,7 +503,7 @@ export function hideWidgetForGood(node, widget, suffix = '') {
   // Hide any linked widgets, e.g. seed+seedControl
   if (widget.linkedWidgets) {
     for (const w of widget.linkedWidgets) {
-      hideWidgetForGood(node, w, ':' + widget.name)
+      hideWidgetForGood(node, w, `:${widget.name}`)
     }
   }
 }
@@ -370,7 +521,7 @@ export function fixWidgets(node) {
           //     continue
           // }
           const w = node.widgets.find((w) => w.name === matching_widget.name)
-          if (w && w.type != CONVERTED_TYPE) {
+          if (w && w.type !== CONVERTED_TYPE) {
             log(w)
             log(`hidding ${w.name}(${w.type}) from ${node.type}`)
             log(node)
@@ -386,15 +537,15 @@ export function fixWidgets(node) {
   }
 }
 export function inner_value_change(widget, value, event = undefined) {
-  if (widget.type == 'number' || widget.type == 'BBOX') {
-    value = Number(value)
-  } else if (widget.type == 'BOOL') {
-    value = Boolean(value)
+  let corrected_value = value
+  if (widget.type === 'number' || widget.type === 'BBOX') {
+    corrected_value = Number(value)
+  } else if (widget.type === 'BOOL') {
+    corrected_value = Boolean(value)
   }
-  widget.value = value
+  widget.value = corrected_value
   if (
-    widget.options &&
-    widget.options.property &&
+    widget.options?.property &&
     node.properties[widget.options.property] !== undefined
   ) {
     node.setProperty(widget.options.property, value)
@@ -412,13 +563,12 @@ export function isColorBright(rgb, threshold = 240) {
 
 function getBrightness(rgbObj) {
   return Math.round(
-    (parseInt(rgbObj[0]) * 299 +
-      parseInt(rgbObj[1]) * 587 +
-      parseInt(rgbObj[2]) * 114) /
+    (Number.parseInt(rgbObj[0]) * 299 +
+      Number.parseInt(rgbObj[1]) * 587 +
+      Number.parseInt(rgbObj[2]) * 114) /
       1000,
   )
 }
-
 //- HTML / CSS UTILS
 export const loadScript = (
   FILE_URL,
@@ -439,14 +589,14 @@ export const loadScript = (
       scriptEle.async = async
       scriptEle.src = FILE_URL
 
-      scriptEle.addEventListener('load', (ev) => {
+      scriptEle.addEventListener('load', (_ev) => {
         resolve({ status: true })
       })
 
-      scriptEle.addEventListener('error', (ev) => {
+      scriptEle.addEventListener('error', (_ev) => {
         reject({
           status: false,
-          message: `Failed to load the script ＄{FILE_URL}`,
+          message: `Failed to load the script ${FILE_URL}`,
         })
       })
 
@@ -493,7 +643,7 @@ export function defineClass(className, classStyles) {
 /** Prefixes the node title with '[DEPRECATED]' and log the deprecation reason to the console.*/
 export const addDeprecation = (nodeType, reason) => {
   const title = nodeType.title
-  nodeType.title = '[DEPRECATED] ' + title
+  nodeType.title = `[DEPRECATED] ${title}`
   // console.log(nodeType)
 
   const styles = {

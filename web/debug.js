@@ -51,9 +51,11 @@ app.registerExtension({
 
         //- infer type
         if (link_info) {
-          const fromNode = this.graph._nodes.find(
-            (otherNode) => otherNode.id === link_info.origin_id,
-          )
+          // const fromNode = this.graph._nodes.find(
+          // (otherNode) => otherNode.id === link_info.origin_id,
+          // )
+          const fromNode = app.graph.getNodeById(link_info.origin_id)
+          if (!fromNode) return
           const type = fromNode.outputs[link_info.origin_slot].type
           this.inputs[index].type = type
           // this.inputs[index].label = type.toLowerCase()
@@ -83,6 +85,7 @@ app.registerExtension({
           this.widgets.length = 1
         }
         let widgetI = 1
+        console.log(message)
         if (message.text) {
           for (const txt of message.text) {
             const w = this.addCustomWidget(
