@@ -70,7 +70,7 @@ def extract_nodes_from_source(filename: Path):
 
 
 def load_nodes():
-    errors = []
+    errors: list[str] = []
     nodes = []
     nodes_failed = []
 
@@ -87,9 +87,11 @@ def load_nodes():
                 log.debug(f"Imported {module_name} nodes")
 
             except AttributeError:
+                log.debug(f"Skipping wip module {module_name}")
                 pass  # wip nodes
             except Exception:
                 error_message = traceback.format_exc().splitlines()[-1]
+
                 errors.append(
                     f"Failed to import module {module_name} because {error_message}"
                 )
@@ -136,6 +138,18 @@ def wiki_to_classname(s: str):
     )
 
 
+def classname_to_wiki(s: str):
+    classname = s.replace("MTB_", "")
+    parts = []
+    start = 0
+    for i in range(1, len(classname)):
+        if classname[i].isupper():
+            parts.append(classname[start:i].lower())
+            start = i
+    parts.append(classname[start:].lower())
+    return "nodes-" + "-".join(parts)
+
+
 wiki = here / "wiki"
 node_docs = {}
 if wiki.exists() and wiki.is_dir():
@@ -146,20 +160,31 @@ if wiki.exists() and wiki.is_dir():
 
 
 # - REGISTER NODES
+
+
+MTB_EXPORT = os.environ.get("MTB_EXPORT")
+
 nodes, failed = load_nodes()
 for node_class in nodes:
-    class_name = node_class.__name__
+    class_name: str = node_class.__name__
     linked_doc = node_docs.get(class_name)
 
     if not hasattr(node_class, "DESCRIPTION"):
         if linked_doc:
-            log.debug(f"Found linked doc for {class_name}")
+            log.debug(f"Found linked doc for {class_name}, using it")
             node_class.DESCRIPTION = linked_doc
         elif node_class.__doc__:
+            log.debug(f"Using __doc__ as description for {class_name}")
             node_class.DESCRIPTION = node_class.__doc__
+            if MTB_EXPORT:
+                wiki_name = classname_to_wiki(class_name)
+                (wiki / "nodes" / wiki_name + ".md").write_text(
+                    node_class.__doc__, encoding="utf-8"
+                )
+
         else:
             log.debug(
-                f"None of the methods could retrive documentation for {class_name}"
+                f"None of the methods could retrieve documentation for {class_name}"
             )
 
     node_label = f"{get_label(class_name)} (mtb)"

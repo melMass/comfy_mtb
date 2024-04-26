@@ -22,7 +22,7 @@ from ..utils import download_antelopev2, get_model_path, pil2tensor, tensor2pil
 log = mklog(__name__)
 
 
-class LoadFaceAnalysisModel:
+class MTB_LoadFaceAnalysisModel:
     """Loads a face analysis model"""
 
     models = []
@@ -53,7 +53,7 @@ class LoadFaceAnalysisModel:
         return (face_analyser,)
 
 
-class LoadFaceSwapModel:
+class MTB_LoadFaceSwapModel:
     """Loads a faceswap model"""
 
     @staticmethod
@@ -97,7 +97,7 @@ class LoadFaceSwapModel:
 
 
 # region roop node
-class FaceSwap:
+class MTB_FaceSwap:
     """Face swap using deepinsight/insightface models"""
 
     model = None
@@ -239,4 +239,4 @@ def swap_face(
 # endregion face swap utils
 
 
-__nodes__ = [FaceSwap, LoadFaceSwapModel, LoadFaceAnalysisModel]
+__nodes__ = [MTB_FaceSwap, MTB_LoadFaceSwapModel, MTB_LoadFaceAnalysisModel]

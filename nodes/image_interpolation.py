@@ -1,12 +1,9 @@
-import glob
-import os
 from pathlib import Path
 from typing import List
 
 import comfy
 import comfy.model_management as model_management
 import comfy.utils
-import folder_paths
 import numpy as np
 import tensorflow as tf
 import torch
@@ -17,7 +14,7 @@ from ..log import log
 from ..utils import get_model_path
 
 
-class LoadFilmModel:
+class MTB_LoadFilmModel:
     """Loads a FILM model"""
 
     @staticmethod
@@ -58,7 +55,7 @@ class LoadFilmModel:
         return (interpolator.Interpolator(model_path.as_posix(), None),)
 
 
-class FilmInterpolation:
+class MTB_FilmInterpolation:
     """Google Research FILM frame interpolation for large motion"""
 
     @classmethod
@@ -107,12 +104,16 @@ class FilmInterpolation:
             in_frames, interpolate, film_model
         ):
             out_tensors.append(
-                torch.from_numpy(frame) if isinstance(frame, np.ndarray) else frame
+                torch.from_numpy(frame)
+                if isinstance(frame, np.ndarray)
+                else frame
             )
             model_management.throw_exception_if_processing_interrupted()
             pbar.update(1)
 
-        out_tensors = torch.cat([tens.unsqueeze(0) for tens in out_tensors], dim=0)
+        out_tensors = torch.cat(
+            [tens.unsqueeze(0) for tens in out_tensors], dim=0
+        )
 
         log.debug(f"Returning {len(out_tensors)} tensors")
         log.debug(f"Output shape {out_tensors.shape}")
@@ -120,4 +121,4 @@ class FilmInterpolation:
         return (out_tensors,)
 
 
-__nodes__ = [LoadFilmModel, FilmInterpolation]
+__nodes__ = [MTB_LoadFilmModel, MTB_FilmInterpolation]

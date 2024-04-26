@@ -1,14 +1,15 @@
+from math import ceil, sqrt
+from typing import cast
+
 import torch
 import torchvision.transforms.functional as TF
-from ..utils import log, hex_to_rgb, tensor2pil, pil2tensor
-from math import sqrt, ceil
-from typing import cast
 from PIL import Image
 
+from ..utils import hex_to_rgb, log, pil2tensor, tensor2pil
 
-class TransformImage:
+
+class MTB_TransformImage:
     """Save torch tensors (image, mask or latent) to disk, useful to debug things outside comfy
-
 
     it return a tensor representing the transformed images with the same shape as the input tensor
     """
@@ -18,10 +19,22 @@ class TransformImage:
         return {
             "required": {
                 "image": ("IMAGE",),
-                "x": ("FLOAT", {"default": 0, "step": 1, "min": -4096, "max": 4096}),
-                "y": ("FLOAT", {"default": 0, "step": 1, "min": -4096, "max": 4096}),
-                "zoom": ("FLOAT", {"default": 1.0, "min": 0.001, "step": 0.01}),
-                "angle": ("FLOAT", {"default": 0, "step": 1, "min": -360, "max": 360}),
+                "x": (
+                    "FLOAT",
+                    {"default": 0, "step": 1, "min": -4096, "max": 4096},
+                ),
+                "y": (
+                    "FLOAT",
+                    {"default": 0, "step": 1, "min": -4096, "max": 4096},
+                ),
+                "zoom": (
+                    "FLOAT",
+                    {"default": 1.0, "min": 0.001, "step": 0.01},
+                ),
+                "angle": (
+                    "FLOAT",
+                    {"default": 0, "step": 1, "min": -360, "max": 360},
+                ),
                 "shear": (
                     "FLOAT",
                     {"default": 0, "step": 1, "min": -4096, "max": 4096},
@@ -53,14 +66,21 @@ class TransformImage:
         y = int(y)
         angle = int(angle)
 
-        log.debug(f"Zoom: {zoom} | x: {x}, y: {y}, angle: {angle}, shear: {shear}")
+        log.debug(
+            f"Zoom: {zoom} | x: {x}, y: {y}, angle: {angle}, shear: {shear}"
+        )
 
         if image.size(0) == 0:
             return (torch.zeros(0),)
         transformed_images = []
-        frames_count, frame_height, frame_width, frame_channel_count = image.size()
+        frames_count, frame_height, frame_width, frame_channel_count = (
+            image.size()
+        )
 
-        new_height, new_width = int(frame_height * zoom), int(frame_width * zoom)
+        new_height, new_width = (
+            int(frame_height * zoom),
+            int(frame_width * zoom),
+        )
 
         log.debug(f"New height: {new_height}, New width: {new_width}")
 
@@ -74,7 +94,12 @@ class TransformImage:
         pw += abs(max_padding)
         ph += abs(max_padding)
 
-        padding = [max(0, pw + x), max(0, ph + y), max(0, pw - x), max(0, ph - y)]
+        padding = [
+            max(0, pw + x),
+            max(0, ph + y),
+            max(0, pw - x),
+            max(0, ph - y),
+        ]
 
         constant_color = hex_to_rgb(constant_color)
         log.debug(f"Fill Tuple: {constant_color}")
@@ -89,7 +114,9 @@ class TransformImage:
 
             img = cast(
                 Image.Image,
-                TF.affine(img, angle=angle, scale=zoom, translate=[x, y], shear=shear),
+                TF.affine(
+                    img, angle=angle, scale=zoom, translate=[x, y], shear=shear
+                ),
             )
 
             left = abs(padding[0])
@@ -107,4 +134,4 @@ class TransformImage:
         return (pil2tensor(transformed_images),)
 
 
-__nodes__ = [TransformImage]
+__nodes__ = [MTB_TransformImage]

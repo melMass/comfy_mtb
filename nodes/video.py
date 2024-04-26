@@ -1,4 +1,7 @@
-import hashlib, json, os, re
+import hashlib
+import json
+import os
+import re
 from pathlib import Path
 
 import folder_paths
@@ -10,7 +13,7 @@ from PIL.PngImagePlugin import PngInfo
 from ..log import log
 
 
-class LoadImageSequence:
+class MTB_LoadImageSequence:
     """Load an image sequence from a folder. The current frame is used to determine which image to load.
 
     Usually used in conjunction with the `Primitive` node set to increment to load a sequence of images from a folder.
@@ -155,7 +158,7 @@ def resolve_path(path, frame):
     return re.sub("#+", padded_number, path)
 
 
-class SaveImageSequence:
+class MTB_SaveImageSequence:
     """Save an image sequence to a folder. The current frame is used to determine which image to save.
 
     This is merely a wrapper around the `save_images` function with formatting for the output folder and filename.
@@ -251,6 +254,6 @@ class SaveImageSequence:
 
 
 __nodes__ = [
-    LoadImageSequence,
-    SaveImageSequence,
+    MTB_LoadImageSequence,
+    MTB_SaveImageSequence,
 ]

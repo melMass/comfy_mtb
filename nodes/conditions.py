@@ -1,4 +1,5 @@
-import csv, shutil
+import csv
+import shutil
 from pathlib import Path
 
 import folder_paths
@@ -7,7 +8,7 @@ from ..log import log
 from ..utils import here
 
 
-class InterpolateClipSequential:
+class MTB_InterpolateClipSequential:
     @classmethod
     def INPUT_TYPES(cls):
         return {
@@ -28,7 +29,12 @@ class InterpolateClipSequential:
     CATEGORY = "mtb/conditioning"
 
     def interpolate_encodings_sequential(
-        self, base_text, text_to_replace, clip, interpolation_strength, **replacements
+        self,
+        base_text,
+        text_to_replace,
+        clip,
+        interpolation_strength,
+        **replacements,
     ):
         log.debug(f"Received interpolation_strength: {interpolation_strength}")
 
@@ -63,20 +69,30 @@ class InterpolateClipSequential:
             log.debug("Using the base text a the base blend")
             # -  Start with the base_text condition
             tokens = clip.tokenize(base_text)
-            cond_from, pooled_from = clip.encode_from_tokens(tokens, return_pooled=True)
+            cond_from, pooled_from = clip.encode_from_tokens(
+                tokens, return_pooled=True
+            )
         else:
             base_replace = list(replacements.values())[segment_index - 1]
             log.debug(f"Using {base_replace} a the base blend")
 
             # - Start with the base_text condition replaced by the closest replacement
-            tokens = clip.tokenize(base_text.replace(text_to_replace, base_replace))
-            cond_from, pooled_from = clip.encode_from_tokens(tokens, return_pooled=True)
+            tokens = clip.tokenize(
+                base_text.replace(text_to_replace, base_replace)
+            )
+            cond_from, pooled_from = clip.encode_from_tokens(
+                tokens, return_pooled=True
+            )
 
             replacement_text = list(replacements.values())[segment_index]
 
-        interpolated_text = base_text.replace(text_to_replace, replacement_text)
+        interpolated_text = base_text.replace(
+            text_to_replace, replacement_text
+        )
         tokens = clip.tokenize(interpolated_text)
-        cond_to, pooled_to = clip.encode_from_tokens(tokens, return_pooled=True)
+        cond_to, pooled_to = clip.encode_from_tokens(
+            tokens, return_pooled=True
+        )
 
         # - Linearly interpolate between the two conditions
         interpolated_condition = (
@@ -86,10 +102,12 @@ class InterpolateClipSequential:
             1.0 - local_strength
         ) * pooled_from + local_strength * pooled_to
 
-        return ([[interpolated_condition, {"pooled_output": interpolated_pooled}]],)
+        return (
+            [[interpolated_condition, {"pooled_output": interpolated_pooled}]],
+        )
 
 
-class SmartStep:
+class MTB_SmartStep:
     """Utils to control the steps start/stop of the KAdvancedSampler in percentage"""
 
     @classmethod
@@ -136,7 +154,7 @@ def install_default_styles(force=False):
     return dest_style
 
 
-class StylesLoader:
+class MTB_StylesLoader:
     """Load csv files and populate a dropdown from the rows (à la A111)"""
 
     options = {}
@@ -148,13 +166,15 @@ class StylesLoader:
             if not input_dir.exists():
                 install_default_styles()
 
-            if not (files := [f for f in input_dir.iterdir() if f.suffix == ".csv"]):
+            if not (
+                files := [f for f in input_dir.iterdir() if f.suffix == ".csv"]
+            ):
                 log.warn(
                     "No styles found in the styles folder, place at least one csv file in the styles folder at the root of ComfyUI (for instance ComfyUI/styles/mystyle.csv)"
                 )
 
             for file in files:
-                with open(file, "r", encoding="utf8") as f:
+                with open(file, encoding="utf8") as f:
                     parsed = csv.reader(f)
                     for i, row in enumerate(parsed):
                         log.debug(f"Adding style {row[0]}")
@@ -193,4 +213,4 @@ class StylesLoader:
         return (self.options[style_name][0], self.options[style_name][1])
 
 
-__nodes__ = [SmartStep, StylesLoader, InterpolateClipSequential]
+__nodes__ = [MTB_SmartStep, MTB_StylesLoader, MTB_InterpolateClipSequential]

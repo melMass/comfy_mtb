@@ -1,6 +1,4 @@
 import os
-from pathlib import Path
-from typing import Tuple
 
 import comfy
 import comfy.utils
@@ -9,14 +7,13 @@ import folder_paths
 import numpy as np
 import torch
 from comfy import model_management
-from gfpgan import GFPGANer
 from PIL import Image
 
 from ..log import NullWriter, log
 from ..utils import get_model_path, np2tensor, pil2tensor, tensor2np
 
 
-class LoadFaceEnhanceModel:
+class MTB_LoadFaceEnhanceModel:
     """Loads a GFPGan or RestoreFormer model for face enhancement."""
 
     def __init__(self) -> None:
@@ -81,6 +78,8 @@ class LoadFaceEnhanceModel:
     CATEGORY = "mtb/facetools"
 
     def load_model(self, model_name, upscale=2, bg_upsampler=None):
+        from gfpgan import GFPGANer
+
         basic = "RestoreFormer" not in model_name
 
         fr_root, um_root = self.get_models_root()
@@ -153,7 +152,7 @@ class BGUpscaleWrapper:
 import sys
 
 
-class RestoreFace:
+class MTB_RestoreFace:
     """Uses GFPGan to restore faces"""
 
     def __init__(self) -> None:
@@ -182,7 +181,7 @@ class RestoreFace:
     def do_restore(
         self,
         image: torch.Tensor,
-        model: GFPGANer,
+        model,
         aligned,
         only_center_face,
         weight,
@@ -220,12 +219,12 @@ class RestoreFace:
     def restore(
         self,
         image: torch.Tensor,
-        model: GFPGANer,
+        model,
         aligned=False,
         only_center_face=False,
         weight=0.5,
         save_tmp_steps=True,
-    ) -> Tuple[torch.Tensor]:
+    ) -> tuple[torch.Tensor]:
         out = [
             self.do_restore(
                 image[i],
@@ -275,4 +274,4 @@ class RestoreFace:
             cv2.imwrite(file, cmp_img)
 
 
-__nodes__ = [RestoreFace, LoadFaceEnhanceModel]
+__nodes__ = [MTB_RestoreFace, MTB_LoadFaceEnhanceModel]

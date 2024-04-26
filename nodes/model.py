@@ -80,7 +80,7 @@ def conv_forward(lyr, tensor, weight, bias):
     )
 
 
-class ModelPatchSeamless:
+class MTB_ModelPatchSeamless:
     """Uses the stable diffusion 'hack' to infer seamless images by setting the model layers padding mode to circular (experimental)"""
 
     @classmethod
@@ -152,4 +152,4 @@ class ModelPatchSeamless:
         return (model, hacked_model)
 
 
-__nodes__ = [ModelPatchSeamless, MTB_VaeDecode]
+__nodes__ = [MTB_ModelPatchSeamless, MTB_VaeDecode]

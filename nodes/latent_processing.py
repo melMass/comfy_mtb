@@ -1,7 +1,7 @@
 import torch
 
 
-class LatentLerp:
+class MTB_LatentLerp:
     """Linear interpolation (blend) between two latent vectors"""
 
     @classmethod
@@ -10,7 +10,10 @@ class LatentLerp:
             "required": {
                 "A": ("LATENT",),
                 "B": ("LATENT",),
-                "t": ("FLOAT", {"default": 0.5, "min": 0.0, "max": 1.0, "step": 0.01}),
+                "t": (
+                    "FLOAT",
+                    {"default": 0.5, "min": 0.0, "max": 1.0, "step": 0.01},
+                ),
             }
         }
 
@@ -29,5 +32,5 @@ class LatentLerp:
 
 
 __nodes__ = [
-    LatentLerp,
+    MTB_LatentLerp,
 ]

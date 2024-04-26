@@ -21,7 +21,7 @@ def get_playlist_path(playlist_name: str, persistant_playlist=False):
     return output_dir / "playlists" / session_id / f"{playlist_name}.json"
 
 
-class ReadPlaylist:
+class MTB_ReadPlaylist:
     """Read a playlist"""
 
     @classmethod
@@ -399,5 +399,5 @@ __nodes__ = [
     MTB_SaveGif,
     MTB_ExportWithFfmpeg,
     MTB_AddToPlaylist,
-    ReadPlaylist,
+    MTB_ReadPlaylist,
 ]

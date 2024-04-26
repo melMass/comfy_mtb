@@ -52,7 +52,7 @@ from ..utils import comfy_dir, font_path, pil2tensor
 #         return m.digest().hex()
 
 
-class UnsplashImage:
+class MTB_UnsplashImage:
     """Unsplash Image given a keyword and a size"""
 
     @classmethod
@@ -113,7 +113,7 @@ class UnsplashImage:
             return (None,)
 
 
-class QrCode:
+class MTB_QrCode:
     """Basic QR Code generator"""
 
     @classmethod
@@ -364,8 +364,8 @@ by default it fallsback to a default font.
 
 
 __nodes__ = [
-    QrCode,
-    UnsplashImage,
+    MTB_QrCode,
+    MTB_UnsplashImage,
     MTB_TextToImage,
     #  MtbExamples,
 ]

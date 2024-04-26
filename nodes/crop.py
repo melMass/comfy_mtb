@@ -6,7 +6,7 @@ from ..log import log
 from ..utils import np2tensor, pil2tensor, tensor2np, tensor2pil
 
 
-class Bbox:
+class MTB_Bbox:
     """The bounding box (BBOX) custom type used by other nodes"""
 
     @classmethod
@@ -41,7 +41,7 @@ class Bbox:
         return ((x, y, width, height),)
 
 
-class BboxFromMask:
+class MTB_BboxFromMask:
     """From a mask extract the bounding box"""
 
     @classmethod
@@ -110,7 +110,7 @@ class BboxFromMask:
         )
 
 
-class Crop:
+class MTB_Crop:
     """Crops an image and an optional mask to a given bounding box
 
     The bounding box can be given as a tuple of (x, y, width, height) or as a BBOX type
@@ -218,7 +218,7 @@ def bbox_to_region(bbox, target_size=None):
     return (bbox[0], bbox[1], bbox[0] + bbox[2], bbox[1] + bbox[3])
 
 
-class Uncrop:
+class MTB_Uncrop:
     """Uncrops an image to a given bounding box
 
     The bounding box can be given as a tuple of (x, y, width, height) or as a BBOX type
@@ -324,4 +324,4 @@ class Uncrop:
         return (pil2tensor(out_images),)
 
 
-__nodes__ = [BboxFromMask, Bbox, Crop, Uncrop]
+__nodes__ = [MTB_BboxFromMask, MTB_Bbox, MTB_Crop, MTB_Uncrop]

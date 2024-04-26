@@ -3,12 +3,17 @@ import csv
 from aiohttp import web
 
 from .log import mklog
-from .utils import backup_file, here, import_install, reqs_map, run_command, styles_dir
+from .utils import (
+    backup_file,
+    import_install,
+    reqs_map,
+    run_command,
+    styles_dir,
+)
 
 endlog = mklog("mtb endpoint")
 
 # - ACTIONS
-import platform
 import sys
 from pathlib import Path
 
@@ -22,7 +27,9 @@ def ACTIONS_installDependency(dependency_names=None):
     # reqs = []
     resolved_names = [reqs_map.get(name, name) for name in dependency_names]
     try:
-        run_command([Path(sys.executable), "-m", "pip", "install"] + resolved_names)
+        run_command(
+            [Path(sys.executable), "-m", "pip", "install"] + resolved_names
+        )
         return {"success": True}
 
     except Exception as e:
@@ -44,9 +51,9 @@ def ACTIONS_installDependency(dependency_names=None):
 
 
 def ACTIONS_getStyles(style_name=None):
-    from .nodes.conditions import StylesLoader
+    from .nodes.conditions import MTB_StylesLoader
 
-    styles = StylesLoader.options
+    styles = MTB_StylesLoader.options
     match_list = ["name"]
     if styles:
         filtered_styles = {
@@ -55,7 +62,9 @@ def ACTIONS_getStyles(style_name=None):
             if not key.startswith("__") and key not in match_list
         }
         if style_name:
-            return filtered_styles.get(style_name, {"error": "Style not found"})
+            return filtered_styles.get(
+                style_name, {"error": "Style not found"}
+            )
         return filtered_styles
     return {"error": "No styles found"}
 
@@ -75,7 +84,9 @@ def ACTIONS_saveStyle(data):
             break
 
     if not target:
-        endlog.warning(f"Could not determine the target file for {data.keys()}")
+        endlog.warning(
+            f"Could not determine the target file for {data.keys()}"
+        )
         return {"error": "Could not determine the target file for the style"}
 
     backup_file(target)
@@ -103,11 +114,16 @@ async def do_action(request) -> web.Response:
         return web.json_response({"result": result})
 
     available_methods = [
-        attr[len("ACTIONS_") :] for attr in globals() if attr.startswith("ACTIONS_")
+        attr[len("ACTIONS_") :]
+        for attr in globals()
+        if attr.startswith("ACTIONS_")
     ]
 
     return web.json_response(
-        {"error": "Invalid method name.", "available_methods": available_methods}
+        {
+            "error": "Invalid method name.",
+            "available_methods": available_methods,
+        }
     )
 
 
@@ -127,7 +143,7 @@ def csv_editor():
 
     style_files = {}
     for file in inputs:
-        with open(file, "r", encoding="utf8") as f:
+        with open(file, encoding="utf8") as f:
             parsed = csv.reader(f)
             style_files[file.name] = []
             for row in parsed:
@@ -235,7 +251,9 @@ def add_split_pane(left_content, right_content, vertical=True):
 
 
 def add_dropdown(title, options):
-    option_str = "\n".join([f"<option value='{opt}'>{opt}</option>" for opt in options])
+    option_str = "\n".join(
+        [f"<option value='{opt}'>{opt}</option>" for opt in options]
+    )
     return f"""
     <select>
         <option disabled selected>{title}</option>
@@ -254,11 +272,15 @@ def render_table(table_dict, sort=True, title=None):
         if isinstance(item, dict):
             if "dependencies" in item:
                 table_rows += f"<tr><td>{name}</td><td>"
-                table_rows += f"{dependencies_button(name,item['dependencies'])}"
+                table_rows += (
+                    f"{dependencies_button(name,item['dependencies'])}"
+                )
 
                 table_rows += "</td></tr>"
             else:
-                table_rows += f"<tr><td>{name}</td><td>{render_table(item)}</td></tr>"
+                table_rows += (
+                    f"<tr><td>{name}</td><td>{render_table(item)}</td></tr>"
+                )
         # elif isinstance(item, str):
         #     table_rows += f"<tr><td>{name}</td><td>{item}</td></tr>"
         else:

@@ -7,7 +7,7 @@ from PIL import Image
 
 from ..log import log
 from ..utils import apply_easing, pil2tensor
-from .transform import TransformImage
+from .transform import MTB_TransformImage
 
 
 def hex_to_rgb(hex_color, bgr=False):
@@ -415,7 +415,7 @@ class MTB_Batch2dTransform:
             if count == 0:
                 keyframes[name] = [default_vals[name]] * image.shape[0]
 
-        transformer = TransformImage()
+        transformer = MTB_TransformImage()
         res = [
             transformer.transform(
                 image[i].unsqueeze(0),
