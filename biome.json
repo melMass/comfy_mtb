@@ -9,6 +9,9 @@
             "recommended": true
         }
     },
+    "formatter": {
+        "lineEnding": "lf"
+    },
     "javascript": {
         "formatter": {
             "quoteStyle": "single",

@@ -7,10 +7,7 @@
  *
  */
 
-/**
- * @typedef {import("../../../web/types/litegraph.d.ts").IWidget} IWidget
- * @typedef {import("../../../web/types/litegraph.d.ts").IWidget<number[], { default: number[] }>} VectorWidget
- */
+/// <reference path="../types/typedefs.js" />
 
 // TODO: Use the builtin addDOMWidget everywhere appropriate
 

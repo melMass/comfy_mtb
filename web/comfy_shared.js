@@ -3,7 +3,7 @@
  * Project: comfy_mtb
  * Author: Mel Massadian
  *
- * Copyright (c) 2023 Mel Massadian
+ * Copyright (c) 2023-2024 Mel Massadian
  *
  */
 
@@ -83,6 +83,25 @@ export const log = (...args) => {
 
 //- WIDGET UTILS
 export const CONVERTED_TYPE = 'converted-widget'
+/**
+ * @param {LGraphNode} node
+ * @param {LLink} link
+ * @returns {{to:LGraphNode, from:LGraphNode, type:'error' | 'incoming' | 'outgoing'}}
+ */
+export const nodesFromLink = (node, link) => {
+  const fromNode = app.graph.getNodeById(link.origin_id)
+  const toNode = app.graph.getNodeById(link.target_id)
+
+  let tp = 'error'
+
+  if (fromNode.id === node.id) {
+    tp = 'outgoing'
+  } else if (toNode.id === node.id) {
+    tp = 'incoming'
+  }
+
+  return { to: toNode, from: fromNode, type: tp }
+}
 
 export const hasWidgets = (node) => {
   if (!node.widgets || !node.widgets?.[Symbol.iterator]) {
@@ -158,8 +177,19 @@ export function getWidgetType(config) {
   }
   return { type, linkType }
 }
+
+/**
+ * @param {NodeType} nodeType
+ * @param {str} prefix
+ * @param {str | [str]} inputType
+ * @param {{link?:LLink, ioSlot?:INodeInputSlot | INodeOutputSlot}?} opts
+ * @returns
+ */
+
 export const setupDynamicConnections = (nodeType, prefix, inputType, opts) => {
   infoLogger('Setting up dynamic connections for', nodeType)
+
+  /** @type {{link?:LLink, ioSlot?:INodeInputSlot | INodeOutputSlot}} */
   const options = opts || {}
   const onNodeCreated = nodeType.prototype.onNodeCreated
   const inputList = typeof inputType === 'object'
@@ -171,50 +201,32 @@ export const setupDynamicConnections = (nodeType, prefix, inputType, opts) => {
   }
 
   const onConnectionsChange = nodeType.prototype.onConnectionsChange
-<<<<<<< HEAD
-  nodeType.prototype.onConnectionsChange = function (
-    type,
-    slotIndex,
-    isConnected,
-    link,
-    ioSlot,
-  ) {
-    infoLogger(`Connection changed for ${this.type}`, {
+  /**
+   * @param {OnConnectionsChangeParams} args
+   */
+  nodeType.prototype.onConnectionsChange = function (...args) {
+    const [type, slotIndex, isConnected, link, ioSlot] = args
+
+    options.link = link
+    options.ioSlot = ioSlot
+    const r = onConnectionsChange
+      ? onConnectionsChange.apply(this, [
+          type,
+          slotIndex,
+          isConnected,
+          link,
+          ioSlot,
+        ])
+      : undefined
+    options.DEBUG = {
       node: this,
       type,
       slotIndex,
       isConnected,
       link,
       ioSlot,
-    })
-    options.link = link
-    options.ioSlot = ioSlot
+    }
 
-||||||| dff5b22
-  nodeType.prototype.onConnectionsChange = function (
-    type,
-    index,
-    connected,
-    link_info,
-  ) {
-=======
-
-  /**
-   * @param {OnConnectionsChangeParams} args
-   */
-  nodeType.prototype.onConnectionsChange = function (...args) {
-    const [_type, index, connected, _link_info] = args
->>>>>>> main
-    const r = onConnectionsChange
-      ? onConnectionsChange.apply(
-          this,
-          type,
-          slotIndex,
-          isConnected,
-          link,
-          ioSlot,
-        )
-      : undefined
     dynamic_connection(
       this,
       slotIndex,
@@ -226,79 +238,16 @@ export const setupDynamicConnections = (nodeType, prefix, inputType, opts) => {
     return r
   }
 }
-/**
- * cleanup dynamic inputs
- *
- * @param {import("../../../web/types/litegraph.d.ts").LGraphNode} node - The target node
- * @param {bool} connected - Was this event connecting or disconnecting
- * @param {string} connectionPrefix - The common prefix of the dynamic inputs
- * @param {string|[string]} connectionType - The type of the dynamic connection
- * @param {{nameInput?:[string]}} [opts] - extra options
- */
-
-const clean_dynamic_state = (
-  node,
-  connected,
-  connectionPrefix,
-  connectionType,
-  opts,
-) => {
-  infoLogger('CLEANING', { node, connectionPrefix, connectionType, opts })
-  const options = opts || {}
-  const nameArray = options.nameArray || []
-
-  const listConnection = typeof connectionType === 'object'
-  const conType = listConnection ? '*' : connectionType
-  infoLogger('connected', connected)
-
-  if (connected) {
-    // Remove inputs and their widget if not linked.
-    for (let n = 0; n < node.inputs.length; n++) {
-      const element = node.inputs[n]
-      if (!element.link) {
-        if (node.widgets) {
-          const w = node.widgets.find((w) => w.name === element.name)
-          if (w) {
-            w.onRemoved?.()
-            node.widgets.length = node.widgets.length - 1
-          }
-        }
-        node.removeInput(n)
-      }
-    }
-  }
-  // make inputs sequential again
-  for (let i = 0; i < node.inputs.length; i++) {
-    let name = `${connectionPrefix}${i + 1}`
-
-    if (nameArray.length > 0) {
-      name = i < nameArray.length ? nameArray[i] : name
-    }
-
-    node.inputs[i].label = name
-    node.inputs[i].name = name
-  }
-  // add an extra input
-  if (node.inputs[node.inputs.length - 1].link !== undefined) {
-    const nextIndex = node.inputs.length
-    let name = `${connectionPrefix}${nextIndex + 1}`
-    if (nameArray.length > 0) {
-      name = nextIndex < nameArray.length ? nameArray[nextIndex] : name
-    }
-    log(`Adding input ${nextIndex + 1} (${name})`)
-    node.addInput(name, conType)
-  }
-}
 
 /**
  * Main logic around dynamic inputs
  *
- * @param {import("../../../web/types/litegraph.d.ts").LGraphNode} node - The target node
+ * @param {LGraphNode} node - The target node
  * @param {number} index - The slot index of the currently changed connection
  * @param {bool} connected - Was this event connecting or disconnecting
  * @param {string} [connectionPrefix] - The common prefix of the dynamic inputs
  * @param {string|[string]} [connectionType] - The type of the dynamic connection
- * @param {{nameInput?:[string]}} [opts] - extra options
+ * @param {{link?:LLink, ioSlot?:INodeInputSlot | INodeOutputSlot}} [opts] - extra options
  */
 export const dynamic_connection = (
   node,
@@ -308,17 +257,13 @@ export const dynamic_connection = (
   connectionType = '*',
   opts = undefined,
 ) => {
-  infoLogger('MTB Dynamic Connection', {
-    node,
-    node_inputs: node.inputs,
-    index,
-    connected,
-    connectionPrefix,
-    connectionType,
-    opts,
-  })
+  /* @type {{link?:LLink, ioSlot?:INodeInputSlot | INodeOutputSlot}} [opts] - extra options*/
   const options = opts || {}
-  if (!node.inputs[index].name.startsWith(connectionPrefix)) {
+
+  if (
+    node.inputs.length > 0 &&
+    !node.inputs[index].name.startsWith(connectionPrefix)
+  ) {
     return
   }
 
@@ -327,17 +272,14 @@ export const dynamic_connection = (
   const conType = listConnection ? '*' : connectionType
   const nameArray = options.nameArray || []
 
-  // clean_dynamic_state(
-  //   node,
-  //   connected,
-  //   connectionPrefix,
-  //   connectionType,
-  //   options,
-  // )
-  //
+  const clean_inputs = () => {
+    if (node.inputs.length === 0) return
 
-  if (connected) {
-    // Remove inputs and their widget if not linked.
+    let w_count = node.widgets?.length || 0
+    let i_count = node.inputs?.length || 0
+    infoLogger(`Cleaning inputs: [BEFORE] (w: ${w_count} | inputs: ${i_count})`)
+
+    const to_remove = []
     for (let n = 0; n < node.inputs.length; n++) {
       const element = node.inputs[n]
       if (!element.link) {
@@ -348,33 +290,80 @@ export const dynamic_connection = (
             node.widgets.length = node.widgets.length - 1
           }
         }
-        node.removeInput(n)
+        infoLogger(`Removing input ${n}`)
+        to_remove.push(n)
       }
     }
-  }
-  // make inputs sequential again
-  for (let i = 0; i < node.inputs.length; i++) {
-    let name = `${connectionPrefix}${i + 1}`
+    for (let i = 0; i < to_remove.length; i++) {
+      const id = to_remove[i]
 
-    if (nameArray.length > 0) {
-      name = i < nameArray.length ? nameArray[i] : name
+      node.removeInput(id)
+      i_count -= 1
+    }
+    node.inputs.length = i_count
+
+    w_count = node.widgets?.length || 0
+    i_count = node.inputs?.length || 0
+    infoLogger(`Cleaning inputs: [AFTER] (w: ${w_count} | inputs: ${i_count})`)
+
+    infoLogger('Cleaning inputs: making it sequential again')
+    // make inputs sequential again
+    for (let i = 0; i < node.inputs.length; i++) {
+      let name = `${connectionPrefix}${i + 1}`
+
+      if (nameArray.length > 0) {
+        name = i < nameArray.length ? nameArray[i] : name
+      }
+
+      node.inputs[i].label = name
+      node.inputs[i].name = name
+    }
+  }
+  if (!connected) {
+    if (!options.link) {
+      infoLogger('Disconnecting', { options })
+
+      clean_inputs()
+    } else {
+      if (!options.ioSlot.link) {
+        node.connectionTransit = true
+      } else {
+        node.connectionTransit = false
+        clean_inputs()
+      }
+      infoLogger('Reconnecting', { options })
+    }
+  }
+
+  if (connected) {
+    if (options.link) {
+      const { from, to, type } = nodesFromLink(node, options.link)
+      if (type === 'outgoing') return
+      infoLogger('Connecting', { options, from, to, type })
+    } else {
+      infoLogger('Connecting', { options })
     }
 
-    node.inputs[i].label = name
-    node.inputs[i].name = name
-  }
+    if (node.connectionTransit) {
+      infoLogger('In Transit')
+      node.connectionTransit = false
+    }
 
-  // add an extra input
-  if (node.inputs[node.inputs.length - 1].link !== undefined) {
-    const nextIndex = node.inputs.length
-    const name =
-      nextIndex < nameArray.length
-        ? nameArray[nextIndex]
-        : `${connectionPrefix}${nextIndex + 1}`
+    // Remove inputs and their widget if not linked.
+    clean_inputs()
 
-    log(`Adding input ${nextIndex + 1} (${name})`)
+    if (node.inputs.length === 0) return
+    // add an extra input
+    if (node.inputs[node.inputs.length - 1].link !== null) {
+      const nextIndex = node.inputs.length
+      const name =
+        nextIndex < nameArray.length
+          ? nameArray[nextIndex]
+          : `${connectionPrefix}${nextIndex + 1}`
 
-    node.addInput(name, listConnection ? '*' : connectionType)
+      infoLogger(`Adding input ${nextIndex + 1} (${name})`)
+      node.addInput(name, conType)
+    }
   }
 }
 
@@ -784,6 +773,7 @@ export const addDocumentation = (
   const iconMargin = options.icon_margin || 4
   let docElement = null
   let wrapper = null
+
   const drawFg = nodeType.prototype.onDrawForeground
 
   /**
@@ -798,15 +788,14 @@ export const addDocumentation = (
     // icon position
     const x = this.size[0] - iconSize - iconMargin
 
+    let resizeHandle
+    // create it
     if (this.show_doc && docElement === null) {
       create_documentation_stylesheet()
 
       docElement = document.createElement('div')
       docElement.classList.add('documentation-popup')
       document.body.appendChild(docElement)
-      // docElement.innerHTML = documentationConverter.makeHtml(
-      //   nodeData.description,
-      // )
 
       wrapper = document.createElement('div')
       wrapper.classList.add('documentation-wrapper')
@@ -814,24 +803,21 @@ export const addDocumentation = (
       docElement.appendChild(wrapper)
 
       // resize handle
-      const resizeHandle = document.createElement('div')
-      resizeHandle.style.width = '10px'
-      resizeHandle.style.height = '10px'
-      // resizeHandle.style.background = 'gray'
+      resizeHandle = document.createElement('div')
+      resizeHandle.style.width = '0'
+      resizeHandle.style.height = '0'
       resizeHandle.style.position = 'absolute'
       resizeHandle.style.bottom = '0'
       resizeHandle.style.right = '0'
-      // resizeHandle.style.left = '95%'
+
       resizeHandle.style.cursor = 'se-resize'
       resizeHandle.style.userSelect = 'none'
 
-      const borderColor = getComputedStyle(document.documentElement)
-        .getPropertyValue('--border-color')
-        .trim()
-      resizeHandle.style.borderTop = '10px solid transparent'
-      resizeHandle.style.borderLeft = '10px solid transparent'
-      resizeHandle.style.borderBottom = `10px solid ${borderColor}`
-      resizeHandle.style.borderRight = `10px solid ${borderColor}`
+      resizeHandle.style.borderWidth = '15px'
+      resizeHandle.style.borderStyle = 'solid'
+
+      resizeHandle.style.borderColor =
+        'transparent var(--border-color) var(--border-color) transparent'
 
       wrapper.appendChild(resizeHandle)
       let isResizing = false
@@ -841,41 +827,53 @@ export const addDocumentation = (
       let startWidth
       let startHeight
 
-      resizeHandle.addEventListener('mousedown', (e) => {
-        e.stopPropagation()
-        isResizing = true
-        startX = e.clientX
-        startY = e.clientY
-        startWidth = Number.parseInt(
-          document.defaultView.getComputedStyle(docElement).width,
-          10,
-        )
-        startHeight = Number.parseInt(
-          document.defaultView.getComputedStyle(docElement).height,
-          10,
-        )
-      })
+      resizeHandle.addEventListener(
+        'mousedown',
+        (e) => {
+          e.stopPropagation()
+          isResizing = true
+          startX = e.clientX
+          startY = e.clientY
+          startWidth = Number.parseInt(
+            document.defaultView.getComputedStyle(docElement).width,
+            10,
+          )
+          startHeight = Number.parseInt(
+            document.defaultView.getComputedStyle(docElement).height,
+            10,
+          )
+        },
 
-      document.addEventListener('mousemove', (e) => {
-        console.log('Moving mouse')
-        if (!isResizing) return
-        const newWidth = startWidth + e.clientX - startX
-        const newHeight = startHeight + e.clientY - startY
+        { signal: this.docCtrl.signal },
+      )
 
-        docElement.style.width = `${newWidth}px`
-        docElement.style.height = `${newHeight}px`
+      document.addEventListener(
+        'mousemove',
+        (e) => {
+          if (!isResizing) return
+          const newWidth = startWidth + e.clientX - startX
+          const newHeight = startHeight + e.clientY - startY
 
-        this.docPos = {
-          width: `${newWidth}px`,
-          height: `${newHeight}px`,
-        }
-      })
+          docElement.style.width = `${newWidth}px`
+          docElement.style.height = `${newHeight}px`
 
-      document.addEventListener('mouseup', () => {
-        isResizing = false
-      })
+          this.docPos = {
+            width: `${newWidth}px`,
+            height: `${newHeight}px`,
+          }
+        },
+        { signal: this.docCtrl.signal },
+      )
+
+      document.addEventListener(
+        'mouseup',
+        () => {
+          isResizing = false
+        },
+        { signal: this.docCtrl.signal },
+      )
     } else if (!this.show_doc && docElement !== null) {
-      docElement.parentNode.removeChild(docElement)
+      docElement.remove()
       docElement = null
     }
 
@@ -900,12 +898,6 @@ export const addDocumentation = (
         top: `${transform.d + transform.f}px`,
         width: this.docPos ? this.docPos.width : `${this.size[0] * 1.5}px`,
         height: this.docPos?.height,
-        // width: `${this.size[0] * 2}px`,
-        // height: `${(widget.parent?.inputHeight || 32) - (margin * 2)}px`,
-        // height: `${this.size[1] || this.parent?.inputHeight || 32}px`,
-
-        // background: !node.color ? "" : node.color,
-        // color: "blue", //!node.color ? "" : "white",
       })
 
       if (this.docPos === undefined) {
@@ -914,23 +906,22 @@ export const addDocumentation = (
           height: docElement.style.height,
         }
       }
-
-      // docElement.style.left = 140 - rect.right + "px";
-      // docElement.style.top = rect.top + "px";
     }
 
     ctx.save()
-    ctx.translate(x, iconSize - 34) // Position the icon on the canvas
-    ctx.scale(iconSize / 32, iconSize / 32) // Scale the icon to the desired size
+    ctx.translate(x, iconSize - 34)
+    ctx.scale(iconSize / 32, iconSize / 32)
     ctx.strokeStyle = 'rgba(255,255,255,0.3)'
 
     ctx.lineCap = 'round'
     ctx.lineJoin = 'round'
 
     ctx.lineWidth = 2.4
-    // ctx.stroke(questionMark);
     ctx.font = 'bold 36px monospace'
     ctx.fillText('?', 0, 24)
+
+    // ctx.font = `bold ${this.show_doc ? 36 : 24}px monospace`
+    // ctx.fillText(`${this.show_doc ? '▼' : '▶'}`, 24, 24)
     ctx.restore()
 
     return r
@@ -957,6 +948,11 @@ export const addDocumentation = (
         this.show_doc = true
       } else {
         this.show_doc = !this.show_doc
+      }
+      if (this.show_doc) {
+        this.docCtrl = new AbortController()
+      } else {
+        this.docCtrl.abort()
       }
       return true // Return true to indicate the event was handled
     }

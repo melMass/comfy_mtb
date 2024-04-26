@@ -8,19 +8,22 @@
 ###
 import os
 
-# todo: don't override this if the user has that setup already
-os.environ["TF_FORCE_GPU_ALLOW_GROWTH"] = "true"
-os.environ["TF_GPU_ALLOCATOR"] = "cuda_malloc_async"
+# TODO: don't override this if the user has that setup already
+if not os.environ.get("TF_FORCE_GPU_ALLOW_GROWTH"):
+    os.environ["TF_FORCE_GPU_ALLOW_GROWTH"] = "true"
+
+if not os.environ.get("TF_GPU_ALLOCATOR"):
+    os.environ["TF_GPU_ALLOCATOR"] = "cuda_malloc_async"
 
 import ast
 import contextlib
 import importlib
 import json
 import logging
-import os
 import shutil
 import traceback
 from importlib import reload
+from pathlib import Path
 
 from aiohttp import web
 from server import PromptServer
@@ -39,11 +42,10 @@ WEB_DIRECTORY = "./web"
 __version__ = "0.2.0"
 
 
-def extract_nodes_from_source(filename):
+def extract_nodes_from_source(filename: Path):
     source_code = ""
 
-    with open(filename, encoding="utf8") as file:
-        source_code = file.read()
+    source_code = filename.read_text(encoding="utf-8")
 
     nodes = []
 
@@ -107,28 +109,58 @@ def load_nodes():
 
 
 # - REGISTER WEB EXTENSIONS
-web_extensions_root = comfy_dir / "web" / "extensions"
-web_mtb = web_extensions_root / "mtb"
+def uninstall_old_web_extensions():
+    web_extensions_root = comfy_dir / "web" / "extensions"
+    web_mtb = web_extensions_root / "mtb"
 
-if web_mtb.exists() and hasattr(nodes, "EXTENSION_WEB_DIRS"):
-    try:
-        if web_mtb.is_symlink():
-            web_mtb.unlink()
-        else:
-            shutil.rmtree(web_mtb)
-    except Exception as e:
-        log.warning(
-            f"Failed to remove web mtb directory: {e}\nPlease manually remove it from disk ({web_mtb}) and restart the server."
-        )
+    if web_mtb.exists() and hasattr(nodes, "EXTENSION_WEB_DIRS"):
+        try:
+            if web_mtb.is_symlink():
+                web_mtb.unlink()
+            else:
+                shutil.rmtree(web_mtb)
+        except Exception as e:
+            log.warning(
+                f"Failed to remove web mtb directory: {e}\nPlease manually remove it from disk ({web_mtb}) and restart the server."
+            )
+
+
+# uninstall_old_web_extensions()
+
+
+# - GATHER WIKI PAGES
+def wiki_to_classname(s: str):
+    wiki_name = s.replace("nodes-", "", 1)
+    return "MTB_" + "".join(
+        [part.capitalize() for part in wiki_name.split("-")]
+    )
+
+
+wiki = here / "wiki"
+node_docs = {}
+if wiki.exists() and wiki.is_dir():
+    node_docs = {
+        wiki_to_classname(x.stem): x.read_text(encoding="utf-8")
+        for x in (wiki / "nodes").glob("*.md")
+    }
 
 
 # - REGISTER NODES
 nodes, failed = load_nodes()
 for node_class in nodes:
     class_name = node_class.__name__
-    # fallback to __doc__
-    if not hasattr(node_class, "DESCRIPTION") and node_class.__doc__:
-        node_class.DESCRIPTION = node_class.__doc__
+    linked_doc = node_docs.get(class_name)
+
+    if not hasattr(node_class, "DESCRIPTION"):
+        if linked_doc:
+            log.debug(f"Found linked doc for {class_name}")
+            node_class.DESCRIPTION = linked_doc
+        elif node_class.__doc__:
+            node_class.DESCRIPTION = node_class.__doc__
+        else:
+            log.debug(
+                f"None of the methods could retrive documentation for {class_name}"
+            )
 
     node_label = f"{get_label(class_name)} (mtb)"
     NODE_CLASS_MAPPINGS[node_label] = node_class

@@ -36,7 +36,7 @@ class Formatter(logging.Formatter):
         return formatter.format(record)
 
 
-def mklog(name, level=base_log_level):
+def mklog(name: str, level: int = base_log_level):
     logger = logging.getLogger(name)
     logger.setLevel(level)
 
@@ -58,23 +58,23 @@ def mklog(name, level=base_log_level):
 log = mklog(__package__, base_log_level)
 
 
-def log_user(arg):
-    print("\033[34mComfy MTB Utils:\033[0m {arg}")
+def log_user(arg: str):
+    print(f"\033[34mComfy MTB Utils:\033[0m {arg}")
 
 
-def get_summary(docstring):
+def get_summary(docstring: str):
     return docstring.strip().split("\n\n", 1)[0]
 
 
-def blue_text(text):
+def blue_text(text: str):
     return f"\033[94m{text}\033[0m"
 
 
-def cyan_text(text):
+def cyan_text(text: str):
     return f"\033[96m{text}\033[0m"
 
 
-def get_label(label):
+def get_label(label: str):
     if label.startswith("MTB_"):
         label = label[4:]
     words = re.findall(r"(?:^|[A-Z])[a-z]*", label)

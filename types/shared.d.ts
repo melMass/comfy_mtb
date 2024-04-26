@@ -1,9 +1,20 @@
 // Some manual types I use to facilitate developing on top of
 // Comfy's Litegraph implementation.
 
-import type { ContextMenuItem, LGraphNode } from '../web/types/litegraph'
+import type {
+  ContextMenuItem,
+  LGraphNode,
+  IWidget,
+} from '../web/types/litegraph'
 
-export type { ContextMenuItem } from '../web/types/litegraph'
+export type {
+  ComfyExtension,
+  ComfyObjectInfo,
+  ComfyObjectInfoConfig,
+} from '../web/types/comfy'
+export type { ContextMenuItem, IWidget, LLink } from '../web/types/litegraph'
+
+export type VectorWidget = IWidget<number[], { default: number[] }>
 export interface NodeData {
   category: str
   description: str
@@ -16,10 +27,12 @@ export interface NodeData {
   output_node: boolean
 }
 
-export interface ExtendedLGraphNode {
+export interface LGraphNodeExtension {
   onNodeCreated: () => void
   getExtraMenuOptions: () => ContextMenuItem[]
 }
+
+export type LGraphNodeExtended = LGraphNode & LGraphNodeExtension
 
 export interface NodeType /*extends LGraphNode*/ {
   category: str
@@ -27,7 +40,7 @@ export interface NodeType /*extends LGraphNode*/ {
   length: 0
   name: str
   nodeData: NodeData
-  prototype: LGraphNode & ExtendedLGraphNode
+  prototype: LGraphNodeExtended
   title: str
   type: str
 }
@@ -43,7 +56,7 @@ export type OnConnectionsChangeParams = Parameters<
   LGraphNode['onConnectionsChange']
 >
 export type OnNodeCreatedParams = Parameters<
-  ExtendedLGraphNode['onNodeCreated']
+  LGraphNodeExtension['onNodeCreated']
 >
 
 export interface DocumentationOptions {

@@ -37,14 +37,14 @@ app.registerExtension({
       }
 
       const onConnectionsChange = nodeType.prototype.onConnectionsChange
-      nodeType.prototype.onConnectionsChange = function (
-        type,
-        index,
-        connected,
-        link_info,
-      ) {
+      /**
+       * @param {OnConnectionsChangeParams} args
+       */
+
+      nodeType.prototype.onConnectionsChange = function (...args) {
+        const [_type, index, connected, link_info] = args
         const r = onConnectionsChange
-          ? onConnectionsChange.apply(this, arguments)
+          ? onConnectionsChange.apply(this, args)
           : undefined
         // TODO: remove all widgets on disconnect once computed
         shared.dynamic_connection(this, index, connected, 'anything_', '*')
@@ -54,9 +54,10 @@ app.registerExtension({
           // const fromNode = this.graph._nodes.find(
           // (otherNode) => otherNode.id === link_info.origin_id,
           // )
-          const fromNode = app.graph.getNodeById(link_info.origin_id)
-          if (!fromNode) return
-          const type = fromNode.outputs[link_info.origin_slot].type
+          // const fromNode = app.graph.getNodeById(link_info.origin_id)
+          const { from } = shared.nodesFromLink(this, link_info)
+          if (!from || this.inputs.length === 0) return
+          const type = from.outputs[link_info.origin_slot].type
           this.inputs[index].type = type
           // this.inputs[index].label = type.toLowerCase()
         }
@@ -85,7 +86,7 @@ app.registerExtension({
           this.widgets.length = 1
         }
         let widgetI = 1
-        console.log(message)
+        // console.log(message)
         if (message.text) {
           for (const txt of message.text) {
             const w = this.addCustomWidget(
