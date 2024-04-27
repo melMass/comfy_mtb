@@ -280,7 +280,7 @@ export const dynamic_connection = (
     infoLogger(`Cleaning inputs: [BEFORE] (w: ${w_count} | inputs: ${i_count})`)
 
     const to_remove = []
-    for (let n = 0; n < node.inputs.length; n++) {
+    for (let n = 1; n < node.inputs.length; n++) {
       const element = node.inputs[n]
       if (!element.link) {
         if (node.widgets) {

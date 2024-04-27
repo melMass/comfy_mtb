@@ -12,7 +12,13 @@ export type {
   ComfyObjectInfo,
   ComfyObjectInfoConfig,
 } from '../web/types/comfy'
-export type { ContextMenuItem, IWidget, LLink } from '../web/types/litegraph'
+export type {
+  ContextMenuItem,
+  IWidget,
+  LLink,
+  INodeInputSlot,
+  INodeOutputSlot,
+} from '../web/types/litegraph'
 
 export type VectorWidget = IWidget<number[], { default: number[] }>
 export interface NodeData {
@@ -50,6 +56,7 @@ export interface NodeInput {
 }
 
 // NOTE: for prototype overriding
+export type OnDrawWidgetParams = Parameters<IWidget['draw']>
 export type OnDrawForegroundParams = Parameters<LGraphNode['onDrawForeground']>
 export type OnMouseDownParams = Parameters<LGraphNode['onMouseDown']>
 export type OnConnectionsChangeParams = Parameters<
