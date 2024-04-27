@@ -18,6 +18,95 @@ def hex_to_rgb(hex_color, bgr=False):
     return tuple(int(hex_color[i : i + 2], 16) for i in (0, 2, 4))
 
 
+class MTB_BatchFloatNormalize:
+    """Normalize the values in the list of floats"""
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {"floats": ("FLOATS",)},
+        }
+
+    RETURN_TYPES = ("FLOATS",)
+    RETURN_NAMES = ("normalized_floats",)
+    CATEGORY = "mtb/batch"
+    FUNCTION = "execute"
+
+    def execute(
+        self,
+        floats: list[float],
+    ):
+        min_value = min(floats)
+        max_value = max(floats)
+
+        normalized_floats = [
+            (x - min_value) / (max_value - min_value) for x in floats
+        ]
+        log.debug(f"Floats: {floats}")
+        log.debug(f"Normalized Floats: {normalized_floats}")
+
+        return (normalized_floats,)
+
+
+class MTB_BatchTimeWrap:
+    """Remap a batch using a time curve (FLOATS)"""
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "target_count": ("INT", {"default": 25, "min": 2}),
+                "frames": ("IMAGE",),
+                "curve": ("FLOATS",),
+            },
+        }
+
+    RETURN_TYPES = ("IMAGE", "FLOATS")
+    RETURN_NAMES = ("image", "interpolated_floats")
+    CATEGORY = "mtb/batch"
+    FUNCTION = "execute"
+
+    def execute(
+        self, target_count: int, frames: torch.Tensor, curve: list[float]
+    ):
+        """Apply time warping to a list of video frames based on a curve."""
+        log.debug(f"Input frames shape: {frames.shape}")
+        log.debug(f"Curve: {curve}")
+
+        total_duration = sum(curve)
+
+        log.debug(f"Total duration: {total_duration}")
+
+        B, H, W, C = frames.shape
+
+        log.debug(f"Batch Size: {B}")
+
+        normalized_times = np.linspace(0, 1, target_count)
+        interpolated_curve = np.interp(
+            normalized_times, np.linspace(0, 1, len(curve)), curve
+        ).tolist()
+        log.debug(f"Interpolated curve: {interpolated_curve}")
+
+        interpolated_frame_indices = [
+            (B - 1) * value for value in interpolated_curve
+        ]
+        log.debug(f"Interpolated frame indices: {interpolated_frame_indices}")
+
+        rounded_indices = [
+            int(round(idx)) for idx in interpolated_frame_indices
+        ]
+        rounded_indices = np.clip(rounded_indices, 0, B - 1)
+
+        # Gather frames based on interpolated indices
+        warped_frames = []
+        for index in rounded_indices:
+            warped_frames.append(frames[index].unsqueeze(0))
+
+        warped_tensor = torch.cat(warped_frames, dim=0)
+        log.debug(f"Warped frames shape: {warped_tensor.shape}")
+        return (warped_tensor, interpolated_curve)
+
+
 class MTB_BatchMake:
     """Simply duplicates the input frame as a batch"""
 
@@ -798,7 +887,9 @@ __nodes__ = [
     MTB_BatchMake,
     MTB_BatchFloatAssemble,
     MTB_BatchFloatFill,
+    MTB_BatchFloatNormalize,
     MTB_BatchMerge,
     MTB_BatchShake,
     MTB_PlotBatchFloat,
+    MTB_BatchTimeWrap,
 ]
