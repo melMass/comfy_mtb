@@ -881,12 +881,13 @@ export const addDocumentation = (
     if (this.show_doc && docElement !== null) {
       const rect = ctx.canvas.getBoundingClientRect()
 
+      const dpi = Math.max(1.0, window.devicePixelRatio)
       const scaleX = rect.width / ctx.canvas.width
       const scaleY = rect.height / ctx.canvas.height
       const transform = new DOMMatrix()
         .scaleSelf(scaleX, scaleY)
         .multiplySelf(ctx.getTransform())
-        .translateSelf(this.size[0] * scaleX, 0)
+        .translateSelf(this.size[0] * scaleX * dpi, 0)
         .translateSelf(10, -32)
 
       const scale = new DOMMatrix().scaleSelf(transform.a, transform.d)
