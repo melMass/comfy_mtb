@@ -7,10 +7,12 @@
  *
  */
 
+// Reference the shared typedefs file
+/// <reference path="../types/typedefs.js" />
+
 import { app } from '../../scripts/app.js'
 
 import * as shared from './comfy_shared.js'
-import { log } from './comfy_shared.js'
 import { MtbWidgets } from './mtb_widgets.js'
 
 // TODO: respect inputs order...
@@ -25,10 +27,17 @@ function escapeHtml(unsafe) {
 }
 app.registerExtension({
   name: 'mtb.Debug',
+
+  /**
+   * @param {NodeType} nodeType
+   * @param {NodeData} nodeData
+   * @param {*} app
+   */
   async beforeRegisterNodeDef(nodeType, nodeData, app) {
     if (nodeData.name === 'Debug (mtb)') {
       const onNodeCreated = nodeType.prototype.onNodeCreated
       nodeType.prototype.onNodeCreated = function () {
+        this.options = {}
         const r = onNodeCreated
           ? onNodeCreated.apply(this, arguments)
           : undefined
@@ -40,14 +49,16 @@ app.registerExtension({
       /**
        * @param {OnConnectionsChangeParams} args
        */
-
       nodeType.prototype.onConnectionsChange = function (...args) {
-        const [_type, index, connected, link_info] = args
+        const [_type, index, connected, link_info, ioSlot] = args
         const r = onConnectionsChange
           ? onConnectionsChange.apply(this, args)
           : undefined
         // TODO: remove all widgets on disconnect once computed
-        shared.dynamic_connection(this, index, connected, 'anything_', '*')
+        shared.dynamic_connection(this, index, connected, 'anything_', '*', {
+          link: link_info,
+          ioSlot: ioSlot,
+        })
 
         //- infer type
         if (link_info) {
@@ -70,14 +81,12 @@ app.registerExtension({
       }
 
       const onExecuted = nodeType.prototype.onExecuted
-      nodeType.prototype.onExecuted = function (message) {
+      nodeType.prototype.onExecuted = function (data) {
         onExecuted?.apply(this, arguments)
 
         const prefix = 'anything_'
 
         if (this.widgets) {
-          // const pos = this.widgets.findIndex((w) => w.name === "anything_1");
-          // if (pos !== -1) {
           for (let i = 0; i < this.widgets.length; i++) {
             if (this.widgets[i].name !== 'output_to_console') {
               this.widgets[i].onRemoved?.()
@@ -87,8 +96,8 @@ app.registerExtension({
         }
         let widgetI = 1
         // console.log(message)
-        if (message.text) {
-          for (const txt of message.text) {
+        if (data.text) {
+          for (const txt of data.text) {
             const w = this.addCustomWidget(
               MtbWidgets.DEBUG_STRING(`${prefix}_${widgetI}`, escapeHtml(txt)),
             )
@@ -96,19 +105,17 @@ app.registerExtension({
             widgetI++
           }
         }
-        if (message.b64_images) {
-          for (const img of message.b64_images) {
+        if (data.b64_images) {
+          for (const img of data.b64_images) {
             const w = this.addCustomWidget(
               MtbWidgets.DEBUG_IMG(`${prefix}_${widgetI}`, img),
             )
             w.parent = this
             widgetI++
           }
-          // this.onResize?.(this.size);
-          // this.resize?.(this.size)
         }
 
-        this.setSize(this.computeSize())
+        // this.setSize(this.computeSize())
 
         this.onRemoved = function () {
           // When removing this node we need to remove the input from the DOM
