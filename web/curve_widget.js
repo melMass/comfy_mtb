@@ -1,4 +1,7 @@
+// Reference the shared typedefs file
+/// <reference path="../types/typedefs.js" />
 import { app } from '../../scripts/app.js'
+import { infoLogger } from './comfy_shared.js'
 
 function B0(t) {
   return (1 - t) ** 3 / 6
@@ -12,18 +15,21 @@ function B2(t) {
 function B3(t) {
   return t ** 3 / 6
 }
-
 class CurveWidget {
-  constructor(inputName, defaultValue) {
+  constructor(...args) {
+    const [inputName, defaultValue] = args
+
     this.name = inputName || 'Curve'
-    this._value = defaultValue || [
-      { x: 0, y: 0 },
-      { x: 1, y: 1 },
-    ]
+
+    // this._value = defaultValue || [
+    //   { x: 0, y: 0 },
+    //   { x: 1, y: 1 },
+    // ]
+    this._value = []
     this.type = 'FLOAT_CURVE'
     this.selectedPointIndex = null
-    console.log(this)
-    this.resize()
+    console.log('constructor', { me: this })
+    // this.resize()
   }
 
   drawBSpline(ctx, width, height, posY) {
@@ -70,7 +76,12 @@ class CurveWidget {
     return { x, y }
   }
 
-  draw(ctx, node, width, posY, height) {
+  /**
+   * @param {OnDrawWidgetParams} args
+   */
+
+  draw(...args) {
+    const [ctx, node, width, posY, height] = args
     const [cw, ch] = this.computeSize(width)
 
     ctx.beginPath()
@@ -161,7 +172,6 @@ class CurveWidget {
     }
     this._value.push(normalizedPoint)
     this._value.sort((a, b) => a.x - b.x)
-    this.value = JSON.stringify(this._value)
   }
 
   movePoint(index, localPos, width, height) {
@@ -170,7 +180,6 @@ class CurveWidget {
     point.y = Math.max(0, Math.min(1, 1 - localPos.y / height))
 
     this._value[index] = point
-    this.value = JSON.stringify(this._value)
   }
 
   computeSize(width) {
@@ -181,13 +190,19 @@ class CurveWidget {
     console.log('CONFIGURE CURVES', data)
   }
 
-  value() {
+  get value() {
     console.debug('Returning value', this._value)
+    // return JSON.stringify(this._value)
     return this._value
   }
-  setValue(value) {
-    console.debug('Setting value', value)
-    this._value = value
+  set value(value) {
+    if (typeof value === 'string') {
+      console.debug('RECEIVED A STRING', this._value)
+      this._value = JSON.parse(value)
+    } else {
+      this._value = value
+    }
+    console.debug('Setting value', this._value)
   }
 }
 
@@ -195,14 +210,19 @@ app.registerExtension({
   name: 'mtb.curves',
   getCustomWidgets: function () {
     return {
+      /**
+       * @param {LGraphNode} node
+       * @param {str} inputName
+       * @param {[str,*]} inputData
+       * @param {*} app
+       *
+       */
       FLOAT_CURVE: (node, inputName, inputData, app) => {
-        console.debug('Registering float curve widget')
-        console.log({ inputData })
+        console.log('registering float curve widget', { inputData })
         const wid = node.addCustomWidget(
           new CurveWidget(inputName, inputData[1]?.default),
         )
 
-        console.log(node)
         return {
           widget: wid,
           minWidth: 150,
