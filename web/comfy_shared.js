@@ -774,6 +774,23 @@ export const addDocumentation = (
   let docElement = null
   let wrapper = null
 
+  const onRem = nodeType.prototype.onRemoved
+
+  nodeType.prototype.onRemoved = function () {
+    const r = onRem ? onRem.apply(this, []) : undefined
+
+    if (docElement) {
+      docElement.remove()
+      docElement = null
+    }
+
+    if (wrapper) {
+      wrapper.remove()
+      wrapper = null
+    }
+    return r
+  }
+
   const drawFg = nodeType.prototype.onDrawForeground
 
   /**
