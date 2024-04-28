@@ -185,8 +185,8 @@ class MTB_FloatToFloats:
     CATEGORY = "mtb/utils"
     FUNCTION = "convert"
 
-    def convert(self, floats):
-        return (floats,)
+    def convert(self, float):
+        return (float,)
 
 
 class MTB_FloatsToFloat:

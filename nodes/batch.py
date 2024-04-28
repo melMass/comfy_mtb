@@ -6,7 +6,7 @@ import torch
 from PIL import Image
 
 from ..log import log
-from ..utils import apply_easing, pil2tensor
+from ..utils import EASINGS, apply_easing, pil2tensor
 from .transform import MTB_TransformImage
 
 
@@ -536,30 +536,7 @@ class MTB_BatchFloatFit:
                 "target_min": ("FLOAT", {"default": 0.0, "step": 0.01}),
                 "target_max": ("FLOAT", {"default": 1.0, "step": 0.01}),
                 "easing": (
-                    [
-                        "Linear",
-                        "Sine In",
-                        "Sine Out",
-                        "Sine In/Out",
-                        "Quart In",
-                        "Quart Out",
-                        "Quart In/Out",
-                        "Cubic In",
-                        "Cubic Out",
-                        "Cubic In/Out",
-                        "Circ In",
-                        "Circ Out",
-                        "Circ In/Out",
-                        "Back In",
-                        "Back Out",
-                        "Back In/Out",
-                        "Elastic In",
-                        "Elastic Out",
-                        "Elastic In/Out",
-                        "Bounce In",
-                        "Bounce Out",
-                        "Bounce In/Out",
-                    ],
+                    EASINGS,
                     {"default": "Linear"},
                 ),
             }
