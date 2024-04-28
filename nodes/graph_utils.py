@@ -175,7 +175,7 @@ class MTB_FloatToFloats:
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "float": ("FLOAT",),
+                "float": ("FLOAT", {"default": 0.0}),
             }
         }
 
