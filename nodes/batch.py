@@ -615,6 +615,7 @@ class MTB_PlotBatchFloat:
                 "height": ("INT", {"default": 768}),
                 "point_size": ("INT", {"default": 4}),
                 "seed": ("INT", {"default": 1}),
+                "start_at_zero": ("BOOLEAN", {"default": False}),
             }
         }
 
@@ -623,10 +624,21 @@ class MTB_PlotBatchFloat:
     FUNCTION = "plot"
     CATEGORY = "mtb/batch"
 
-    def plot(self, width, height, point_size, seed, **kwargs):
+    def plot(
+        self,
+        width: int,
+        height: int,
+        point_size: int,
+        seed: int,
+        start_at_zero: bool,
+        interactive_backend: bool = False,
+        **kwargs,
+    ):
         import matplotlib
 
-        matplotlib.use("Agg")
+        # NOTE: This is for notebook usage or tests, i.e not exposed to comfy that should always use Agg
+        if not interactive_backend:
+            matplotlib.use("Agg")
         import matplotlib.pyplot as plt
 
         fig, ax = plt.subplots(figsize=(width / 100, height / 100), dpi=100)
@@ -637,26 +649,30 @@ class MTB_PlotBatchFloat:
         ax.grid(color="gray", linestyle="-", linewidth=0.5, alpha=0.5)
 
         # Finding global min and max across all lists for scaling the plot
-        global_min = min(min(values) for values in kwargs.values())
-        global_max = max(max(values) for values in kwargs.values())
+        all_values = [value for values in kwargs.values() for value in values]
+        global_min = min(all_values)
+        global_max = max(all_values)
 
-        # Color cycle to ensure each plot has a distinct color
-        colormap = plt.cm.get_cmap("viridis", len(kwargs))
-        color_normalization_factor = (
-            0.5 if len(kwargs) == 1 else (len(kwargs) - 1)
-        )
+        y_padding = 0.05 * (global_max - global_min)
+        ax.set_ylim(global_min - y_padding, global_max + y_padding)
 
-        # Plotting each list with a unique color
-        for i, (label, values) in enumerate(kwargs.items()):
-            color_value = i / color_normalization_factor
-            ax.plot(values, label=label, color=colormap(color_value))
+        max_length = max(len(values) for values in kwargs.values())
+        if start_at_zero:
+            x_values = np.linspace(0, max_length - 1, max_length)
+        else:
+            x_values = np.linspace(1, max_length, max_length)
 
-        ax.set_ylim(global_min, global_max)  # Scaling the y-axis
+        ax.set_xlim(1, max_length)  # Set X-axis limits
+        np.random.seed(seed)
+        colors = np.random.rand(len(kwargs), 3)  # Generate random RGB values
+        for color, (label, values) in zip(colors, kwargs.items()):
+            ax.plot(x_values[: len(values)], values, label=label, color=color)
         ax.legend(
             title="Legend",
             title_fontsize="large",
             fontsize="medium",
             edgecolor="black",
+            loc="best",
         )
 
         # Setting labels and title
@@ -975,4 +991,5 @@ __nodes__ = [
     MTB_BatchShake,
     MTB_PlotBatchFloat,
     MTB_BatchTimeWrap,
+    MTB_BatchFloatFit,
 ]
