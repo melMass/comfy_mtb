@@ -720,6 +720,32 @@ def create_uv_map_tensor(width=512, height=512):
 
 
 # region ANIMATION Utilities
+EASINGS = [
+    "Linear",
+    "Sine In",
+    "Sine Out",
+    "Sine In/Out",
+    "Quart In",
+    "Quart Out",
+    "Quart In/Out",
+    "Cubic In",
+    "Cubic Out",
+    "Cubic In/Out",
+    "Circ In",
+    "Circ Out",
+    "Circ In/Out",
+    "Back In",
+    "Back Out",
+    "Back In/Out",
+    "Elastic In",
+    "Elastic Out",
+    "Elastic In/Out",
+    "Bounce In",
+    "Bounce Out",
+    "Bounce In/Out",
+]
+
+
 def apply_easing(value, easing_type):
     if easing_type == "Linear":
         return value

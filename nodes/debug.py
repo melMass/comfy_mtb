@@ -48,7 +48,7 @@ def process_list(anything):
             f"List of Tensors: {first_element.shape} (x{len(anything)})"
         )
     else:
-        text.append(f"Array: {anything}")
+        text.append(f"Array ({len(anything)}): {anything}")
 
     return {"text": text}
 

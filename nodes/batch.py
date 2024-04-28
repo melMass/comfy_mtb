@@ -521,6 +521,89 @@ class MTB_Batch2dTransform:
         return (torch.cat(res, dim=0),)
 
 
+class MTB_BatchFloatFit:
+    """Fit a list of floats using a source and target range"""
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "values": ("FLOATS", {"forceInput": True}),
+                "clamp": ("BOOLEAN", {"default": False}),
+                "auto_compute_source": ("BOOLEAN", {"default": False}),
+                "source_min": ("FLOAT", {"default": 0.0, "step": 0.01}),
+                "source_max": ("FLOAT", {"default": 1.0, "step": 0.01}),
+                "target_min": ("FLOAT", {"default": 0.0, "step": 0.01}),
+                "target_max": ("FLOAT", {"default": 1.0, "step": 0.01}),
+                "easing": (
+                    [
+                        "Linear",
+                        "Sine In",
+                        "Sine Out",
+                        "Sine In/Out",
+                        "Quart In",
+                        "Quart Out",
+                        "Quart In/Out",
+                        "Cubic In",
+                        "Cubic Out",
+                        "Cubic In/Out",
+                        "Circ In",
+                        "Circ Out",
+                        "Circ In/Out",
+                        "Back In",
+                        "Back Out",
+                        "Back In/Out",
+                        "Elastic In",
+                        "Elastic Out",
+                        "Elastic In/Out",
+                        "Bounce In",
+                        "Bounce Out",
+                        "Bounce In/Out",
+                    ],
+                    {"default": "Linear"},
+                ),
+            }
+        }
+
+    FUNCTION = "fit_range"
+    RETURN_TYPES = ("FLOATS",)
+    CATEGORY = "mtb/batch"
+    DESCRIPTION = "Fit a list of floats using a source and target range"
+
+    def fit_range(
+        self,
+        values: list[float],
+        clamp: bool,
+        auto_compute_source: bool,
+        source_min: float,
+        source_max: float,
+        target_min: float,
+        target_max: float,
+        easing: str,
+    ):
+        if auto_compute_source:
+            source_min = min(values)
+            source_max = max(values)
+
+        from .graph_utils import MTB_FitNumber
+
+        res = []
+        fit_number = MTB_FitNumber()
+        for value in values:
+            (transformed_value,) = fit_number.set_range(
+                value,
+                clamp,
+                source_min,
+                source_max,
+                target_min,
+                target_max,
+                easing,
+            )
+            res.append(transformed_value)
+
+        return (res,)
+
+
 class MTB_PlotBatchFloat:
     """Plot floats"""
 

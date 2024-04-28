@@ -14,6 +14,7 @@ from PIL import Image
 
 from ..log import log
 from ..utils import (
+    EASINGS,
     apply_easing,
     get_server_info,
     numpy_NFOV,
@@ -515,30 +516,7 @@ class MTB_FitNumber:
                 "target_min": ("FLOAT", {"default": 0.0, "step": 0.01}),
                 "target_max": ("FLOAT", {"default": 1.0, "step": 0.01}),
                 "easing": (
-                    [
-                        "Linear",
-                        "Sine In",
-                        "Sine Out",
-                        "Sine In/Out",
-                        "Quart In",
-                        "Quart Out",
-                        "Quart In/Out",
-                        "Cubic In",
-                        "Cubic Out",
-                        "Cubic In/Out",
-                        "Circ In",
-                        "Circ Out",
-                        "Circ In/Out",
-                        "Back In",
-                        "Back Out",
-                        "Back In/Out",
-                        "Elastic In",
-                        "Elastic Out",
-                        "Elastic In/Out",
-                        "Bounce In",
-                        "Bounce Out",
-                        "Bounce In/Out",
-                    ],
+                    EASINGS,
                     {"default": "Linear"},
                 ),
             }
