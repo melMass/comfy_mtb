@@ -1,5 +1,6 @@
 import base64
 import io
+import json
 from pathlib import Path
 from typing import Optional
 
@@ -61,6 +62,9 @@ def process_dict(anything):
         )
         text.append(f"Latent Samples: {anything['samples'].shape} {is_empty}")
 
+    else:
+        text.append(json.dumps(anything, indent=2))
+
     return {"text": text}
 
 
@@ -106,10 +110,11 @@ class MTB_Debug:
         }
         if output_to_console:
             for k, v in kwargs.items():
-                print(f"{k}: {v}")
+                log.info(f"{k}: {v}")
 
         for anything in kwargs.values():
             processor = processors.get(type(anything), process_text)
+
             processed_data = processor(anything)
 
             for ui_key, ui_value in processed_data.items():
