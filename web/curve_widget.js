@@ -17,25 +17,22 @@ function B3(t) {
 }
 class CurveWidget {
   constructor(...args) {
-    const [inputName, defaultValue] = args
+    const [inputName, opts] = args
 
     this.name = inputName || 'Curve'
 
-    // this._value = defaultValue || [
-    //   { x: 0, y: 0 },
-    //   { x: 1, y: 1 },
-    // ]
-    this._value = []
+    // this._value = defaultValue
     this.type = 'FLOAT_CURVE'
     this.selectedPointIndex = null
-    console.log('constructor', { me: this })
+    this.options = opts
+
     // this.resize()
   }
 
   drawBSpline(ctx, width, height, posY) {
-    const n = this._value.length - 1
+    const n = this.value.length - 1
     const numSegments = n - 2
-    const numPoints = this._value.length
+    const numPoints = this.value.length
     if (numPoints < 4) {
       this.drawLinear(ctx, width, height, posY)
     } else {
@@ -54,54 +51,54 @@ class CurveWidget {
   }
 
   drawLinear(ctx, width, height, posY) {
-    for (let i = 0; i < this._value.length - 1; i++) {
-      let p1 = this._value[i]
-      let p2 = this._value[i + 1]
+    for (let i = 0; i < Object.keys(this.value).length - 1; i++) {
+      let p1 = this.value[i]
+      let p2 = this.value[i + 1]
       ctx.moveTo(p1.x * width, posY + height - p1.y * height)
       ctx.lineTo(p2.x * width, posY + height - p2.y * height)
     }
     ctx.stroke()
   }
-
   getBSplinePoint(i, t) {
     // Control points for this segment
-    const p0 = this._value[i]
-    const p1 = this._value[i + 1]
-    const p2 = this._value[i + 2]
-    const p3 = this._value[i + 3]
+    const p0 = this.value[i]
+    const p1 = this.value[i + 1]
+    const p2 = this.value[i + 2]
+    const p3 = this.value[i + 3]
 
     const x = B0(t) * p0.x + B1(t) * p1.x + B2(t) * p2.x + B3(t) * p3.x
     const y = B0(t) * p0.y + B1(t) * p1.y + B2(t) * p2.y + B3(t) * p3.y
 
     return { x, y }
   }
-
   /**
    * @param {OnDrawWidgetParams} args
    */
-
   draw(...args) {
+    const hide = this.type !== 'FLOAT_CURVE'
+    if (hide) {
+      return
+    }
+
     const [ctx, node, width, posY, height] = args
     const [cw, ch] = this.computeSize(width)
 
     ctx.beginPath()
     ctx.fillStyle = '#000'
-    //ctx.fillRect(0, posY, cw, ch);
     ctx.strokeStyle = '#fff'
     ctx.lineWidth = 2
 
     // normalized coordinates -> canvas coordinates
-    for (let i = 0; i < this._value.length - 1; i++) {
-      let p1 = this._value[i]
-      let p2 = this._value[i + 1]
+    for (let i = 0; i < Object.keys(this.value).length - 1; i++) {
+      let p1 = this.value[i]
+      let p2 = this.value[i + 1]
       ctx.moveTo(p1.x * cw, posY + ch - p1.y * ch)
       ctx.lineTo(p2.x * cw, posY + ch - p2.y * ch)
     }
     ctx.stroke()
-    // this.drawBSpline(ctx, width, height, posY);
 
     // points
-    this._value.forEach((point) => {
+    Object.values(this.value).forEach((point) => {
       ctx.beginPath()
       ctx.arc(point.x * cw, posY + ch - point.y * ch, 5, 0, 2 * Math.PI)
       ctx.fill()
@@ -109,13 +106,11 @@ class CurveWidget {
   }
 
   mouse(event, pos, node) {
-    // console.debug(event.type, pos, node)
     let x = pos[0] - node.pos[0]
     let y = pos[1] - node.pos[1]
-    let width = node.size[0]
+    const width = node.size[0]
     const height = 300 // TODO: compute
     const posY = node.pos[1]
-
     const localPos = { x: pos[0], y: pos[1] - LiteGraph.NODE_WIDGET_HEIGHT }
 
     if (event.type === LiteGraph.pointerevents_method + 'down') {
@@ -150,38 +145,38 @@ class CurveWidget {
 
   detectPoint(localPos, width, height) {
     const threshold = 20 // TODO: extract
-    for (let i = 0; i < this._value.length; i++) {
-      const p = this._value[i]
+    const keys = Object.keys(this.value)
+    for (let i = 0; i < keys.length; i++) {
+      const key = keys[i]
+      const p = this.value[key]
       const px = p.x * width
       const py = height - p.y * height
       if (
         Math.abs(localPos.x - px) < threshold &&
         Math.abs(localPos.y - py) < threshold
       ) {
-        return i
+        return key
       }
     }
     return null
   }
-
   addPoint(localPos, width, height) {
     // add a new point based on click position
+    const index = Object.keys(this.value).length
     const normalizedPoint = {
       x: localPos.x / width,
       y: 1 - localPos.y / height,
     }
-    this._value.push(normalizedPoint)
-    this._value.sort((a, b) => a.x - b.x)
+    this.value[index] = normalizedPoint
   }
 
   movePoint(index, localPos, width, height) {
-    const point = this._value[index]
+    const point = this.value[index]
     point.x = Math.max(0, Math.min(1, localPos.x / width))
     point.y = Math.max(0, Math.min(1, 1 - localPos.y / height))
 
-    this._value[index] = point
+    this.value[index] = point
   }
-
   computeSize(width) {
     return [width, 300]
   }
@@ -189,26 +184,11 @@ class CurveWidget {
   configure(data) {
     console.log('CONFIGURE CURVES', data)
   }
-
-  get value() {
-    console.debug('Returning value', this._value)
-    // return JSON.stringify(this._value)
-    return this._value
-  }
-  set value(value) {
-    if (typeof value === 'string') {
-      console.debug('RECEIVED A STRING', this._value)
-      this._value = JSON.parse(value)
-    } else {
-      this._value = value
-    }
-    console.debug('Setting value', this._value)
-  }
 }
 
 app.registerExtension({
   name: 'mtb.curves',
-  getCustomWidgets: function () {
+  getCustomWidgets: () => {
     return {
       /**
        * @param {LGraphNode} node
@@ -218,10 +198,8 @@ app.registerExtension({
        *
        */
       FLOAT_CURVE: (node, inputName, inputData, app) => {
-        console.log('registering float curve widget', { inputData })
-        const wid = node.addCustomWidget(
-          new CurveWidget(inputName, inputData[1]?.default),
-        )
+        // const c = node.widgets.find((w) => w.type === "FLOAT_CURVE")
+        const wid = node.addCustomWidget(new CurveWidget(inputName, inputData))
 
         return {
           widget: wid,
