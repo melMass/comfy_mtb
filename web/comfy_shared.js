@@ -394,18 +394,18 @@ export function calculateTotalChildrenHeight(parentElement) {
 }
 /**
  * Appends a callback to the extra menu options of a given node type.
- * @param {*} nodeType
- * @param {*} cb
+ * @param {NodeType} nodeType
+ * @param {(app,options) => ContextMenuItem[]} cb
  */
 export function addMenuHandler(nodeType, cb) {
   const getOpts = nodeType.prototype.getExtraMenuOptions
   /**
    * @returns {ContextMenuItem[]} items
    */
-  nodeType.prototype.getExtraMenuOptions = function () {
-    const r = getOpts.apply(this, [])
-    cb.apply(this, [])
-    return r
+  nodeType.prototype.getExtraMenuOptions = function (app, options) {
+    const r = getOpts.apply(this, [app, options]) || []
+    const newItems = cb.apply(this, [app, options])
+    return r + newItems
   }
 }
 

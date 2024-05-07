@@ -743,8 +743,8 @@ const mtb_widgets = {
     }
   },
   /**
-   * @param {import("./types/comfy").NodeType} nodeType
-   * @param {import("./types/comfy").NodeDef} nodeData
+   * @param {NodeType} nodeType
+   * @param {NodeData} nodeData
    * @param {import("./types/comfy").App} app
    */
   async beforeRegisterNodeDef(nodeType, nodeData, app) {
@@ -1187,6 +1187,33 @@ const mtb_widgets = {
           }
         }
 
+        break
+      }
+
+      case 'Batch Shape (mtb)':
+      case 'Text To Image (mtb)': {
+        shared.addMenuHandler(nodeType, function (_app, options) {
+          /** @type {ContextMenuItem} */
+          const item = {
+            content: 'swap colors',
+            title: 'Swap BG/FG Color ⚡',
+            callback: (_menuItem) => {
+              const color_w = this.widgets.find((w) => w.name === 'color')
+              const bg_w = this.widgets.find(
+                (w) => w.name === 'background' || w.name === 'bg_color',
+              )
+
+              const color = color_w.value
+              const bg = bg_w.value
+
+              color_w.value = bg
+              bg_w.value = color
+            },
+          }
+
+          options.push(item)
+          return [item]
+        })
         break
       }
       case 'Save Tensors (mtb)': {
