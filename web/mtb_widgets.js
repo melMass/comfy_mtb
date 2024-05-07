@@ -1137,6 +1137,7 @@ const mtb_widgets = {
         break
       }
       case 'Batch Float Assemble (mtb)':
+      case 'Batch Float Math (mtb)':
       case 'Plot Batch Float (mtb)': {
         shared.setupDynamicConnections(nodeType, 'floats', 'FLOATS')
         break

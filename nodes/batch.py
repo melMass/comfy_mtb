@@ -10,12 +10,74 @@ from ..utils import EASINGS, apply_easing, pil2tensor
 from .transform import MTB_TransformImage
 
 
-def hex_to_rgb(hex_color, bgr=False):
+def hex_to_rgb(hex_color: str, bgr: bool = False):
     hex_color = hex_color.lstrip("#")
     if bgr:
         return tuple(int(hex_color[i : i + 2], 16) for i in (4, 2, 0))
 
     return tuple(int(hex_color[i : i + 2], 16) for i in (0, 2, 4))
+
+
+class MTB_BatchFloatMath:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "reverse": ("BOOLEAN", {"default": False}),
+                "operation": (
+                    ["add", "sub", "mul", "div", "pow", "abs"],
+                    {"default": "add"},
+                ),
+            }
+        }
+
+    RETURN_TYPES = ("FLOATS",)
+    CATEGORY = "mtb/utils"
+    FUNCTION = "execute"
+
+    def execute(self, reverse: bool, operation: str, **kwargs: list[float]):
+        res: list[float] = []
+        vals = list(kwargs.values())
+
+        if reverse:
+            vals = vals[::-1]
+
+        ref_count = len(vals[0])
+        for v in vals:
+            if len(v) != ref_count:
+                raise ValueError(
+                    f"All values must have the same length (current: {len(v)}, ref: {ref_count}"
+                )
+
+        match operation:
+            case "add":
+                for i in range(ref_count):
+                    result = sum(v[i] for v in vals)
+                    res.append(result)
+            case "sub":
+                for i in range(ref_count):
+                    result = vals[0][i] - sum(v[i] for v in vals[1:])
+                    res.append(result)
+            case "mul":
+                for i in range(ref_count):
+                    result = vals[0][i] * vals[1][i]
+                    res.append(result)
+            case "div":
+                for i in range(ref_count):
+                    result = vals[0][i] / vals[1][i]
+                    res.append(result)
+            case "pow":
+                for i in range(ref_count):
+                    result: float = vals[0][i] ** vals[1][i]
+                    res.append(result)
+            case "abs":
+                for i in range(ref_count):
+                    result = abs(vals[0][i])
+                    res.append(result)
+            case _:
+                log.info(f"For now this mode ({operation}) is not implemented")
+
+        return (res,)
 
 
 class MTB_BatchFloatNormalize:
@@ -281,18 +343,21 @@ class MTB_BatchFloatAssemble:
     def INPUT_TYPES(cls):
         return {"required": {"reverse": ("BOOLEAN", {"default": False})}}
 
-    FUNCTION = "assemble_floats"
     RETURN_TYPES = ("FLOATS",)
     CATEGORY = "mtb/batch"
+    FUNCTION = "assemble_floats"
 
-    def assemble_floats(self, reverse, **kwargs):
-        res = []
+    def assemble_floats(self, reverse: bool, **kwargs: list[float]):
+        res: list[float] = []
+
         if reverse:
             for x in reversed(kwargs.values()):
-                res += x
+                if x:
+                    res += x
         else:
             for x in kwargs.values():
-                res += x
+                if x:
+                    res += x
 
         return (res,)
 
@@ -308,7 +373,7 @@ class MTB_BatchFloat:
                     ["Single", "Steps"],
                     {"default": "Steps"},
                 ),
-                "count": ("INT", {"default": 1}),
+                "count": ("INT", {"default": 2}),
                 "min": ("FLOAT", {"default": 0.0, "step": 0.001}),
                 "max": ("FLOAT", {"default": 1.0, "step": 0.001}),
                 "easing": (
@@ -346,6 +411,10 @@ class MTB_BatchFloat:
     CATEGORY = "mtb/batch"
 
     def set_floats(self, mode, count, min, max, easing):
+        if mode == "Steps" and count == 1:
+            raise ValueError(
+                "Steps mode requires at least a count of 2 values"
+            )
         keyframes = []
         if mode == "Single":
             keyframes = [min] * count
@@ -969,4 +1038,5 @@ __nodes__ = [
     MTB_PlotBatchFloat,
     MTB_BatchTimeWrap,
     MTB_BatchFloatFit,
+    MTB_BatchFloatMath,
 ]
