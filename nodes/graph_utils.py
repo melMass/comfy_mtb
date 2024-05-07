@@ -185,8 +185,28 @@ class MTB_FloatToFloats:
     CATEGORY = "mtb/utils"
     FUNCTION = "convert"
 
-    def convert(self, float):
+    def convert(self, float: float):
         return (float,)
+
+
+class MTB_FloatsToInts:
+    """Conversion utility for compatibility with frame interpolation."""
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "floats": ("FLOATS", {"forceInput": True}),
+            }
+        }
+
+    RETURN_TYPES = ("INTS", "INT")
+    CATEGORY = "mtb/utils"
+    FUNCTION = "convert"
+
+    def convert(self, floats: list[float]):
+        vals = [int(x) for x in floats]
+        return (vals, vals)
 
 
 class MTB_FloatsToFloat:
@@ -592,4 +612,5 @@ __nodes__ = [
     MTB_AutoPanEquilateral,
     MTB_FloatsToFloat,
     MTB_FloatToFloats,
+    MTB_FloatsToInts,
 ]
