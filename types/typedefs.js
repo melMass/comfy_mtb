@@ -10,6 +10,7 @@
  * @typedef {import("./shared.d.ts").VectorWidget} VectorWidget
  * @typedef {import("./shared.d.ts").LGraphNodeExtended} LGraphNode
  * @typedef {import("./shared.d.ts").LLink} LLink
+ * @typedef {import("./shared.d.ts").App} App
  * @typedef {import("./shared.d.ts").OnDrawWidgetParams} OnDrawWidgetParams
  * @typedef {import("./shared.d.ts").INodeInputSlot} INodeInputSlot
  * @typedef {import("./shared.d.ts").INodeOutputSlot} INodeOutputSlot

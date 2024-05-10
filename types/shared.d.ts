@@ -5,20 +5,22 @@ import type {
   ContextMenuItem,
   LGraphNode,
   IWidget,
-} from '../web/types/litegraph'
+  LGraph,
+} from '../../../web/types/litegraph'
 
 export type {
   ComfyExtension,
   ComfyObjectInfo,
   ComfyObjectInfoConfig,
-} from '../web/types/comfy'
+} from '../../../web/types/comfy'
+
 export type {
   ContextMenuItem,
   IWidget,
   LLink,
   INodeInputSlot,
   INodeOutputSlot,
-} from '../web/types/litegraph'
+} from '../../../web/types/litegraph'
 
 export type VectorWidget = IWidget<number[], { default: number[] }>
 export interface NodeData {
@@ -33,9 +35,61 @@ export interface NodeData {
   output_node: boolean
 }
 
+export interface ComfyDialog {
+  element: Element
+  close: () => void
+  show: (html: str) => void
+}
+
+export interface ComfySettingsDialog {
+  app: ComfyApp
+  element: Element
+  settingsValues: Record<string, unknown>
+  settingsLookup: Record<string, unknown>
+  load: () => Promise<void>
+  setSettingValueAsync: (id: string, value: unknown) => Promise<void>
+}
+
+export interface ComfyUI {
+  app: ComfyApp
+  dialog: ComfyDialog
+  settings: ComfySettingsDialog
+  autoQueueMode: 'instant' | 'change'
+  batchCount: number
+  lastQueueSize: number
+  graphHasChanged: boolean
+  queue: ComfyList
+  history: ComfyList
+}
+
+/**Very incomplete Comfy App definition*/
+interface ComfyApp {
+  graph: LGraph
+  queueItems: { number: number; batchCount: number }[]
+  processingQueue: boolean
+  ui: ComfyUI
+  extensions: ComfyExtension[]
+  nodeOutputs: Record<string, unknown>
+  nodePreviewImages: Record<string, Image>
+  shiftDown: boolean
+  isImageNode: (node: LGraphNodeExtended) => boolean
+  queuePrompt: (number: number, batchCount: number) => Promise<void>
+  /** Loads workflow data from the specified file*/
+  handleFile: (file: File) => Promise<void>
+}
+
+export type { ComfyApp as App }
+
 export interface LGraphNodeExtension {
+  addDOMWidget: (
+    name: string,
+    type: string,
+    element: Element,
+    options: Record<string, unknown>,
+  ) => IWidget
   onNodeCreated: () => void
   getExtraMenuOptions: () => ContextMenuItem[]
+  prototype: LGraphNodeExtended
 }
 
 export type LGraphNodeExtended = LGraphNode & LGraphNodeExtension

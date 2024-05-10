@@ -81,6 +81,28 @@ export const log = (...args) => {
   }
 }
 
+/**
+ * Deep merge two objects.
+ * @param {Object} target - The target object to merge into.
+ * @param {...Object} sources - The source objects to merge from.
+ * @returns {Object} - The merged object.
+ */
+export function deepMerge(target, ...sources) {
+  if (!sources.length) return target
+  const source = sources.shift()
+
+  for (const key in source) {
+    if (source[key] instanceof Object) {
+      if (!target[key]) Object.assign(target, { [key]: {} })
+      deepMerge(target[key], source[key])
+    } else {
+      Object.assign(target, { [key]: source[key] })
+    }
+  }
+
+  return deepMerge(target, ...sources)
+}
+
 //- WIDGET UTILS
 export const CONVERTED_TYPE = 'converted-widget'
 /**
