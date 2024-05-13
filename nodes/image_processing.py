@@ -216,16 +216,30 @@ class MTB_ImageCompare:
     CATEGORY = "mtb/image"
 
     def compare(self, imageA: torch.Tensor, imageB: torch.Tensor, mode):
-        imageA = imageA.numpy()
-        imageB = imageB.numpy()
-
         imageA = imageA.squeeze()
         imageB = imageB.squeeze()
 
-        image = compare_images(imageA, imageB, method=mode)
+        if mode == "diff":
+            compare_image = torch.abs(imageA - imageB)
+        elif mode == "blend":
+            compare_image = 0.5 * (imageA + imageB)
+        elif mode == "checkerboard":
+            imageA = imageA.numpy()
+            imageB = imageB.numpy()
+            compare_image = torch.stack(
+                [
+                    torch.from_numpy(
+                        # Compare images channel-wise then stack them back together
+                        compare_images(imageA[:, :, i], imageB[:, :, i], method=mode)
+                    ) 
+                    for i in range(imageA.shape[2])
+                ],
+                dim=2
+            )
 
-        image = np.expand_dims(image, axis=0)
-        return (torch.from_numpy(image),)
+        compare_image = compare_image.unsqueeze(0)
+
+        return (compare_image,)
 
 
 import requests
