@@ -216,8 +216,19 @@ class MTB_ImageCompare:
     CATEGORY = "mtb/image"
 
     def compare(self, imageA: torch.Tensor, imageB: torch.Tensor, mode):
-        imageA = imageA.squeeze()
-        imageB = imageB.squeeze()
+        if imageA.dim() == 4:
+            batch_count = imageA.size(0)
+            return (
+                torch.cat(
+                    tuple(
+                        self.compare(
+                            imageA[i], imageB[i], mode
+                        )[0]
+                        for i in range(batch_count)
+                    ),
+                    dim=0,
+                ),
+            )
 
         if mode == "diff":
             compare_image = torch.abs(imageA - imageB)
