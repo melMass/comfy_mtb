@@ -216,16 +216,55 @@ class MTB_ImageCompare:
     CATEGORY = "mtb/image"
 
     def compare(self, imageA: torch.Tensor, imageB: torch.Tensor, mode):
-        imageA = imageA.numpy()
-        imageB = imageB.numpy()
+        if imageA.dim() == 4:
+            batch_count = imageA.size(0)
+            return (
+                torch.cat(
+                    tuple(
+                        self.compare(imageA[i], imageB[i], mode)[0]
+                        for i in range(batch_count)
+                    ),
+                    dim=0,
+                ),
+            )
 
-        imageA = imageA.squeeze()
-        imageB = imageB.squeeze()
+        num_channels_A = imageA.size(2)
+        num_channels_B = imageB.size(2)
 
-        image = compare_images(imageA, imageB, method=mode)
+        # handle RGBA/RGB mismatch
+        if num_channels_A == 3 and num_channels_B == 4:
+            imageA = torch.cat(
+                (imageA, torch.ones_like(imageA[:, :, 0:1])), dim=2
+            )
+        elif num_channels_B == 3 and num_channels_A == 4:
+            imageB = torch.cat(
+                (imageB, torch.ones_like(imageB[:, :, 0:1])), dim=2
+            )
+        match mode:
+            case "diff":
+                compare_image = torch.abs(imageA - imageB)
+            case "blend":
+                compare_image = 0.5 * (imageA + imageB)
+            case "checkerboard":
+                imageA = imageA.numpy()
+                imageB = imageB.numpy()
+                compared_channels = [
+                    torch.from_numpy(
+                        compare_images(
+                            imageA[:, :, i], imageB[:, :, i], method=mode
+                        )
+                    )
+                    for i in range(imageA.shape[2])
+                ]
 
-        image = np.expand_dims(image, axis=0)
-        return (torch.from_numpy(image),)
+                compare_image = torch.stack(compared_channels, dim=2)
+            case _:
+                compare_image = None
+                raise ValueError(f"Unknown mode {mode}")
+
+        compare_image = compare_image.unsqueeze(0)
+
+        return (compare_image,)
 
 
 import requests
