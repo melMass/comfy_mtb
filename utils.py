@@ -683,9 +683,11 @@ def get_model_path(fam, model=None):
     if res:
         if isinstance(res, list):
             if len(res) > 1:
-                log.warning(
-                    f"Found multiple match, we will pick the first {res[0]}\n{res}"
-                )
+                #模型加载多路径，修证重复警告问题
+                warn_msg = f"Found multiple match, we will pick the first {res[0]}\n{res}"
+                if warn_msg not in warned_messages:
+                    log.warning(warn_msg)
+                    warned_messages.add(warn_msg)
             res = res[0]
         res = Path(res)
         log.debug(f"Resolved model path from folder_paths: {res}")
@@ -695,7 +697,7 @@ def get_model_path(fam, model=None):
             res /= model
 
     return res
-
+warned_messages = set()
 
 # endregion
 
