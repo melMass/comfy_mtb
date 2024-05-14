@@ -34,7 +34,9 @@ class MTB_LoadFaceEnhanceModel:
         fr_models_path, um_models_path = cls.get_models_root()
 
         if fr_models_path is None and um_models_path is None:
-            log.warning("Face restoration models not found.")
+            if not hasattr(cls, "_warned"):
+                log.warning("Face restoration models not found.")
+                cls._warned = True
             return []
         if not fr_models_path.exists():
             # log.warning(

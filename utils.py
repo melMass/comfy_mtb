@@ -1,5 +1,6 @@
 import contextlib
 import functools
+import importlib
 import math
 import os
 import shlex
@@ -315,12 +316,6 @@ def _run_command(shell_cmd, ignored_lines_start):
     print("Command executed successfully!")
 
 
-# todo use the requirements library
-reqs_map = {value: key for key, value in pip_map.items()}
-
-import importlib
-
-
 def import_install(package_name):
     package_spec = reqs_map.get(package_name, package_name)
 
@@ -368,6 +363,7 @@ font_path = here / "data" / "font.ttf"
 # - Add extern folder to path
 extern_root = here / "extern"
 add_path(extern_root)
+
 for pth in extern_root.iterdir():
     if pth.is_dir():
         add_path(pth)
@@ -375,6 +371,14 @@ for pth in extern_root.iterdir():
 # - Add the ComfyUI directory and custom nodes path to the sys.path list
 add_path(comfy_dir)
 add_path(comfy_dir / "custom_nodes")
+
+
+# TODO: use the requirements library
+reqs_map = {value: key for key, value in pip_map.items()}
+
+# NOTE: store already logged warnings to only alert once.
+warned_messages: set[str] = set()
+
 
 PIL_FILTER_MAP = {
     "nearest": Image.Resampling.NEAREST,
@@ -683,9 +687,10 @@ def get_model_path(fam, model=None):
     if res:
         if isinstance(res, list):
             if len(res) > 1:
-                log.warning(
-                    f"Found multiple match, we will pick the first {res[0]}\n{res}"
-                )
+                warn_msg = f"Found multiple match, we will pick the first {res[0]}\n{res}"
+                if warn_msg not in warned_messages:
+                    log.warning(warn_msg)
+                    warned_messages.add(warn_msg)
             res = res[0]
         res = Path(res)
         log.debug(f"Resolved model path from folder_paths: {res}")
