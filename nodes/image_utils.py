@@ -27,6 +27,11 @@ class MTB_StackImages:
         normalized_tensors = [
             self.normalize_to_rgba(tensor) for tensor in tensors
         ]
+        max_batch_size = max(tensor.shape[0] for tensor in normalized_tensors)
+        normalized_tensors = [
+            self.duplicate_frames(tensor, max_batch_size)
+            for tensor in normalized_tensors
+        ]
 
         if vertical:
             width = normalized_tensors[0].shape[2]
@@ -66,6 +71,21 @@ class MTB_StackImages:
                 "Tensor has an unsupported number of channels: "
                 "expected 3 (RGB) or 4 (RGBA)."
             )
+
+    def duplicate_frames(self, tensor, target_batch_size):
+        """Duplicate frames in tensor to match the target batch size."""
+        current_batch_size = tensor.shape[0]
+        if current_batch_size < target_batch_size:
+            duplication_factors: int = target_batch_size // current_batch_size
+            duplicated_tensor = tensor.repeat(duplication_factors, 1, 1, 1)
+            remaining_frames = target_batch_size % current_batch_size
+            if remaining_frames > 0:
+                duplicated_tensor = torch.cat(
+                    (duplicated_tensor, tensor[:remaining_frames]), dim=0
+                )
+            return duplicated_tensor
+        else:
+            return tensor
 
 
 class MTB_PickFromBatch:
