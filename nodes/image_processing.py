@@ -88,8 +88,8 @@ class MTB_ColorCorrect:
     def contrast_adjustment_tensor(image, contrast):
         r, g, b = image.unbind(-1)
         
-        # Using Rec. 2020 luminance weights.
-        luminance_image = 0.2627 * r + 0.6780 * g + 0.0593 * b
+        # Using Adobe RGB luminance weights.
+        luminance_image = 0.33 * r + 0.71 * g + 0.06 * b
         luminance_mean = torch.mean(luminance_image.unsqueeze(-1))
 
         # Blend original with mean luminance using contrast factor as blend ratio.
