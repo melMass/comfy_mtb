@@ -132,3 +132,11 @@ source = "git-tag"
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[project]
+dependencies = ["qrcode", "onnxruntime-gpu", "requirements-parserx", "rembg", "imageio_ffmpeg", "rich", "rich_argparse", "matplotlib", "pillow",]
+
+[tool.comfy]
+PublisherId = ""
+DisplayName = "comfy-mtb"
+Icon = ""
