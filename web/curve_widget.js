@@ -138,7 +138,6 @@ class CurveWidget {
   callback(...args) {
     //value, that, node, pos, event) {
 
-    console.log(args)
   }
 
   detectPoint(localPos, width, height) {
@@ -182,20 +181,17 @@ class CurveWidget {
   }
 
   movePoint(index, localPos, width, height) {
-    console.log('Moving point', { index, localPos, width, height })
     const point = this.value[index]
     point.x = Math.max(0, Math.min(1, localPos.x / width))
     point.y = Math.max(0, Math.min(1, 1 - localPos.y / height))
 
     this.value[index] = point
-    console.log({ value: this.value })
   }
   computeSize(width) {
     return [width, 300]
   }
 
   configure(data) {
-    console.log('CONFIGURE CURVES', data)
   }
 }
 
@@ -211,11 +207,6 @@ app.registerExtension({
        *
        */
       FLOAT_CURVE: (node, inputName, inputData, app) => {
-        console.log('registering float curve widget', {
-          node,
-          inputName,
-          inputData,
-        })
         // const c = node.widgets.find((w) => w.type === "FLOAT_CURVE")
         const wid = node.addCustomWidget(new CurveWidget(inputName, inputData))
 
