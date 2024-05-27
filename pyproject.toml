@@ -134,6 +134,10 @@ requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
 [project]
+name = "comfy-mtb"
+version = "0.4.0"
+description = "Animation oriented nodes pack for ComfyUI."
+license = "MIT"
 dependencies = ["qrcode", "onnxruntime-gpu", "requirements-parserx", "rembg", "imageio_ffmpeg", "rich", "rich_argparse", "matplotlib", "pillow",]
 
 [tool.comfy]
