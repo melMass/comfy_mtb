@@ -21,12 +21,10 @@ class CurveWidget {
 
     this.name = inputName || 'Curve'
 
-    // this._value = defaultValue
     this.type = 'FLOAT_CURVE'
     this.selectedPointIndex = null
     this.options = opts
-
-    // this.resize()
+    this.value = this.value || { 0: { x: 0, y: 0 }, 1: { x: 1, y: 1 } }
   }
 
   drawBSpline(ctx, width, height, posY) {
@@ -89,7 +87,7 @@ class CurveWidget {
     ctx.lineWidth = 2
 
     // normalized coordinates -> canvas coordinates
-    for (let i = 0; i < Object.keys(this.value).length - 1; i++) {
+    for (let i = 0; i < Object.keys(this.value || {}).length - 1; i++) {
       let p1 = this.value[i]
       let p2 = this.value[i + 1]
       ctx.moveTo(p1.x * cw, posY + ch - p1.y * ch)
@@ -98,7 +96,7 @@ class CurveWidget {
     ctx.stroke()
 
     // points
-    Object.values(this.value).forEach((point) => {
+    Object.values(this.value || {}).forEach((point) => {
       ctx.beginPath()
       ctx.arc(point.x * cw, posY + ch - point.y * ch, 5, 0, 2 * Math.PI)
       ctx.fill()
@@ -162,20 +160,35 @@ class CurveWidget {
   }
   addPoint(localPos, width, height) {
     // add a new point based on click position
-    const index = Object.keys(this.value).length
     const normalizedPoint = {
       x: localPos.x / width,
       y: 1 - localPos.y / height,
     }
-    this.value[index] = normalizedPoint
+
+    const keys = Object.keys(this.value)
+    let insertIndex = keys.length
+    for (let i = 0; i < keys.length; i++) {
+      if (normalizedPoint.x < this.value[keys[i]].x) {
+        insertIndex = i
+        break
+      }
+    }
+    // shift
+    for (let i = keys.length; i > insertIndex; i--) {
+      this.value[i] = this.value[i - 1]
+    }
+
+    this.value[insertIndex] = normalizedPoint
   }
 
   movePoint(index, localPos, width, height) {
+    console.log('Moving point', { index, localPos, width, height })
     const point = this.value[index]
     point.x = Math.max(0, Math.min(1, localPos.x / width))
     point.y = Math.max(0, Math.min(1, 1 - localPos.y / height))
 
     this.value[index] = point
+    console.log({ value: this.value })
   }
   computeSize(width) {
     return [width, 300]
@@ -198,6 +211,11 @@ app.registerExtension({
        *
        */
       FLOAT_CURVE: (node, inputName, inputData, app) => {
+        console.log('registering float curve widget', {
+          node,
+          inputName,
+          inputData,
+        })
         // const c = node.widgets.find((w) => w.type === "FLOAT_CURVE")
         const wid = node.addCustomWidget(new CurveWidget(inputName, inputData))
 
