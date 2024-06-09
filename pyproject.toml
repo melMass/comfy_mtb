@@ -1,4 +1,13 @@
-[tool.poetry]
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.comfy]
+PublisherId = "mel"
+DisplayName = "comfy-mtb"
+Icon = ""
+
+[project]
 name = "comfy-mtb"
 version = "0.4.0"
 description = "Animation oriented nodes pack for ComfyUI."
@@ -16,31 +25,34 @@ classifiers = [
   "Programming Language :: Python :: 3.11",
   "Intended Audience :: Developers",
 ]
-
-[tool.poetry.urls]
-"Bug Tracker" = "https://github.com/melMass/comfy_mtb/issues"
-"Changelog" = "https://github.com/melMass/comfy_mtb/releases"
-
-[tool.poetry.dependencies]
-python = "^3.10"
-
-[tool.poetry.group.dev.dependencies]
-black = { extras = ["jupyter"], version = "^23.7.0" }
-codespell = "^2.2.5"
-mypy = "^1.5.1"
-pre-commit = "^3.3.3"
-pytest = "^7.4.0"
-pytest-cov = "^4.1.0"
-pytest-random-order = "^1.1.0"
-ruff = "^0.0.285"
-
-[tool.poetry.group.docs]
-optional = true
-
-[tool.poetry.group.docs.dependencies]
-docutils = "0.17.1"
-jupyter-book = "^0.15.1"
-sphinx-autobuild = "^2021.3.14"
+requires-python = ">=3.10"
+dependencies = [
+  "qrcode",
+  "onnxruntime-gpu",
+  "requirements-parserx",
+  "rembg",
+  "imageio_ffmpeg",
+  "rich",
+  "rich_argparse",
+  "matplotlib",
+  "pillow",
+]
+optional-dependencies = { mel = [
+  "jupyterlab==4.1.6",
+], dev = [
+  "black[jupyter]",
+  "codespell",
+  "mypy",
+  "pre-commit",
+  "pytest",
+  "pytest-cov",
+  "pytest-random-order",
+  "ruff",
+], doc = [
+  "docutils==0.17.1",
+  "jupyter-book>=0.15",
+  "sphinx-autobuild",
+] }
 
 [tool.pyright]
 include = ["."]
@@ -59,7 +71,7 @@ reportMissingImports = true
 reportMissingTypeStubs = false
 typeCheckingMode = "basic"
 
-pythonVersion = "3.9"
+pythonVersion = "3.10"
 pythonPlatform = "Windows"
 
 [tool.pytest.ini_options]
@@ -125,22 +137,3 @@ exclude = ["docs/conf.py"]
 # exclude auto generated file
 skip = "./docs/conf.py,poetry.lock"
 check-filenames = true
-
-[tool.poetry-version-plugin]
-source = "git-tag"
-
-[build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
-
-[project]
-name = "comfy-mtb"
-version = "0.4.0"
-description = "Animation oriented nodes pack for ComfyUI."
-license = "MIT"
-dependencies = ["qrcode", "onnxruntime-gpu", "requirements-parserx", "rembg", "imageio_ffmpeg", "rich", "rich_argparse", "matplotlib", "pillow",]
-
-[tool.comfy]
-PublisherId = "mel"
-DisplayName = "comfy-mtb"
-Icon = ""
