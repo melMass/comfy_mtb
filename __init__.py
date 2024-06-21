@@ -7,7 +7,7 @@
 #
 ###
 
-__version__ = "0.1.4"
+__version__ = "0.1.5"
 
 import os
 
@@ -337,7 +337,7 @@ if hasattr(PromptServer, "instance"):
                 <a href="/mtb/manage">manage</a>
                 <a href="/mtb/debug">debug</a>
                 <a href="/mtb/status">status</a>
-            </div>            
+            </div>
             """
             return web.Response(
                 text=endpoint.render_base_template("MTB", html_response),
