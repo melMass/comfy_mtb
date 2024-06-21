@@ -6,6 +6,9 @@
 # Copyright (c) 2023 Mel Massadian
 #
 ###
+
+__version__ = "0.1.4"
+
 import os
 
 # TODO: don't override this if the user has that setup already
@@ -38,8 +41,6 @@ NODE_CLASS_MAPPINGS = {}
 NODE_DISPLAY_NAME_MAPPINGS = {}
 NODE_CLASS_MAPPINGS_DEBUG = {}
 WEB_DIRECTORY = "./web"
-
-__version__ = "0.2.0"
 
 
 def extract_nodes_from_source(filename: Path):
