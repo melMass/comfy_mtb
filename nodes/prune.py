@@ -5,7 +5,7 @@ import torch
 import tqdm
 
 from ..log import log
-from ..utils import StringConvertibleEnum
+from ..utils import Operation, Precision
 from ..utils import output_dir as comfy_out_dir
 
 PRUNE_DATA = {
@@ -25,20 +25,6 @@ PRUNE_DATA = {
 dtypes_to_fp16 = {torch.float32, torch.float64, torch.bfloat16}
 dtypes_to_bf16 = {torch.float32, torch.float64, torch.float16}
 dtypes_to_fp8 = {torch.float32, torch.float64, torch.bfloat16, torch.float16}
-
-
-class Precision(StringConvertibleEnum):
-    FULL = "full"
-    FP32 = "fp32"
-    FP16 = "fp16"
-    BF16 = "bf16"
-    FP8 = "fp8"
-
-
-class Operation(StringConvertibleEnum):
-    COPY = "copy"
-    CONVERT = "convert"
-    DELETE = "delete"
 
 
 class MTB_ModelPruner:
