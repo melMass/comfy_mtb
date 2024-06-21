@@ -8,7 +8,7 @@ version = "0.1.4"
 description = "Animation oriented nodes pack for ComfyUI."
 license = "MIT"
 readme = "README.md"
-# repository = "https://github.com/melMass/comfy_mtb"
+# repository = ""
 # url = "https://github.com/melMass/comfy_mtb"
 authors = [{ name = "Mel Massadian", email = "mel@melmassadian.com" }]
 classifiers = [
@@ -49,10 +49,16 @@ optional-dependencies = { mel = [
   "sphinx-autobuild",
 ] }
 
+[project.urls]
+Homepage = "https://github.com/melMass/comfy_mtb"
+Documentation = "https://github.com/melMass/comfy_mtb/wiki"
+Repository = "https://github.com/melMass/comfy_mtb"
+Issues = "https://github.com/melMass/comfy_mtb/issues"
+
 [tool.comfy]
 PublisherId = "mel"
 DisplayName = "comfy-mtb"
-Icon = ""
+Icon = "https://avatars.githubusercontent.com/u/7041726?v=4"
 
 [tool.bumpversion]
 current_version = "0.1.4"
