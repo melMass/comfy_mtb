@@ -4,8 +4,8 @@ on:
   push:
     branches:
       - main
-    paths:
-      - "pyproject.toml"
+    tags:
+      - "*"
 
 jobs:
   publish-node:
