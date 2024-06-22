@@ -527,14 +527,16 @@ def pil2tensor(image: Image.Image | list[Image.Image]) -> torch.Tensor:
     ).unsqueeze(0)
 
 
-def np2tensor(img_np: np.ndarray | list[np.ndarray]) -> torch.Tensor:
+def np2tensor(
+    img_np: np.ndarray | list[np.ndarray[np.float32]],
+) -> torch.Tensor:
     if isinstance(img_np, list):
         return torch.cat([np2tensor(img) for img in img_np], dim=0)
 
     return torch.from_numpy(img_np.astype(np.float32) / 255.0).unsqueeze(0)
 
 
-def tensor2np(tensor: torch.Tensor) -> list[np.ndarray]:
+def tensor2np(tensor: torch.Tensor) -> list[np.ndarray[np.float32]]:
     batch_count = tensor.size(0) if len(tensor.shape) > 3 else 1
     if batch_count > 1:
         out = []

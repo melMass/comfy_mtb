@@ -3,13 +3,11 @@ import json
 import urllib.parse
 import urllib.request
 from math import pi
-from typing import Optional
 
 import comfy.model_management as model_management
 import comfy.utils
 import numpy as np
 import torch
-import torchvision.transforms.functional as F
 from PIL import Image
 
 from ..log import log
@@ -71,8 +69,8 @@ class MTB_ToDevice:
         *,
         ignore_errors=False,
         device="cuda",
-        image: Optional[torch.Tensor] = None,
-        mask: Optional[torch.Tensor] = None,
+        image: torch.Tensor | None = None,
+        mask: torch.Tensor | None = None,
     ):
         if not ignore_errors and image is None and mask is None:
             raise ValueError(
@@ -138,6 +136,8 @@ class MTB_MatchDimensions:
     def execute(
         self, source: torch.Tensor, reference: torch.Tensor, match: str
     ):
+        import torchvision.transforms.functional as VF
+
         _batch_size, height, width, _channels = source.shape
         _rbatch_size, rheight, rwidth, _rchannels = reference.shape
 
@@ -155,7 +155,7 @@ class MTB_MatchDimensions:
             new_height = int(rwidth / source_aspect_ratio)
 
         resized_images = [
-            F.resize(
+            VF.resize(
                 source[i],
                 (new_height, new_width),
                 antialias=True,
@@ -531,10 +531,22 @@ class MTB_FitNumber:
             "required": {
                 "value": ("FLOAT", {"default": 0, "forceInput": True}),
                 "clamp": ("BOOLEAN", {"default": False}),
-                "source_min": ("FLOAT", {"default": 0.0, "step": 0.01}),
-                "source_max": ("FLOAT", {"default": 1.0, "step": 0.01}),
-                "target_min": ("FLOAT", {"default": 0.0, "step": 0.01}),
-                "target_max": ("FLOAT", {"default": 1.0, "step": 0.01}),
+                "source_min": (
+                    "FLOAT",
+                    {"default": 0.0, "step": 0.01, "min": -1e5},
+                ),
+                "source_max": (
+                    "FLOAT",
+                    {"default": 1.0, "step": 0.01, "min": -1e5},
+                ),
+                "target_min": (
+                    "FLOAT",
+                    {"default": 0.0, "step": 0.01, "min": -1e5},
+                ),
+                "target_max": (
+                    "FLOAT",
+                    {"default": 1.0, "step": 0.01, "min": -1e5},
+                ),
                 "easing": (
                     EASINGS,
                     {"default": "Linear"},
@@ -583,18 +595,65 @@ class MTB_ConcatImages:
     def INPUT_TYPES(cls):
         return {
             "required": {"reverse": ("BOOLEAN", {"default": False})},
+            "optional": {
+                "on_mismatch": (
+                    ["Error", "Smallest", "Largest"],
+                    {"default": "Smallest"},
+                )
+            },
         }
 
-    def concatenate_tensors(self, reverse, **kwargs):
-        tensors = tuple(kwargs.values())
-        batch_sizes = [tensor.size(0) for tensor in tensors]
+    def concatenate_tensors(
+        self,
+        reverse: bool,
+        on_mismatch: str = "Smallest",
+        **kwargs: torch.Tensor,
+    ) -> tuple[torch.Tensor]:
+        tensors = list(kwargs.values())
+
+        if on_mismatch == "Error":
+            shapes = [tensor.shape for tensor in tensors]
+            if not all(shape == shapes[0] for shape in shapes):
+                raise ValueError(
+                    "All input tensors must have the same shape when on_mismatch is 'Error'."
+                )
+
+        else:
+            import torch.nn.functional as F
+
+            if on_mismatch == "Smallest":
+                target_shape = min(
+                    (tensor.shape for tensor in tensors),
+                    key=lambda s: (s[1], s[2]),
+                )
+            else:  # on_mismatch == "Largest"
+                target_shape = max(
+                    (tensor.shape for tensor in tensors),
+                    key=lambda s: (s[1], s[2]),
+                )
+
+            target_height, target_width = target_shape[1], target_shape[2]
+
+            resized_tensors = []
+            for tensor in tensors:
+                if (
+                    tensor.shape[1] != target_height
+                    or tensor.shape[2] != target_width
+                ):
+                    resized_tensor = F.interpolate(
+                        tensor.permute(0, 3, 1, 2),
+                        size=(target_height, target_width),
+                        mode="bilinear",
+                        align_corners=False,
+                    )
+                    resized_tensor = resized_tensor.permute(0, 2, 3, 1)
+                    resized_tensors.append(resized_tensor)
+                else:
+                    resized_tensors.append(tensor)
+
+            tensors = resized_tensors
 
         concatenated = torch.cat(tensors, dim=0)
-
-        # Update the batch size in the concatenated tensor
-        concatenated_size = list(concatenated.size())
-        concatenated_size[0] = sum(batch_sizes)
-        concatenated = concatenated.view(*concatenated_size)
 
         return (concatenated,)
 
