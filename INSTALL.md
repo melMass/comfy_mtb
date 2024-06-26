@@ -42,7 +42,7 @@ then follow the prompt or just press enter to download every models.
 1. Make sure you are in the Python environment you use for ComfyUI.
 2. Install the required dependencies by running the following command:
   ```bash
-  pip install -r comfy_mtb/reqs.txt
+  pip install -r comfy_mtb/requirements.txt
   ```
 
 </details>
