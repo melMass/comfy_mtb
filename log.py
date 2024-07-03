@@ -77,5 +77,11 @@ def cyan_text(text: str):
 def get_label(label: str):
     if label.startswith("MTB_"):
         label = label[4:]
-    words = re.findall(r"(?:^|[A-Z])[a-z]*", label)
+
+    words = re.findall(
+        r"(?:(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])|(?<=[A-Za-z])(?=[0-9])|(?<=[0-9])(?=[A-Za-z]))",
+        label,
+    )
+    reformatted_label = re.sub(r"([A-Z]+)", r" \1", label).strip()
+    words = reformatted_label.split()
     return " ".join(words).strip()
