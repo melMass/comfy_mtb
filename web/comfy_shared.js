@@ -704,7 +704,7 @@ const create_documentation_stylesheet = () => {
        border-radius: 6px;
        border: 3px solid var(--bg-color);
     }
-   
+
     /* Scrollbar styling for Firefox */
     scrollbar-width: thin;
     scrollbar-color: var(--fg-color) var(--bg-color);
@@ -726,7 +726,7 @@ const create_documentation_stylesheet = () => {
   border-collapse: collapse;
   border: 1px var(--border-color) solid;
 }
-.documentation-popup th, 
+.documentation-popup th,
 .documentation-popup td {
   border: 1px var(--border-color) solid;
 }
@@ -1025,8 +1025,8 @@ export function addMenuHandler(nodeType, cb) {
    */
   nodeType.prototype.getExtraMenuOptions = function (app, options) {
     const r = getOpts.apply(this, [app, options]) || []
-    const newItems = cb.apply(this, [app, options])
-    return r + newItems
+    const newItems = cb.apply(this, [app, options]) || []
+    return [...r, ...newItems]
   }
 }
 
