@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "comfy-mtb"
-version = "0.1.5"
+version = "0.1.6"
 description = "Animation oriented nodes pack for ComfyUI."
 license = "MIT"
 readme = "README.md"
@@ -61,7 +61,7 @@ DisplayName = "comfy-mtb"
 Icon = "https://avatars.githubusercontent.com/u/7041726?v=4"
 
 [tool.bumpversion]
-current_version = "0.1.5"
+current_version = "0.1.6"
 parse = "(?P<major>\\d+)\\.(?P<minor>\\d+)\\.(?P<patch>\\d+)"
 serialize = ["{major}.{minor}.{patch}"]
 search = "{current_version}"
