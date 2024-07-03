@@ -177,7 +177,10 @@ class MTB_RestoreFace:
                 # Adjustable weights
                 "weight": ("FLOAT", {"default": 0.5}),
                 "save_tmp_steps": ("BOOLEAN", {"default": True}),
-            }
+            },
+            "optional": {
+                "preserve_alpha": ("BOOLEAN", {"default": True}),
+            },
         }
 
     def do_restore(
@@ -188,10 +191,18 @@ class MTB_RestoreFace:
         only_center_face,
         weight,
         save_tmp_steps,
+        preserve_alpha: bool = False,
     ) -> torch.Tensor:
         pimage = tensor2np(image)[0]
         width, height = pimage.shape[1], pimage.shape[0]
         source_img = cv2.cvtColor(np.array(pimage), cv2.COLOR_RGB2BGR)
+
+        alpha_channel = None
+        if (
+            preserve_alpha and image.size(-1) == 4
+        ):  # Check if the image has an alpha channel
+            alpha_channel = pimage[:, :, 3]
+            pimage = pimage[:, :, :3]  # Remove alpha channel for processing
 
         sys.stdout = NullWriter()
         cropped_faces, restored_faces, restored_img = model.enhance(
@@ -211,9 +222,14 @@ class MTB_RestoreFace:
             )
         output = None
         if restored_img is not None:
-            output = Image.fromarray(
-                cv2.cvtColor(restored_img, cv2.COLOR_BGR2RGB)
-            )
+            restored_img = cv2.cvtColor(restored_img, cv2.COLOR_BGR2RGB)
+            output = Image.fromarray(restored_img)
+
+            if alpha_channel is not None:
+                alpha_resized = Image.fromarray(alpha_channel).resize(
+                    output.size, Image.LANCZOS
+                )
+                output.putalpha(alpha_resized)
             # imwrite(restored_img, save_restore_path)
 
         return pil2tensor(output)
@@ -226,6 +242,7 @@ class MTB_RestoreFace:
         only_center_face=False,
         weight=0.5,
         save_tmp_steps=True,
+        preserve_alpha: bool = False,
     ) -> tuple[torch.Tensor]:
         out = [
             self.do_restore(
@@ -235,6 +252,7 @@ class MTB_RestoreFace:
                 only_center_face,
                 weight,
                 save_tmp_steps,
+                preserve_alpha,
             )
             for i in range(image.size(0))
         ]
@@ -260,7 +278,7 @@ class MTB_RestoreFace:
         self, cropped_faces, restored_faces, height, width
     ):
         for idx, (cropped_face, restored_face) in enumerate(
-            zip(cropped_faces, restored_faces)
+            zip(cropped_faces, restored_faces, strict=False)
         ):
             face_id = idx + 1
             file = self.get_step_image_path("cropped_faces", face_id)

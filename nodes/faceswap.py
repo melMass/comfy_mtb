@@ -2,7 +2,6 @@
 # region imports
 import sys
 from pathlib import Path
-from typing import List, Optional, Set, Union
 
 import comfy.model_management as model_management
 import cv2
@@ -119,7 +118,9 @@ class MTB_FaceSwap:
                 ),
                 "faceswap_model": ("FACESWAP_MODEL", {"default": "None"}),
             },
-            "optional": {},
+            "optional": {
+                "preserve_alpha": ("BOOLEAN", {"default": True}),
+            },
         }
 
     RETURN_TYPES = ("IMAGE",)
@@ -133,11 +134,18 @@ class MTB_FaceSwap:
         faces_index: str,
         faceanalysis_model,
         faceswap_model,
+        preserve_alpha=False,
     ):
         def do_swap(img):
             model_management.throw_exception_if_processing_interrupted()
             img = tensor2pil(img)[0]
             ref = tensor2pil(reference)[0]
+
+            alpha_channel = None
+            if preserve_alpha and img.mode == "RGBA":
+                alpha_channel = img.getchannel("A")
+                img = img.convert("RGB")
+
             face_ids = {
                 int(x)
                 for x in faces_index.strip(",").split(",")
@@ -148,6 +156,8 @@ class MTB_FaceSwap:
                 faceanalysis_model, ref, img, faceswap_model, face_ids
             )
             sys.stdout = sys.__stdout__
+            if alpha_channel:
+                swapped.putalpha(alpha_channel)
             return pil2tensor(swapped)
 
         batch_count = image.size(0)
@@ -194,10 +204,10 @@ def get_face_single(
 
 def swap_face(
     face_analyser,
-    source_img: Union[Image.Image, List[Image.Image]],
-    target_img: Union[Image.Image, List[Image.Image]],
+    source_img: Image.Image | list[Image.Image],
+    target_img: Image.Image | list[Image.Image],
     face_swapper_model,
-    faces_index: Optional[Set[int]] = None,
+    faces_index: set[int] | None = None,
 ) -> Image.Image:
     if faces_index is None:
         faces_index = {0}
