@@ -41,6 +41,24 @@ class MTB_Bbox:
         return ((x, y, width, height),)
 
 
+class MTB_SplitBbox:
+    """Split the components of a bbox"""
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {"bbox": ("BBOX",)},
+        }
+
+    CATEGORY = "mtb/crop"
+    FUNCTION = "split_bbox"
+    RETURN_TYPES = ("INT", "INT", "INT", "INT")
+    RETURN_NAMES = ("x", "y", "width", "height")
+
+    def split_bbox(self, bbox):
+        return (bbox[0], bbox[1], bbox[2], bbox[3])
+
+
 class MTB_BboxFromMask:
     """From a mask extract the bounding box"""
 
@@ -324,4 +342,4 @@ class MTB_Uncrop:
         return (pil2tensor(out_images),)
 
 
-__nodes__ = [MTB_BboxFromMask, MTB_Bbox, MTB_Crop, MTB_Uncrop]
+__nodes__ = [MTB_BboxFromMask, MTB_Bbox, MTB_Crop, MTB_Uncrop, MTB_SplitBbox]
