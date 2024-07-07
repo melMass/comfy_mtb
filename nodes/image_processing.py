@@ -87,13 +87,13 @@ class MTB_ColorCorrect:
     @staticmethod
     def contrast_adjustment_tensor(image, contrast):
         r, g, b = image.unbind(-1)
-        
+
         # Using Adobe RGB luminance weights.
         luminance_image = 0.33 * r + 0.71 * g + 0.06 * b
         luminance_mean = torch.mean(luminance_image.unsqueeze(-1))
 
         # Blend original with mean luminance using contrast factor as blend ratio.
-        contrasted = image * contrast + (1.0 - contrast) * luminance_mean        
+        contrasted = image * contrast + (1.0 - contrast) * luminance_mean
         return torch.clamp(contrasted, 0.0, 1.0)
 
     @staticmethod
@@ -485,7 +485,7 @@ class MTB_MaskToImage:
     FUNCTION = "render_mask"
 
     def render_mask(self, mask, color, background):
-        masks = tensor2np(mask)[0]
+        masks = tensor2np(mask)
         images = []
         for m in masks:
             _mask = Image.fromarray(m).convert("L")
@@ -594,7 +594,7 @@ class MTB_ColoredImage:
 
             fg_images = tensor2pil(foreground_image)
 
-            for fg_image, fg_mask in zip(fg_images, fg_masks):
+            for fg_image, fg_mask in zip(fg_images, fg_masks, strict=False):
                 # Resize and crop if dimensions mismatch
                 if fg_image.size != image.size:
                     fg_image = self.resize_and_crop(fg_image, image.size)

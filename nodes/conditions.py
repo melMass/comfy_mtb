@@ -177,7 +177,7 @@ class MTB_StylesLoader:
                 with open(file, encoding="utf8") as f:
                     parsed = csv.reader(f)
                     for i, row in enumerate(parsed):
-                        log.debug(f"Adding style {row[0]}")
+                        # log.debug(f"Adding style {row[0]}")
                         try:
                             name, positive, negative = (row + [None] * 3)[:3]
                             positive = positive or ""
