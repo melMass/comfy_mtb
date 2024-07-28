@@ -28,7 +28,7 @@ export def "comfy dev-web" [] {
 export def "comfy start" [--clean, --listen] {
     let root = get_root --clean=($clean)
     cd $root
-    MTB_DEBUG=true python main.py --port 3000 --preview-method auto ...(if $listen {["--listen"]} else {[]})
+    MTB_DEBUG=true python main.py --port 3000  --front-end-version Comfy-Org/ComfyUI_frontend@latest --preview-method auto ...(if $listen {["--listen"]} else {[]})
 }
 
 # update comfy itself and merge master in current branch
