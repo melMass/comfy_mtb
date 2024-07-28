@@ -1136,7 +1136,8 @@ const mtb_widgets = {
         shared.setupDynamicConnections(nodeType, 'image', 'IMAGE')
         break
       }
-      case 'Audio Sequence (mtb)': {
+      case 'Audio Sequence (mtb)':
+      case 'Audio Stack (mtb)': {
         shared.setupDynamicConnections(nodeType, 'audio', 'AUDIO')
         break
       }
