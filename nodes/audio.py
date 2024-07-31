@@ -69,6 +69,52 @@ class MtbAudio:
         return (audios, is_stereo, max_sample_rate)
 
 
+class MTB_AudioCut(MtbAudio):
+    """Basic audio cutter, values are in ms."""
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "audio": ("AUDIO",),
+                "length": (
+                    ("FLOAT"),
+                    {
+                        "default": 1000.0,
+                        "min": 0.0,
+                        "max": 999999.0,
+                        "step": 1,
+                    },
+                ),
+                "offset": (
+                    ("FLOAT"),
+                    {"default": 0.0, "min": 0.0, "max": 999999.0, "step": 1},
+                ),
+            },
+        }
+
+    RETURN_TYPES = ("AUDIO",)
+    RETURN_NAMES = ("cut_audio",)
+    CATEGORY = "mtb/audio"
+    FUNCTION = "cut"
+
+    def cut(self, audio: AudioDict, length: float, offset: float):
+        sample_rate = audio["sample_rate"]
+        start_idx = int(offset * sample_rate / 1000)
+        end_idx = min(
+            start_idx + int(length * sample_rate / 1000),
+            audio["waveform"].shape[-1],
+        )
+        cut_waveform = audio["waveform"][:, :, start_idx:end_idx]
+
+        return (
+            {
+                "sample_rate": sample_rate,
+                "waveform": cut_waveform,
+            },
+        )
+
+
 class MTB_AudioStack(MtbAudio):
     """Stack/Overlay audio inputs (dynamic inputs).
 
@@ -118,7 +164,9 @@ class MTB_AudioStack(MtbAudio):
 class MTB_AudioSequence(MtbAudio):
     """Sequence audio inputs (dynamic inputs).
 
-    - adding silence_duration between each segment.
+    - adding silence_duration between each segment
+      can now also be negative to overlap the clips, safely bound
+      to the the input length.
     - resample audios to the highest sample rate in the inputs.
     - convert them all to stereo if one of the inputs is.
     """
@@ -127,7 +175,10 @@ class MTB_AudioSequence(MtbAudio):
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "silence_duration": (("FLOAT"), {"default": 0.0, "step": 0.01})
+                "silence_duration": (
+                    ("FLOAT"),
+                    {"default": 0.0, "min": -999.0, "max": 999, "step": 0.01},
+                )
             },
         }
 
@@ -141,18 +192,36 @@ class MTB_AudioSequence(MtbAudio):
             list(kwargs.values())
         )
 
-        silence = torch.zeros(
-            (
-                1,
-                2 if is_stereo else 1,
-                int(silence_duration * max_rate),
-            )
-        )
         sequence: list[torch.Tensor] = []
         for i, audio in enumerate(audios):
+            if i > 0:
+                if silence_duration > 0:
+                    silence = torch.zeros(
+                        (
+                            1,
+                            2 if is_stereo else 1,
+                            int(silence_duration * max_rate),
+                        )
+                    )
+                    sequence.append(silence)
+                elif silence_duration < 0:
+                    overlap = int(abs(silence_duration) * max_rate)
+                    previous_audio = sequence[-1]
+                    overlap = min(
+                        overlap,
+                        previous_audio.shape[-1],
+                        audio["waveform"].shape[-1],
+                    )
+                    if overlap > 0:
+                        overlap_part = (
+                            previous_audio[:, :, -overlap:]
+                            + audio["waveform"][:, :, :overlap]
+                        )
+                        sequence[-1] = previous_audio[:, :, :-overlap]
+                        sequence.append(overlap_part)
+                        audio["waveform"] = audio["waveform"][:, :, overlap:]
+
             sequence.append(audio["waveform"])
-            if i < len(audios) - 1:
-                sequence.append(silence)
 
         sequenced_waveform = torch.cat(sequence, dim=-1)
         return (
@@ -163,4 +232,4 @@ class MTB_AudioSequence(MtbAudio):
         )
 
 
-__nodes__ = [MTB_AudioSequence, MTB_AudioStack]
+__nodes__ = [MTB_AudioSequence, MTB_AudioStack, MTB_AudioCut]
