@@ -13,7 +13,7 @@ from skimage.filters import gaussian
 from skimage.util import compare_images
 
 from ..log import log
-from ..utils import np2tensor, pil2tensor, tensor2np, tensor2pil
+from ..utils import np2tensor, pil2tensor, tensor2pil
 
 # try:
 #     from cv2.ximgproc import guidedFilter
@@ -33,6 +33,125 @@ def gaussian_kernel(
     d_y = y * y / (2.0 * sigma_y * sigma_y)
     g = torch.exp(-(d_x + d_y))
     return g / g.sum()
+
+
+class MTB_CoordinatesToString:
+    RETURN_TYPES = ("STRING",)
+    FUNCTION = "convert"
+    CATEGORY = "mtb/coordinates"
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "coordinates": ("BATCH_COORDINATES",),
+                "frame": ("INT",),
+            }
+        }
+
+    def convert(
+        self, coordinates: list[list[tuple[int, int]]], frame: int
+    ) -> tuple[str]:
+        frame = max(frame, len(coordinates) - 1)
+        coords = coordinates[frame]
+        output: list[dict[str, int]] = []
+
+        for x, y in coords:
+            output.append({"x": x, "y": y})
+
+        return (json.dumps(output),)
+
+
+class MTB_ExtractCoordinatesFromImage:
+    """Extract 2D points from a batch of images based on a threshold."""
+
+    RETURN_TYPES = ("BATCH_COORDINATES", "IMAGE")
+    FUNCTION = "extract"
+    CATEGORY = "mtb/coordinates"
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "threshold": ("FLOAT",),
+                "max_points": ("INT", {"default": 50, "min": 0}),
+            },
+            "optional": {"image": ("IMAGE",), "mask": ("MASK",)},
+        }
+
+    def extract(
+        self,
+        threshold: float,
+        max_points: int,
+        image: torch.Tensor | None = None,
+        mask: torch.Tensor | None = None,
+    ) -> tuple[list[list[tuple[int, int]]], torch.Tensor]:
+        if image is not None:
+            batch_count, height, width, channel_count = image.shape
+            imgs = image
+        else:
+            if mask is None:
+                raise ValueError("Must provide either image or mask")
+            batch_count, height, width = mask.shape
+            channel_count = 1
+            imgs = mask
+
+        if channel_count not in [1, 2, 3, 4]:
+            raise ValueError(f"Incorrect channel count: {channel_count}")
+
+        all_points: list[list[tuple[int, int]]] = []
+        debug_images = torch.zeros(
+            (batch_count, height, width, 3),
+            dtype=torch.uint8,
+            device=imgs.device,
+        )
+
+        for i, img in enumerate(imgs):
+            if channel_count == 1:
+                alpha_channel = img if len(img.shape) == 2 else img[:, :, 0]
+            elif channel_count == 2:
+                alpha_channel = img[:, :, 1]
+            elif channel_count == 4:
+                alpha_channel = img[:, :, 3]
+            else:
+                # get intensity
+                alpha_channel = img[:, :, :3].max(dim=2)[0]
+
+            points = (alpha_channel > threshold).nonzero(as_tuple=False)
+
+            if len(points) > max_points:
+                indices = torch.randperm(points.size(0), device=img.device)[
+                    :max_points
+                ]
+                points = points[indices]
+
+            points = [(int(y.item()), int(x.item())) for x, y in points]
+            all_points.append(points)
+
+            for x, y in points:
+                self._draw_circle(debug_images[i], (x, y), 5)
+
+        return (all_points, debug_images)
+
+    @staticmethod
+    def _draw_circle(
+        image: torch.Tensor, center: tuple[int, int], radius: int
+    ):
+        """Draw a 5px circle on the image."""
+        x0, y0 = center
+        for x in range(-radius, radius + 1):
+            for y in range(-radius, radius + 1):
+                in_radius = x**2 + y**2 <= radius**2
+                in_bounds = (
+                    0 <= x0 + x < image.shape[1]
+                    and 0 <= y0 + y < image.shape[0]
+                )
+                if in_radius and in_bounds:
+                    image[y0 + y, x0 + x] = torch.tensor(
+                        [255, 255, 255],
+                        dtype=torch.uint8,
+                        device=image.device,
+                    )
 
 
 class MTB_ColorCorrect:
@@ -475,7 +594,10 @@ class MTB_MaskToImage:
                 "mask": ("MASK",),
                 "color": ("COLOR",),
                 "background": ("COLOR", {"default": "#000000"}),
-            }
+            },
+            "optional": {
+                "invert": ("BOOLEAN", {"default": False}),
+            },
         }
 
     CATEGORY = "mtb/generate"
@@ -484,11 +606,12 @@ class MTB_MaskToImage:
 
     FUNCTION = "render_mask"
 
-    def render_mask(self, mask, color, background):
-        masks = tensor2np(mask)
+    def render_mask(self, mask, color, background, invert=False):
+        masks = tensor2pil(1.0 - mask) if invert else tensor2pil(mask)
         images = []
+
         for m in masks:
-            _mask = Image.fromarray(m).convert("L")
+            _mask = m.convert("L")
 
             log.debug(
                 f"Converted mask to PIL Image format, size: {_mask.size}"
@@ -526,6 +649,11 @@ class MTB_ColoredImage:
             "optional": {
                 "foreground_image": ("IMAGE",),
                 "foreground_mask": ("MASK",),
+                "invert": ("BOOLEAN", {"default": False}),
+                "mask_opacity": (
+                    "FLOAT",
+                    {"default": 1.0, "step": 0.1, "min": 0},
+                ),
             },
         }
 
@@ -535,28 +663,19 @@ class MTB_ColoredImage:
 
     FUNCTION = "render_img"
 
-    def resize_and_crop(self, img, target_size):
-        # Calculate scaling factors for both dimensions
-        scale_x = target_size[0] / img.width
-        scale_y = target_size[1] / img.height
-
-        # Use the smaller scaling factor to maintain aspect ratio
-        scale = max(scale_x, scale_y)
-
-        # Resize the image based on calculated scale
+    def resize_and_crop(self, img: Image.Image, target_size: tuple[int, int]):
+        scale = max(target_size[0] / img.width, target_size[1] / img.height)
         new_size = (int(img.width * scale), int(img.height * scale))
         img = img.resize(new_size, Image.LANCZOS)
+        left = (img.width - target_size[0]) // 2
+        top = (img.height - target_size[1]) // 2
+        return img.crop(
+            (left, top, left + target_size[0], top + target_size[1])
+        )
 
-        # Calculate cropping coordinates
-        left = (img.width - target_size[0]) / 2
-        top = (img.height - target_size[1]) / 2
-        right = (img.width + target_size[0]) / 2
-        bottom = (img.height + target_size[1]) / 2
-
-        # Crop and return the image
-        return img.crop((left, top, right, bottom))
-
-    def resize_and_crop_thumbnails(self, img, target_size):
+    def resize_and_crop_thumbnails(
+        self, img: Image.Image, target_size: tuple[int, int]
+    ):
         img.thumbnail(target_size, Image.LANCZOS)
         left = (img.width - target_size[0]) / 2
         top = (img.height - target_size[1]) / 2
@@ -564,69 +683,71 @@ class MTB_ColoredImage:
         bottom = (img.height + target_size[1]) / 2
         return img.crop((left, top, right, bottom))
 
+    @staticmethod
+    def process_mask(
+        mask: torch.Tensor | None,
+        invert: bool,
+        # opacity: float,
+        batch_size: int,
+    ) -> list[Image.Image] | None:
+        if mask is None:
+            return [None] * batch_size
+
+        masks = tensor2pil(mask if not invert else 1.0 - mask)
+
+        if len(masks) == 1 and batch_size > 1:
+            masks = masks * batch_size
+
+        if len(masks) != batch_size:
+            raise ValueError(
+                "Foreground image and mask must have the same batch size"
+            )
+
+        return masks
+
     def render_img(
         self,
-        color,
-        width,
-        height,
+        color: str,
+        width: int,
+        height: int,
         foreground_image: torch.Tensor | None = None,
         foreground_mask: torch.Tensor | None = None,
-    ):
-        image = Image.new("RGBA", (width, height), color=color)
-        output = []
-        if foreground_image is not None:
-            fg_masks = [None] * foreground_image.size()[0]
+        invert: bool = False,
+        mask_opacity: float = 1.0,
+    ) -> tuple[torch.Tensor]:
+        background = Image.new("RGBA", (width, height), color=color)
 
-            if foreground_mask is not None:
-                fg_size = foreground_image.size()[0]
-                mask_size = foreground_mask.size()[0]
+        if foreground_image is None:
+            return (pil2tensor([background.convert("RGB")]),)
 
-                if fg_size == 1 and mask_size > fg_size:
-                    foreground_image = foreground_image.repeat(
-                        mask_size, 1, 1, 1
-                    )
+        fg_images = tensor2pil(foreground_image)
+        fg_masks = self.process_mask(foreground_mask, invert, len(fg_images))
 
-                if foreground_image.size()[0] != foreground_mask.size()[0]:
+        output: list[Image.Image] = []
+        for fg_image, fg_mask in zip(fg_images, fg_masks, strict=False):
+            fg_image = self.resize_and_crop(fg_image, background.size)
+
+            if fg_mask:
+                fg_mask = self.resize_and_crop(fg_mask, background.size)
+
+                fg_mask_array = np.array(fg_mask)
+                fg_mask_array = (fg_mask_array * mask_opacity).astype(np.uint8)
+                fg_mask = Image.fromarray(fg_mask_array)
+                output.append(
+                    Image.composite(
+                        fg_image.convert("RGBA"), background, fg_mask
+                    ).convert("RGB")
+                )
+            else:
+                if fg_image.mode != "RGBA":
                     raise ValueError(
-                        "Foreground image and mask must have same batch size"
+                        f"Foreground image must be in 'RGBA' mode when no mask is provided, got {fg_image.mode}"
                     )
-                fg_masks = tensor2pil(foreground_mask.unsqueeze(-1))
+                output.append(
+                    Image.alpha_composite(background, fg_image).convert("RGB")
+                )
 
-            fg_images = tensor2pil(foreground_image)
-
-            for fg_image, fg_mask in zip(fg_images, fg_masks, strict=False):
-                # Resize and crop if dimensions mismatch
-                if fg_image.size != image.size:
-                    fg_image = self.resize_and_crop(fg_image, image.size)
-                    if fg_mask:
-                        fg_mask = self.resize_and_crop(fg_mask, image.size)
-
-                if fg_mask:
-                    output.append(
-                        Image.composite(
-                            fg_image.convert("RGBA"),
-                            image,
-                            fg_mask,
-                        ).convert("RGB")
-                    )
-                else:
-                    if fg_image.mode != "RGBA":
-                        raise ValueError(
-                            "Foreground image must be in 'RGBA' mode "
-                            f"when no mask is provided, got {fg_image.mode}"
-                        )
-                    output.append(
-                        Image.alpha_composite(image, fg_image).convert("RGB")
-                    )
-
-        else:
-            if foreground_mask is not None:
-                log.warn("Mask ignored because no foreground image is given")
-            output.append(image.convert("RGB"))
-
-        output = pil2tensor(output)
-
-        return (output,)
+        return (pil2tensor(output),)
 
 
 class MTB_ImagePremultiply:
@@ -935,4 +1056,6 @@ __nodes__ = [
     MTB_SaveImageGrid,
     MTB_LoadImageFromUrl,
     MTB_Sharpen,
+    MTB_ExtractCoordinatesFromImage,
+    MTB_CoordinatesToString,
 ]
