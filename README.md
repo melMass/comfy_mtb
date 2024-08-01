@@ -8,8 +8,4 @@
 
 [**Wiki**](/wiki) | [**Install Guide**](./INSTALL.md) | [**Examples**](https://github.com/melMass/comfy_mtb/wiki/Examples)
 
-There is now a dedicated `#mtb-nodes` channel on the Banodoco discord:  
-[![](https://dcbadge.vercel.app/api/server/AXhsabmDhn?style=flat)](https://discord.gg/IAXhsabmDhn)
-
----
 
