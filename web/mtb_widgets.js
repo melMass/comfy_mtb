@@ -1197,6 +1197,7 @@ const mtb_widgets = {
       }
 
       case 'Batch Shape (mtb)':
+      case 'Mask To Image (mtb)':
       case 'Text To Image (mtb)': {
         shared.addMenuHandler(nodeType, function (_app, options) {
           /** @type {ContextMenuItem} */
