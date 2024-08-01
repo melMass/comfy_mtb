@@ -9,12 +9,14 @@ import socket
 import subprocess
 import sys
 import uuid
+from collections.abc import Callable, Sequence
 from enum import Enum
 from pathlib import Path
 from typing import TypeVar
 
 import folder_paths
 import numpy as np
+import numpy.typing as npt
 import requests
 import torch
 from PIL import Image
@@ -501,54 +503,92 @@ PIL_FILTER_MAP = {
 
 
 # region TENSOR Utilities
-def tensor2pil(image: torch.Tensor) -> list[Image.Image]:
-    batch_count = image.size(0) if len(image.shape) > 3 else 1
-    if batch_count > 1:
-        out = []
-        for i in range(batch_count):
-            out.extend(tensor2pil(image[i]))
-        return out
-
-    return [
-        Image.fromarray(
-            np.clip(255.0 * image.cpu().numpy().squeeze(), 0, 255).astype(
-                np.uint8
-            )
-        )
-    ]
+def to_numpy(image: torch.Tensor) -> npt.NDArray[np.uint8]:
+    """Converts a tensor to a ndarray with proper scaling and type conversion."""
+    log.debug(f"Converting tensor to numpy array with shape {image.shape}")
+    np_array = np.clip(255.0 * image.cpu().numpy(), 0, 255).astype(np.uint8)
+    log.debug(f"Numpy array shape after conversion: {np_array.shape}")
+    return np_array
 
 
-def pil2tensor(image: Image.Image | list[Image.Image]) -> torch.Tensor:
-    if isinstance(image, list):
-        return torch.cat([pil2tensor(img) for img in image], dim=0)
+def handle_batch(
+    tensor: torch.Tensor,
+    func: Callable[[torch.Tensor], Image.Image | npt.NDArray[np.uint8]],
+) -> list[Image.Image] | list[npt.NDArray[np.uint8]]:
+    """Handles batch processing for a given tensor and conversion function."""
+    return [func(tensor[i]) for i in range(tensor.shape[0])]
 
-    return torch.from_numpy(
-        np.array(image).astype(np.float32) / 255.0
-    ).unsqueeze(0)
+
+def tensor2pil(tensor: torch.Tensor) -> list[Image.Image]:
+    """Converts a batch of tensors to a list of PIL Images."""
+
+    def single_tensor2pil(t: torch.Tensor) -> Image.Image:
+        np_array = to_numpy(t)
+        if np_array.ndim == 2:  # (H, W) for masks
+            return Image.fromarray(np_array, mode="L")
+        elif np_array.ndim == 3:  # (H, W, C) for RGB/RGBA
+            if np_array.shape[2] == 3:
+                return Image.fromarray(np_array, mode="RGB")
+            elif np_array.shape[2] == 4:
+                return Image.fromarray(np_array, mode="RGBA")
+        raise ValueError(f"Invalid tensor shape: {t.shape}")
+
+    return handle_batch(tensor, single_tensor2pil)
+
+
+def pil2tensor(images: Image.Image | list[Image.Image]) -> torch.Tensor:
+    """Converts a PIL Image or a list of PIL Images to a tensor."""
+
+    def single_pil2tensor(image: Image.Image) -> torch.Tensor:
+        np_image = np.array(image).astype(np.float32) / 255.0
+        if np_image.ndim == 2:  # Grayscale
+            return torch.from_numpy(np_image).unsqueeze(0)  # (1, H, W)
+        else:  # RGB or RGBA
+            return torch.from_numpy(np_image).unsqueeze(0)  # (1, H, W, C)
+
+    if isinstance(images, Image.Image):
+        return single_pil2tensor(images)
+    else:
+        return torch.cat([single_pil2tensor(img) for img in images], dim=0)
 
 
 def np2tensor(
-    img_np: np.ndarray | list[np.ndarray[np.float32]],
+    np_array: npt.NDArray[np.float32] | Sequence[npt.NDArray[np.float32]],
 ) -> torch.Tensor:
-    if isinstance(img_np, list):
-        return torch.cat([np2tensor(img) for img in img_np], dim=0)
+    """Converts a NumPy array or a list of NumPy arrays to a tensor."""
 
-    return torch.from_numpy(img_np.astype(np.float32) / 255.0).unsqueeze(0)
+    def single_np2tensor(array: npt.NDArray[np.float32]) -> torch.Tensor:
+        if array.ndim == 2:  # (H, W) for masks
+            return torch.from_numpy(
+                array.astype(np.float32) / 255.0
+            ).unsqueeze(0)  # (1, H, W)
+        elif array.ndim == 3:  # (H, W, C) for RGB/RGBA
+            return torch.from_numpy(
+                array.astype(np.float32) / 255.0
+            ).unsqueeze(0)  # (1, H, W, C)
+        raise ValueError(f"Invalid array shape: {array.shape}")
+
+    if isinstance(np_array, np.ndarray):
+        return single_np2tensor(np_array)
+    else:
+        return torch.cat([single_np2tensor(arr) for arr in np_array], dim=0)
 
 
-def tensor2np(tensor: torch.Tensor) -> list[np.ndarray[np.float32]]:
-    batch_count = tensor.size(0) if len(tensor.shape) > 3 else 1
-    if batch_count > 1:
-        out = []
-        for i in range(batch_count):
-            out.extend(tensor2np(tensor[i]))
-        return out
+def tensor2np(tensor: torch.Tensor) -> list[npt.NDArray[np.uint8]]:
+    """Converts a batch of tensors to a list of NumPy arrays."""
 
-    return [
-        np.clip(255.0 * tensor.cpu().numpy().squeeze(), 0, 255).astype(
-            np.uint8
-        )
-    ]
+    def single_tensor2np(t: torch.Tensor) -> npt.NDArray[np.uint8]:
+        t = t.squeeze()  # Remove any singleton dimensions
+        if t.ndim == 2:  # (H, W) for masks
+            return to_numpy(t)
+        elif t.ndim == 3:  # (C, H, W) for RGB/RGBA
+            if t.shape[0] in [1, 3, 4]:  # Channel-first format
+                t = t.permute(1, 2, 0)
+            return to_numpy(t)
+        else:
+            raise ValueError(f"Invalid tensor shape: {t.shape}")
+
+    return handle_batch(tensor, single_tensor2np)
 
 
 def pad(img, left, right, top, bottom):
