@@ -3,6 +3,7 @@ import json
 import math
 import os
 
+import comfy.model_management as model_management
 import folder_paths
 import numpy as np
 import torch
@@ -154,6 +155,224 @@ class MTB_ExtractCoordinatesFromImage:
                     )
 
 
+class MTB_ColorCorrectGPU:
+    """Various color correction methods using only Torch."""
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "image": ("IMAGE",),
+                "force_gpu": ("BOOLEAN", {"default": True}),
+                "clamp": ([True, False], {"default": True}),
+                "gamma": (
+                    "FLOAT",
+                    {"default": 1.0, "min": 0.0, "max": 5.0, "step": 0.01},
+                ),
+                "contrast": (
+                    "FLOAT",
+                    {"default": 1.0, "min": 0.0, "max": 5.0, "step": 0.01},
+                ),
+                "exposure": (
+                    "FLOAT",
+                    {"default": 0.0, "min": -5.0, "max": 5.0, "step": 0.01},
+                ),
+                "offset": (
+                    "FLOAT",
+                    {"default": 0.0, "min": -5.0, "max": 5.0, "step": 0.01},
+                ),
+                "hue": (
+                    "FLOAT",
+                    {"default": 0.0, "min": -0.5, "max": 0.5, "step": 0.01},
+                ),
+                "saturation": (
+                    "FLOAT",
+                    {"default": 1.0, "min": 0.0, "max": 5.0, "step": 0.01},
+                ),
+                "value": (
+                    "FLOAT",
+                    {"default": 1.0, "min": 0.0, "max": 5.0, "step": 0.01},
+                ),
+            },
+            "optional": {"mask": ("MASK",)},
+        }
+
+    RETURN_TYPES = ("IMAGE",)
+    FUNCTION = "correct"
+    CATEGORY = "mtb/image processing"
+
+    @staticmethod
+    def get_device(tensor: torch.Tensor, force_gpu: bool):
+        if force_gpu:
+            if torch.cuda.is_available():
+                return torch.device("cuda")
+            elif (
+                hasattr(torch.backends, "mps")
+                and torch.backends.mps.is_available()
+            ):
+                return torch.device("mps")
+            elif hasattr(torch, "hip") and torch.hip.is_available():
+                return torch.device("hip")
+        return (
+            tensor.device
+        )  # model_management.get_torch_device() # torch.device("cpu")
+
+    @staticmethod
+    def rgb_to_hsv(image: torch.Tensor):
+        r, g, b = image.unbind(-1)
+        max_rgb, argmax_rgb = image.max(-1)
+        min_rgb, _ = image.min(-1)
+
+        diff = max_rgb - min_rgb
+
+        h = torch.empty_like(max_rgb)
+        s = diff / (max_rgb + 1e-7)
+        v = max_rgb
+
+        h[argmax_rgb == 0] = (g - b)[argmax_rgb == 0] / (diff + 1e-7)[
+            argmax_rgb == 0
+        ]
+        h[argmax_rgb == 1] = (
+            2.0 + (b - r)[argmax_rgb == 1] / (diff + 1e-7)[argmax_rgb == 1]
+        )
+        h[argmax_rgb == 2] = (
+            4.0 + (r - g)[argmax_rgb == 2] / (diff + 1e-7)[argmax_rgb == 2]
+        )
+        h = (h / 6.0) % 1.0
+
+        h = h.unsqueeze(-1)
+        s = s.unsqueeze(-1)
+        v = v.unsqueeze(-1)
+
+        return torch.cat((h, s, v), dim=-1)
+
+    @staticmethod
+    def hsv_to_rgb(hsv: torch.Tensor):
+        h, s, v = hsv.unbind(-1)
+        h = h * 6.0
+
+        i = torch.floor(h)
+        f = h - i
+        p = v * (1.0 - s)
+        q = v * (1.0 - s * f)
+        t = v * (1.0 - s * (1.0 - f))
+
+        i = i.long() % 6
+
+        mask = torch.stack(
+            (i == 0, i == 1, i == 2, i == 3, i == 4, i == 5), -1
+        )
+
+        rgb = torch.stack(
+            (
+                torch.where(
+                    mask[..., 0],
+                    v,
+                    torch.where(
+                        mask[..., 1],
+                        q,
+                        torch.where(
+                            mask[..., 2],
+                            p,
+                            torch.where(
+                                mask[..., 3],
+                                p,
+                                torch.where(mask[..., 4], t, v),
+                            ),
+                        ),
+                    ),
+                ),
+                torch.where(
+                    mask[..., 0],
+                    t,
+                    torch.where(
+                        mask[..., 1],
+                        v,
+                        torch.where(
+                            mask[..., 2],
+                            v,
+                            torch.where(
+                                mask[..., 3],
+                                q,
+                                torch.where(mask[..., 4], p, p),
+                            ),
+                        ),
+                    ),
+                ),
+                torch.where(
+                    mask[..., 0],
+                    p,
+                    torch.where(
+                        mask[..., 1],
+                        p,
+                        torch.where(
+                            mask[..., 2],
+                            t,
+                            torch.where(
+                                mask[..., 3],
+                                v,
+                                torch.where(mask[..., 4], v, q),
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            dim=-1,
+        )
+
+        return rgb
+
+    def correct(
+        self,
+        image: torch.Tensor,
+        force_gpu: bool,
+        clamp: bool,
+        gamma: float = 1.0,
+        contrast: float = 1.0,
+        exposure: float = 0.0,
+        offset: float = 0.0,
+        hue: float = 0.0,
+        saturation: float = 1.0,
+        value: float = 1.0,
+        mask: torch.Tensor | None = None,
+    ):
+        device = self.get_device(image, force_gpu)
+        image = image.to(device)
+
+        if mask is not None:
+            if mask.shape[0] != image.shape[0]:
+                mask = mask.expand(image.shape[0], -1, -1)
+
+            mask = mask.unsqueeze(-1).expand(-1, -1, -1, 3)
+            mask = mask.to(device)
+
+        model_management.throw_exception_if_processing_interrupted()
+        adjusted = image.pow(1 / gamma) * (2.0**exposure) * contrast + offset
+
+        model_management.throw_exception_if_processing_interrupted()
+        hsv = self.rgb_to_hsv(adjusted)
+        hsv[..., 0] = (hsv[..., 0] + hue) % 1.0  # Hue
+        hsv[..., 1] = hsv[..., 1] * saturation  # Saturation
+        hsv[..., 2] = hsv[..., 2] * value  # Value
+        adjusted = self.hsv_to_rgb(hsv)
+
+        model_management.throw_exception_if_processing_interrupted()
+        if clamp:
+            adjusted = torch.clamp(adjusted, 0.0, 1.0)
+
+        # apply mask
+        result = (
+            adjusted
+            if mask is None
+            else torch.where(mask > 0, adjusted, image)
+        )
+
+        if not force_gpu:
+            result = result.cpu()
+
+        return (result,)
+
+
 class MTB_ColorCorrect:
     """Various color correction methods"""
 
@@ -191,7 +410,8 @@ class MTB_ColorCorrect:
                     "FLOAT",
                     {"default": 1.0, "min": 0.0, "max": 5.0, "step": 0.01},
                 ),
-            }
+            },
+            "optional": {"mask": ("MASK",)},
         }
 
     RETURN_TYPES = ("IMAGE",)
@@ -307,18 +527,31 @@ class MTB_ColorCorrect:
         hue: float = 0.0,
         saturation: float = 1.0,
         value: float = 1.0,
+        mask: torch.Tensor | None = None,
     ):
+        if mask is not None:
+            if mask.shape[0] != image.shape[0]:
+                mask = mask.expand(image.shape[0], -1, -1)
+
+            mask = mask.unsqueeze(-1).expand(-1, -1, -1, 3)
+
         # Apply color correction operations
-        image = self.gamma_correction_tensor(image, gamma)
-        image = self.contrast_adjustment_tensor(image, contrast)
-        image = self.exposure_adjustment_tensor(image, exposure)
-        image = self.offset_adjustment_tensor(image, offset)
-        image = self.hsv_adjustment(image, hue, saturation, value)
+        adjusted = self.gamma_correction_tensor(image, gamma)
+        adjusted = self.contrast_adjustment_tensor(adjusted, contrast)
+        adjusted = self.exposure_adjustment_tensor(adjusted, exposure)
+        adjusted = self.offset_adjustment_tensor(adjusted, offset)
+        adjusted = self.hsv_adjustment(adjusted, hue, saturation, value)
 
         if clamp:
-            image = torch.clamp(image, 0.0, 1.0)
+            adjusted = torch.clamp(image, 0.0, 1.0)
 
-        return (image,)
+        result = (
+            adjusted
+            if mask is None
+            else torch.where(mask > 0, adjusted, image)
+        )
+
+        return (result,)
 
 
 class MTB_ImageCompare:
@@ -1045,6 +1278,7 @@ class MTB_ImageTileOffset:
 
 __nodes__ = [
     MTB_ColorCorrect,
+    MTB_ColorCorrectGPU,
     MTB_ImageCompare,
     MTB_ImageTileOffset,
     MTB_Blur,
