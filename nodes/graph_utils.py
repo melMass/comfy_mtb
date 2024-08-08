@@ -491,14 +491,14 @@ class MTB_MathExpression:
     RETURN_NAMES = ("result (float)", "result (int)")
     CATEGORY = "mtb/math"
     DESCRIPTION = (
-        "evaluate a simple math expression string (!! Fallsback to eval)"
+        "evaluate a simple math expression string, only supports literal_eval"
     )
 
-    def eval_expression(self, expression, **kwargs):
+    def eval_expression(self, expression: str, **kwargs):
         from ast import literal_eval
 
         for key, value in kwargs.items():
-            print(f"Replacing placeholder <{key}> with value {value}")
+            log.debug(f"Replacing placeholder <{key}> with value {value}")
             expression = expression.replace(f"<{key}>", str(value))
 
         result = -1
@@ -509,15 +509,10 @@ class MTB_MathExpression:
                 f"The expression syntax is wrong '{expression}': {e}"
             ) from e
 
-        except ValueError:
-            try:
-                expression = expression.replace("^", "**")
-                result = eval(expression)
-            except Exception as e:
-                # Handle any other exceptions and provide a meaningful error message
-                raise ValueError(
-                    f"Error evaluating expression '{expression}': {e}"
-                ) from e
+        except Exception as e:
+            raise ValueError(
+                f"Math expression only support literal_eval now: {e}"
+            )
 
         return (result, int(result))
 
