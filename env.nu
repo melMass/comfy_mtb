@@ -1,7 +1,5 @@
 # NOTE: This file is only use for development you can ignore it
 
-use path.nu *
-
 def get_root [--clean] {
     if $clean {
         $env.COMFY_CLEAN_ROOT
@@ -29,7 +27,7 @@ export def "comfy start" [--clean,--old-ui, --listen] {
 
     let root = get_root --clean=($clean)
     cd $root
-    MTB_DEBUG=true python main.py --port 3000 ...(if not $old_ui { ["--front-end-version", "Comfy-Org/ComfyUI_frontend@latest"]} else {[]}) --preview-method auto ...(if $listen {["--listen"]} else {[]})
+    MTB_DEBUG=true python main.py --port 3000 ...(if $old_ui { ["--front-end-version", "Comfy-Org/ComfyUI_legacy_frontend@latest"]} else {[]}) --preview-method auto ...(if $listen {["--listen"]} else {[]})
 }
 
 # update comfy itself and merge master in current branch
@@ -140,6 +138,10 @@ export def "comfy update_extensions" [--clean] {
     git multipull .
 }
 
+def --env path-add [pth] {
+    $env.PATH = ($env.PATH | append ($pth | path expand))
+
+}
 
 
 export-env {
