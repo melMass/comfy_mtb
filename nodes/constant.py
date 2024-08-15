@@ -24,4 +24,4 @@ class MTB_Constant:
         return (kwargs.get("Value"),)
 
 
-__nodes__ = [MTB_Constant]
+# __nodes__ = [MTB_Constant]
