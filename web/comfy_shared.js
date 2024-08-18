@@ -917,8 +917,8 @@ export const addDocumentation = (
       Object.assign(docElement.style, {
         transformOrigin: '0 0',
         transform: scale,
-        left: `${transform.a + transform.e}px`,
-        top: `${transform.d + transform.f}px`,
+        left: `${transform.a + rect.x + transform.e}px`,
+        top: `${transform.d + rect.y + transform.f}px`,
         width: this.docPos ? this.docPos.width : `${this.size[0] * 1.5}px`,
         height: this.docPos?.height,
       })
