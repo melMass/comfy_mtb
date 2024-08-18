@@ -1,4 +1,6 @@
 import csv
+import os
+import random
 
 from aiohttp import web
 
@@ -6,6 +8,7 @@ from .log import mklog
 from .utils import (
     backup_file,
     import_install,
+    input_dir,
     reqs_map,
     run_command,
     styles_dir,
@@ -48,6 +51,24 @@ def ACTIONS_installDependency(dependency_names=None):
     #         if req.name == dependency_name:
     #             endlog.debug(f"Dependency {dependency_name} installed")
     #             break
+
+
+def ACTIONS_getInputs(count=200, offset=0):
+    # TODO: find a better name :s
+    enabled = "MTB_EXPOSE" in os.environ
+    if not enabled:
+        return {"error": "Session not authorized to getInputs"}
+
+    imgs = {}
+    for i, img in enumerate(input_dir.glob("*.png")):
+        if i < offset:
+            continue
+        imgs[img.stem] = (
+            f"/mtb/view?filename={img.name}&width=512&type=input&subfolder=&preview=&rand={random.random()}"
+        )
+        if i >= count:
+            break
+    return imgs
 
 
 def ACTIONS_getStyles(style_name=None):
@@ -153,7 +174,7 @@ def csv_editor():
     html_out = """
             <div id="style-editor">
              <h1>Style Editor</h1>
-            
+
             """
     for current, styles in style_files.items():
         current_out = f"<h3>{current}</h3>"
@@ -299,7 +320,7 @@ def render_table(table_dict, sort=True, title=None):
             <tbody>
                 {table_rows}
             </tbody>
-        </table>      
+        </table>
         </div>
         """
 
@@ -355,6 +376,6 @@ def render_base_template(title, content):
             <!-- Shared footer content here -->
         </footer>
     </body>
-    
+
     </html>
     """
