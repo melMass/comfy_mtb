@@ -347,6 +347,267 @@ if hasattr(PromptServer, "instance"):
         # Return JSON for other requests
         return web.json_response({"message": "Welcome to MTB!"})
 
+    import asyncio
+    import os
+    from functools import lru_cache
+    from io import BytesIO
+
+    from aiohttp import web
+    from PIL import Image
+
+    # In-memory cache for memoization
+    @lru_cache(maxsize=256)
+    def get_cached_image(file_path, preview_params=None, channel=None):
+        with Image.open(file_path) as img:
+            if preview_params:
+                img = process_preview(img, preview_params)
+            if channel:
+                img = process_channel(img, channel)
+            return img
+
+    def process_preview(img: Image, preview_params):
+        image_format, quality, width = preview_params
+        quality = int(quality)
+
+        if width:
+            width = int(width)
+            img.thumbnail((width, int(width * img.height / img.width)))
+
+        buffer = BytesIO()
+        img.save(buffer, format=image_format, quality=quality)
+        buffer.seek(0)
+        return buffer
+
+    def process_channel(img, channel):
+        if channel == "rgb":
+            if img.mode == "RGBA":
+                r, g, b, _ = img.split()
+                img = Image.merge("RGB", (r, g, b))
+            else:
+                img = img.convert("RGB")
+        elif channel == "a":
+            if img.mode == "RGBA":
+                _, _, _, a = img.split()
+            else:
+                a = Image.new("L", img.size, 255)
+            img = Image.new("RGBA", img.size)
+            img.putalpha(a)
+
+        buffer = BytesIO()
+        img.save(buffer, format="PNG")
+        buffer.seek(0)
+        return buffer
+
+    async def get_image_response(
+        file, filename, preview_info=None, channel=None
+    ):
+        img = await asyncio.to_thread(
+            get_cached_image, file, preview_info, channel
+        )
+        return web.Response(
+            body=img.read(),
+            content_type="image/webp" if preview_info else "image/png",
+            headers={"Content-Disposition": f'filename="{filename}"'},
+        )
+
+    @PromptServer.instance.routes.get("/mtb/view")
+    async def view_image(request):
+        import folder_paths
+
+        filename = request.rel_url.query.get("filename")
+        if not filename:
+            return web.Response(status=404)
+
+        filename, output_dir = folder_paths.annotated_filepath(filename)
+        if filename[0] == "/" or ".." in filename:
+            return web.Response(status=400)
+
+        if output_dir is None:
+            type = request.rel_url.query.get("type", "output")
+            output_dir = folder_paths.get_directory_by_type(type)
+
+        if output_dir is None:
+            return web.Response(status=400)
+
+        if "subfolder" in request.rel_url.query:
+            full_output_dir = os.path.join(
+                output_dir, request.rel_url.query["subfolder"]
+            )
+            if (
+                os.path.commonpath(
+                    (os.path.abspath(full_output_dir), output_dir)
+                )
+                != output_dir
+            ):
+                return web.Response(status=403)
+            output_dir = full_output_dir
+
+        filename = os.path.basename(filename)
+        file = os.path.join(output_dir, filename)
+
+        if not os.path.isfile(file):
+            return web.Response(status=404)
+
+        preview_info = None
+        if "preview" in request.rel_url.query:
+            preview_params = request.rel_url.query["preview"].split(";")
+            image_format = (
+                preview_params[0]
+                if preview_params[0] in ["webp", "jpeg"]
+                else "webp"
+            )
+            quality = (
+                int(preview_params[1])
+                if len(preview_params) > 1 and preview_params[1].isdigit()
+                else 90
+            )
+            width = request.rel_url.query.get("width")
+            preview_info = (image_format, quality, width)
+
+        channel = request.rel_url.query.get("channel")
+
+        return await get_image_response(file, filename, preview_info, channel)
+
+    #
+    # @PromptServer.instance.routes.get("/mtb/view")
+    # async def view_image(request):
+    #     from io import BytesIO
+    #
+    #     import folder_paths
+    #     from PIL import Image
+    #
+    #     if "filename" in request.rel_url.query:
+    #         filename = request.rel_url.query["filename"]
+    #         filename, output_dir = folder_paths.annotated_filepath(filename)
+    #
+    #         # validation for security: prevent accessing arbitrary path
+    #         if filename[0] == "/" or ".." in filename:
+    #             return web.Response(status=400)
+    #
+    #         if output_dir is None:
+    #             type = request.rel_url.query.get("type", "output")
+    #             output_dir = folder_paths.get_directory_by_type(type)
+    #
+    #         if output_dir is None:
+    #             return web.Response(status=400)
+    #
+    #         if "subfolder" in request.rel_url.query:
+    #             full_output_dir = os.path.join(
+    #                 output_dir, request.rel_url.query["subfolder"]
+    #             )
+    #             if (
+    #                 os.path.commonpath(
+    #                     (os.path.abspath(full_output_dir), output_dir)
+    #                 )
+    #                 != output_dir
+    #             ):
+    #                 return web.Response(status=403)
+    #             output_dir = full_output_dir
+    #
+    #         filename = os.path.basename(filename)
+    #         file = os.path.join(output_dir, filename)
+    #
+    #         if os.path.isfile(file):
+    #             if "preview" in request.rel_url.query:
+    #                 with Image.open(file) as img:
+    #                     preview_info = request.rel_url.query["preview"].split(
+    #                         ";"
+    #                     )
+    #                     image_format = preview_info[0]
+    #                     if image_format not in [
+    #                         "webp",
+    #                         "jpeg",
+    #                     ] or "a" in request.rel_url.query.get("channel", ""):
+    #                         image_format = "webp"
+    #
+    #                     quality = 90
+    #                     if preview_info[-1].isdigit():
+    #                         quality = int(preview_info[-1])
+    #
+    #                     width = request.rel_url.query.get("width")
+    #                     if width is not None:
+    #                         width = int(width)
+    #                         img.resize(
+    #                             (
+    #                                 width,
+    #                                 int(width * img.height / img.width),
+    #                             )
+    #                         )
+    #
+    #                     buffer = BytesIO()
+    #                     if (
+    #                         image_format in ["jpeg"]
+    #                         or request.rel_url.query.get("channel", "")
+    #                         == "rgb"
+    #                     ):
+    #                         img = img.convert("RGB")
+    #                     img.save(buffer, format=image_format, quality=quality)
+    #                     buffer.seek(0)
+    #
+    #                     return web.Response(
+    #                         body=buffer.read(),
+    #                         content_type=f"image/{image_format}",
+    #                         headers={
+    #                             "Content-Disposition": f'filename="{filename}"'
+    #                         },
+    #                     )
+    #
+    #             if "channel" not in request.rel_url.query:
+    #                 channel = "rgba"
+    #             else:
+    #                 channel = request.rel_url.query["channel"]
+    #
+    #             if channel == "rgb":
+    #                 with Image.open(file) as img:
+    #                     if img.mode == "RGBA":
+    #                         r, g, b, a = img.split()
+    #                         new_img = Image.merge("RGB", (r, g, b))
+    #                     else:
+    #                         new_img = img.convert("RGB")
+    #
+    #                     buffer = BytesIO()
+    #                     new_img.save(buffer, format="PNG")
+    #                     buffer.seek(0)
+    #
+    #                     return web.Response(
+    #                         body=buffer.read(),
+    #                         content_type="image/png",
+    #                         headers={
+    #                             "Content-Disposition": f'filename="{filename}"'
+    #                         },
+    #                     )
+    #
+    #             elif channel == "a":
+    #                 with Image.open(file) as img:
+    #                     if img.mode == "RGBA":
+    #                         _, _, _, a = img.split()
+    #                     else:
+    #                         a = Image.new("L", img.size, 255)
+    #
+    #                     # alpha img
+    #                     alpha_img = Image.new("RGBA", img.size)
+    #                     alpha_img.putalpha(a)
+    #                     alpha_buffer = BytesIO()
+    #                     alpha_img.save(alpha_buffer, format="PNG")
+    #                     alpha_buffer.seek(0)
+    #
+    #                     return web.Response(
+    #                         body=alpha_buffer.read(),
+    #                         content_type="image/png",
+    #                         headers={
+    #                             "Content-Disposition": f'filename="{filename}"'
+    #                         },
+    #                     )
+    #             else:
+    #                 return web.FileResponse(
+    #                     file,
+    #                     headers={
+    #                         "Content-Disposition": f'filename="{filename}"'
+    #                     },
+    #                 )
+    #
+    #     return web.Response(status=404)
+    #
     @PromptServer.instance.routes.get("/mtb/debug")
     async def get_debug(request):
         from . import endpoint
