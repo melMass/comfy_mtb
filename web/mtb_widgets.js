@@ -665,7 +665,7 @@ const mtb_widgets = {
       }
       window.MTB.DEBUG = msg.enabled
     } catch (e) {
-      console.error('Error:', error)
+      console.error('Error:', e)
     }
   },
 
