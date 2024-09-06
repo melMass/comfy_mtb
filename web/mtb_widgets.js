@@ -1110,45 +1110,49 @@ const mtb_widgets = {
 				break
 			}
 
-			//NOTE: dynamic nodes
-			case 'Apply Text Template (mtb)': {
-				shared.setupDynamicConnections(nodeType, 'var', '*')
-				break
-			}
-			case 'Save Data Bundle (mtb)': {
-				shared.setupDynamicConnections(nodeType, 'data', '*') // [MASK,IMAGE]
-				break
-			}
-			case 'Add To Playlist (mtb)': {
-				shared.setupDynamicConnections(nodeType, 'video', 'VIDEO')
-				break
-			}
-			case 'Psd Save (mtb)': {
-				shared.setupDynamicConnections(nodeType, 'input_', 'PSDLAYER')
-				break
-			}
-			// case 'Text Encode Frames (mtb)' : {
-			//   shared.setupDynamicConnections(nodeType, 'input_', 'IMAGE')
-			//   break
-			// }
-			case 'Stack Images (mtb)':
-			case 'Concat Images (mtb)': {
-				shared.setupDynamicConnections(nodeType, 'image', 'IMAGE')
-				break
-			}
-			case 'Audio Sequence (mtb)':
-			case 'Audio Stack (mtb)': {
-				shared.setupDynamicConnections(nodeType, 'audio', 'AUDIO')
-				break
-			}
-			case 'Batch Float Assemble (mtb)':
-			case 'Batch Float Math (mtb)':
-			case 'Plot Batch Float (mtb)': {
-				shared.setupDynamicConnections(nodeType, 'floats', 'FLOATS')
-				break
-			}
-			case 'Batch Merge (mtb)': {
-				shared.setupDynamicConnections(nodeType, 'batches', 'IMAGE')
+      //NOTE: dynamic nodes
+      case 'Apply Text Template (mtb)': {
+        shared.setupDynamicConnections(nodeType, 'var', '*')
+        break
+      }
+      case 'Save Data Bundle (mtb)': {
+        shared.setupDynamicConnections(nodeType, 'data', '*') // [MASK,IMAGE]
+        break
+      }
+      case 'Add To Playlist (mtb)': {
+        shared.setupDynamicConnections(nodeType, 'video', 'VIDEO')
+        break
+      }
+      case 'Interpolate Condition (mtb)': {
+        shared.setupDynamicConnections(nodeType, 'condition', 'CONDITIONING')
+        break
+      }
+      case 'Psd Save (mtb)': {
+        shared.setupDynamicConnections(nodeType, 'input_', 'PSDLAYER')
+        break
+      }
+      // case 'Text Encode Frames (mtb)' : {
+      //   shared.setupDynamicConnections(nodeType, 'input_', 'IMAGE')
+      //   break
+      // }
+      case 'Stack Images (mtb)':
+      case 'Concat Images (mtb)': {
+        shared.setupDynamicConnections(nodeType, 'image', 'IMAGE')
+        break
+      }
+      case 'Audio Sequence (mtb)':
+      case 'Audio Stack (mtb)': {
+        shared.setupDynamicConnections(nodeType, 'audio', 'AUDIO')
+        break
+      }
+      case 'Batch Float Assemble (mtb)':
+      case 'Batch Float Math (mtb)':
+      case 'Plot Batch Float (mtb)': {
+        shared.setupDynamicConnections(nodeType, 'floats', 'FLOATS')
+        break
+      }
+      case 'Batch Merge (mtb)': {
+        shared.setupDynamicConnections(nodeType, 'batches', 'IMAGE')
 
 				break
 			}
