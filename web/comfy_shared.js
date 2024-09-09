@@ -631,39 +631,6 @@ export const loadScript = (
   })
 }
 
-export function defineClass(className, classStyles) {
-  const styleSheets = document.styleSheets
-
-  // Helper function to check if the class exists in a style sheet
-  function classExistsInStyleSheet(styleSheet) {
-    const rules = styleSheet.rules || styleSheet.cssRules
-    for (const rule of rules) {
-      if (rule.selectorText === `.${className}`) {
-        return true
-      }
-    }
-    return false
-  }
-
-  // Check if the class is already defined in any of the style sheets
-  let classExists = false
-  for (const styleSheet of styleSheets) {
-    if (classExistsInStyleSheet(styleSheet)) {
-      classExists = true
-      break
-    }
-  }
-
-  // If the class doesn't exist, add the new class definition to the first style sheet
-  if (!classExists) {
-    if (styleSheets[0].insertRule) {
-      styleSheets[0].insertRule(`.${className} { ${classStyles} }`, 0)
-    } else if (styleSheets[0].addRule) {
-      styleSheets[0].addRule(`.${className}`, classStyles, 0)
-    }
-  }
-}
-
 // #endregion
 
 // #region documentation widget

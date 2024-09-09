@@ -140,8 +140,7 @@ export const ensureMTBStyles = () => {
 
 
 /* progress */
-.mtb_slider[type="range"]::-moz-range-progress,
-.mtb_slider[type="range"]::-ms-fill-upper {
+.mtb_slider[type="range"]::-moz-range-progress {
   background-color: ${S.accent};
   height:10px;
   border-radius: 5px;
