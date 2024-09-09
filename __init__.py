@@ -11,6 +11,8 @@ __version__ = "0.1.6"
 
 import os
 
+from aiohttp.web_request import Request
+
 # TODO: don't override this if the user has that setup already
 if not os.environ.get("TF_FORCE_GPU_ALLOW_GROWTH"):
     os.environ["TF_FORCE_GPU_ALLOW_GROWTH"] = "true"
@@ -31,24 +33,20 @@ from pathlib import Path
 from aiohttp import web
 from server import PromptServer
 
-import nodes
-
 from .endpoint import endlog
 from .log import blue_text, cyan_text, get_label, get_summary, log
 from .utils import comfy_dir, here
 
-NODE_CLASS_MAPPINGS = {}
-NODE_DISPLAY_NAME_MAPPINGS = {}
-NODE_CLASS_MAPPINGS_DEBUG = {}
+NODE_CLASS_MAPPINGS: dict[str, type] = {}
+NODE_DISPLAY_NAME_MAPPINGS: dict[str, str] = {}
+NODE_CLASS_MAPPINGS_DEBUG: dict[str, str | None] = {}
 WEB_DIRECTORY = "./web"
 
 
 def extract_nodes_from_source(filename: Path):
     source_code = ""
-
     source_code = filename.read_text(encoding="utf-8")
-
-    nodes = []
+    nodes: list[str] = []
 
     try:
         parsed = ast.parse(source_code)
@@ -57,14 +55,15 @@ def extract_nodes_from_source(filename: Path):
                 target = node.targets[0]
                 if isinstance(target, ast.Name) and target.id == "__nodes__":
                     value = ast.get_source_segment(source_code, node.value)
-                    node_value = ast.parse(value).body[0].value
-                    if isinstance(node_value, (ast.List, ast.Tuple)):
-                        nodes.extend(
-                            element.id
-                            for element in node_value.elts
-                            if isinstance(element, ast.Name)
-                        )
-                    break
+                    if value:
+                        node_value = ast.parse(value).body[0].value
+                        if isinstance(node_value, ast.List | ast.Tuple):
+                            nodes.extend(
+                                str(element.id)
+                                for element in node_value.elts
+                                if isinstance(element, ast.Name)
+                            )
+                        break
     except SyntaxError:
         log.error("Failed to parse")
     return nodes
@@ -72,8 +71,8 @@ def extract_nodes_from_source(filename: Path):
 
 def load_nodes():
     errors: list[str] = []
-    nodes = []
-    nodes_failed = []
+    nodes: list[type] = []
+    nodes_failed: list[str] = []
 
     for filename in (here / "nodes").iterdir():
         if filename.suffix == ".py":
@@ -124,7 +123,8 @@ def uninstall_old_web_extensions():
                 shutil.rmtree(web_mtb)
         except Exception as e:
             log.warning(
-                f"Failed to remove web mtb directory: {e}\nPlease manually remove it from disk ({web_mtb}) and restart the server."
+                f"""Failed to remove web mtb directory: {e}
+Please manually remove it from disk ({web_mtb}) and restart the server."""
             )
 
 
@@ -141,7 +141,7 @@ def wiki_to_classname(s: str):
 
 def classname_to_wiki(s: str):
     classname = s.replace("MTB_", "")
-    parts = []
+    parts: list[str] = []
     start = 0
     for i in range(1, len(classname)):
         if classname[i].isupper():
@@ -161,8 +161,6 @@ if wiki.exists() and wiki.is_dir():
 
 
 # - REGISTER NODES
-
-
 MTB_EXPORT = os.environ.get("MTB_EXPORT")
 
 nodes, failed = load_nodes()
@@ -179,7 +177,7 @@ for node_class in nodes:
             node_class.DESCRIPTION = node_class.__doc__
             if MTB_EXPORT:
                 wiki_name = classname_to_wiki(class_name)
-                (wiki / "nodes" / (wiki_name + ".md")).write_text(
+                _ = (wiki / "nodes" / (wiki_name + ".md")).write_text(
                     node_class.__doc__, encoding="utf-8"
                 )
 
@@ -192,12 +190,15 @@ for node_class in nodes:
     NODE_CLASS_MAPPINGS[node_label] = node_class
     NODE_DISPLAY_NAME_MAPPINGS[class_name] = node_label
     NODE_CLASS_MAPPINGS_DEBUG[node_label] = node_class.__doc__
-    # TODO: I removed this, I find it more convenient to write without spaces, but it breaks every of my workflows
-    # TODO (cont): and until I find a way to automate the conversion, I'll leave it like this
+
+    # TODO: I removed this, I find it more convenient to write without spaces
+    # but it breaks every of my workflows
+    # TODO (cont): and until I find a way to automate the conversion
+    # I'll leave it like this
 
     if os.environ.get("MTB_EXPORT"):
         with open(here / "node_list.json", "w") as f:
-            f.write(
+            _ = f.write(
                 json.dumps(
                     {
                         k: NODE_CLASS_MAPPINGS_DEBUG[k]
@@ -215,19 +216,27 @@ log.debug(
     )
 )
 
-log.info(f"loaded {cyan_text(len(nodes))} nodes successfuly")
+log.info(f"loaded {cyan_text(str(len(nodes)))} nodes successfuly")
+
 if failed:
     with contextlib.suppress(Exception):
         base_url, port = utils.get_server_info()
         log.info(
             f"Some nodes ({len(failed)}) could not be loaded. This can be ignored, but go to http://{base_url}:{port}/mtb if you want more information."
         )
+        log.debug(failed)
 
 
 # - ENDPOINT
 
 
 if hasattr(PromptServer, "instance"):
+    img_cache = None
+    with contextlib.suppress(ImportError):
+        from cachetools import TTLCache
+
+        img_cache = TTLCache(maxsize=100, ttl=5)  # 1 min TTL
+
     restore_deps = ["basicsr"]
     onnx_deps = ["onnxruntime"]
     swap_deps = ["insightface"] + onnx_deps
@@ -307,8 +316,8 @@ if hasattr(PromptServer, "instance"):
         )
 
     @PromptServer.instance.routes.post("/mtb/debug")
-    async def set_debug(request):
-        json_data = await request.json()
+    async def set_debug(request: Request):
+        json_data: dict[str, bool] = await request.json()
         enabled = json_data.get("enabled")
         if enabled:
             os.environ["MTB_DEBUG"] = "true"
@@ -317,7 +326,7 @@ if hasattr(PromptServer, "instance"):
 
         elif "MTB_DEBUG" in os.environ:
             # del os.environ["MTB_DEBUG"]
-            os.environ.pop("MTB_DEBUG")
+            _ = os.environ.pop("MTB_DEBUG")
             log.setLevel(logging.INFO)
 
         return web.json_response(
@@ -325,10 +334,10 @@ if hasattr(PromptServer, "instance"):
         )
 
     @PromptServer.instance.routes.get("/mtb")
-    async def get_home(request):
+    async def get_home(request: Request):
         from . import endpoint
 
-        reload(endpoint)
+        _ = reload(endpoint)
         # Check if the request prefers HTML content
         if "text/html" in request.headers.get("Accept", ""):
             # # Return an HTML page
@@ -349,21 +358,25 @@ if hasattr(PromptServer, "instance"):
 
     import asyncio
     import os
-    from functools import lru_cache
     from io import BytesIO
 
     from aiohttp import web
     from PIL import Image
 
-    # In-memory cache for memoization
-    @lru_cache(maxsize=256)
-    def get_cached_image(file_path, preview_params=None, channel=None):
+    def get_cached_image(file_path: str, preview_params=None, channel=None):
+        cache_key = (file_path, preview_params, channel)
+        if img_cache and (cache_key in img_cache):
+            return img_cache[cache_key]
+
         with Image.open(file_path) as img:
             if preview_params:
                 img = process_preview(img, preview_params)
             if channel:
                 img = process_channel(img, channel)
-            return img
+            if img_cache:
+                img_cache[cache_key] = img.getvalue()
+                return img_cache[cache_key]
+            return img.getvalue()
 
     def process_preview(img: Image, preview_params):
         image_format, quality, width = preview_params
@@ -378,7 +391,7 @@ if hasattr(PromptServer, "instance"):
         buffer.seek(0)
         return buffer
 
-    def process_channel(img, channel):
+    def process_channel(img: Image.Image, channel: str):
         if channel == "rgb":
             if img.mode == "RGBA":
                 r, g, b, _ = img.split()
@@ -395,23 +408,23 @@ if hasattr(PromptServer, "instance"):
 
         buffer = BytesIO()
         img.save(buffer, format="PNG")
-        buffer.seek(0)
+        _ = buffer.seek(0)
         return buffer
 
     async def get_image_response(
-        file, filename, preview_info=None, channel=None
+        file, filename: str, preview_info=None, channel=None
     ):
         img = await asyncio.to_thread(
             get_cached_image, file, preview_info, channel
         )
         return web.Response(
-            body=img.read(),
+            body=img,
             content_type="image/webp" if preview_info else "image/png",
             headers={"Content-Disposition": f'filename="{filename}"'},
         )
 
     @PromptServer.instance.routes.get("/mtb/view")
-    async def view_image(request):
+    async def view_image(request: Request):
         import folder_paths
 
         filename = request.rel_url.query.get("filename")
@@ -423,8 +436,8 @@ if hasattr(PromptServer, "instance"):
             return web.Response(status=400)
 
         if output_dir is None:
-            type = request.rel_url.query.get("type", "output")
-            output_dir = folder_paths.get_directory_by_type(type)
+            rtype = request.rel_url.query.get("type", "output")
+            output_dir = folder_paths.get_directory_by_type(rtype)
 
         if output_dir is None:
             return web.Response(status=400)
@@ -468,151 +481,11 @@ if hasattr(PromptServer, "instance"):
 
         return await get_image_response(file, filename, preview_info, channel)
 
-    #
-    # @PromptServer.instance.routes.get("/mtb/view")
-    # async def view_image(request):
-    #     from io import BytesIO
-    #
-    #     import folder_paths
-    #     from PIL import Image
-    #
-    #     if "filename" in request.rel_url.query:
-    #         filename = request.rel_url.query["filename"]
-    #         filename, output_dir = folder_paths.annotated_filepath(filename)
-    #
-    #         # validation for security: prevent accessing arbitrary path
-    #         if filename[0] == "/" or ".." in filename:
-    #             return web.Response(status=400)
-    #
-    #         if output_dir is None:
-    #             type = request.rel_url.query.get("type", "output")
-    #             output_dir = folder_paths.get_directory_by_type(type)
-    #
-    #         if output_dir is None:
-    #             return web.Response(status=400)
-    #
-    #         if "subfolder" in request.rel_url.query:
-    #             full_output_dir = os.path.join(
-    #                 output_dir, request.rel_url.query["subfolder"]
-    #             )
-    #             if (
-    #                 os.path.commonpath(
-    #                     (os.path.abspath(full_output_dir), output_dir)
-    #                 )
-    #                 != output_dir
-    #             ):
-    #                 return web.Response(status=403)
-    #             output_dir = full_output_dir
-    #
-    #         filename = os.path.basename(filename)
-    #         file = os.path.join(output_dir, filename)
-    #
-    #         if os.path.isfile(file):
-    #             if "preview" in request.rel_url.query:
-    #                 with Image.open(file) as img:
-    #                     preview_info = request.rel_url.query["preview"].split(
-    #                         ";"
-    #                     )
-    #                     image_format = preview_info[0]
-    #                     if image_format not in [
-    #                         "webp",
-    #                         "jpeg",
-    #                     ] or "a" in request.rel_url.query.get("channel", ""):
-    #                         image_format = "webp"
-    #
-    #                     quality = 90
-    #                     if preview_info[-1].isdigit():
-    #                         quality = int(preview_info[-1])
-    #
-    #                     width = request.rel_url.query.get("width")
-    #                     if width is not None:
-    #                         width = int(width)
-    #                         img.resize(
-    #                             (
-    #                                 width,
-    #                                 int(width * img.height / img.width),
-    #                             )
-    #                         )
-    #
-    #                     buffer = BytesIO()
-    #                     if (
-    #                         image_format in ["jpeg"]
-    #                         or request.rel_url.query.get("channel", "")
-    #                         == "rgb"
-    #                     ):
-    #                         img = img.convert("RGB")
-    #                     img.save(buffer, format=image_format, quality=quality)
-    #                     buffer.seek(0)
-    #
-    #                     return web.Response(
-    #                         body=buffer.read(),
-    #                         content_type=f"image/{image_format}",
-    #                         headers={
-    #                             "Content-Disposition": f'filename="{filename}"'
-    #                         },
-    #                     )
-    #
-    #             if "channel" not in request.rel_url.query:
-    #                 channel = "rgba"
-    #             else:
-    #                 channel = request.rel_url.query["channel"]
-    #
-    #             if channel == "rgb":
-    #                 with Image.open(file) as img:
-    #                     if img.mode == "RGBA":
-    #                         r, g, b, a = img.split()
-    #                         new_img = Image.merge("RGB", (r, g, b))
-    #                     else:
-    #                         new_img = img.convert("RGB")
-    #
-    #                     buffer = BytesIO()
-    #                     new_img.save(buffer, format="PNG")
-    #                     buffer.seek(0)
-    #
-    #                     return web.Response(
-    #                         body=buffer.read(),
-    #                         content_type="image/png",
-    #                         headers={
-    #                             "Content-Disposition": f'filename="{filename}"'
-    #                         },
-    #                     )
-    #
-    #             elif channel == "a":
-    #                 with Image.open(file) as img:
-    #                     if img.mode == "RGBA":
-    #                         _, _, _, a = img.split()
-    #                     else:
-    #                         a = Image.new("L", img.size, 255)
-    #
-    #                     # alpha img
-    #                     alpha_img = Image.new("RGBA", img.size)
-    #                     alpha_img.putalpha(a)
-    #                     alpha_buffer = BytesIO()
-    #                     alpha_img.save(alpha_buffer, format="PNG")
-    #                     alpha_buffer.seek(0)
-    #
-    #                     return web.Response(
-    #                         body=alpha_buffer.read(),
-    #                         content_type="image/png",
-    #                         headers={
-    #                             "Content-Disposition": f'filename="{filename}"'
-    #                         },
-    #                     )
-    #             else:
-    #                 return web.FileResponse(
-    #                     file,
-    #                     headers={
-    #                         "Content-Disposition": f'filename="{filename}"'
-    #                     },
-    #                 )
-    #
-    #     return web.Response(status=404)
-    #
     @PromptServer.instance.routes.get("/mtb/debug")
-    async def get_debug(request):
+    async def get_debug(request: Request):
         from . import endpoint
 
-        reload(endpoint)
+        _ = reload(endpoint)
         enabled = "MTB_DEBUG" in os.environ
         # Check if the request prefers HTML content
         if "text/html" in request.headers.get("Accept", ""):
@@ -629,7 +502,7 @@ if hasattr(PromptServer, "instance"):
         return web.json_response({"enabled": enabled})
 
     @PromptServer.instance.routes.get("/mtb/actions")
-    async def no_route(request):
+    async def no_route(request: Request):
         from . import endpoint
 
         if "text/html" in request.headers.get("Accept", ""):
@@ -643,7 +516,7 @@ if hasattr(PromptServer, "instance"):
         return web.json_response({"message": "actions has no get for now"})
 
     @PromptServer.instance.routes.post("/mtb/actions")
-    async def do_action(request):
+    async def do_action(request: Request):
         from . import endpoint
 
         reload(endpoint)
