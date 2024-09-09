@@ -78,6 +78,7 @@ class MTB_LoadFaceEnhanceModel:
     RETURN_NAMES = ("model",)
     FUNCTION = "load_model"
     CATEGORY = "mtb/facetools"
+    DEPRECATED = True
 
     def load_model(self, model_name, upscale=2, bg_upsampler=None):
         from gfpgan import GFPGANer
@@ -163,6 +164,7 @@ class MTB_RestoreFace:
     RETURN_TYPES = ("IMAGE",)
     FUNCTION = "restore"
     CATEGORY = "mtb/facetools"
+    DEPRECATED = True
 
     @classmethod
     def INPUT_TYPES(cls):
