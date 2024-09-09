@@ -2,9 +2,9 @@ import json
 import subprocess
 import uuid
 from pathlib import Path
-from typing import List, Optional
 
 import comfy.model_management as model_management
+import comfy.utils
 import folder_paths
 import numpy as np
 import torch
@@ -41,6 +41,7 @@ class MTB_ReadPlaylist:
     RETURN_TYPES = ("PLAYLIST",)
     FUNCTION = "read_playlist"
     CATEGORY = "mtb/IO"
+    EXPERIMENTAL = True
 
     def read_playlist(
         self,
@@ -83,6 +84,7 @@ class MTB_AddToPlaylist:
     OUTPUT_NODE = True
     FUNCTION = "add_to_playlist"
     CATEGORY = "mtb/IO"
+    EXPERIMENTAL = True
 
     def add_to_playlist(
         self,
@@ -117,7 +119,10 @@ class MTB_AddToPlaylist:
 
 
 class MTB_ExportWithFfmpeg:
-    """Export with FFmpeg (Experimental)"""
+    """Export with FFmpeg (Experimental).
+
+    [DEPRACATED] Use VHS nodes instead
+    """
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -143,6 +148,7 @@ class MTB_ExportWithFfmpeg:
     RETURN_TYPES = ("VIDEO",)
     OUTPUT_NODE = True
     FUNCTION = "export_prores"
+    DEPRECATED = True
     CATEGORY = "mtb/IO"
 
     def export_prores(
@@ -151,10 +157,9 @@ class MTB_ExportWithFfmpeg:
         prefix: str,
         format: str,
         codec: str,
-        images: Optional[torch.Tensor] = None,
-        playlist: Optional[List[str]] = None,
+        images: torch.Tensor | None = None,
+        playlist: list[str] | None = None,
     ):
-        pix_fmt = "rgb48le" if codec == "prores_ks" else "yuv420p"
         file_ext = format
         file_id = f"{prefix}_{uuid.uuid4()}.{file_ext}"
 
@@ -208,9 +213,11 @@ class MTB_ExportWithFfmpeg:
         frames = tensor2np(images)
         log.debug(f"Frames type {type(frames[0])}")
         log.debug(f"Exporting {len(frames)} frames")
+        height, width, channels = frames[0].shape
+        has_alpha = channels == 4
+        out_path = (output_dir / file_id).as_posix()
 
         if codec == "gif":
-            out_path = (output_dir / file_id).as_posix()
             command = [
                 "ffmpeg",
                 "-f",
@@ -233,12 +240,28 @@ class MTB_ExportWithFfmpeg:
 
             process.stdin.close()
             process.wait()
+            return (out_path,)
         else:
-            frames = [frame.astype(np.uint16) * 257 for frame in frames]
-
-        height, width, _ = frames[0].shape
-
-        out_path = (output_dir / file_id).as_posix()
+            if has_alpha:
+                if codec in ["prores_ks", "libx264", "libx265"]:
+                    pix_fmt = (
+                        "yuva444p" if codec == "prores_ks" else "yuva420p"
+                    )
+                    frames = [
+                        frame.astype(np.uint16) * 257 for frame in frames
+                    ]
+                else:
+                    log.warning(
+                        f"Alpha channel not supported for codec {codec}. Alpha will be ignored."
+                    )
+                    frames = [
+                        frame[:, :, :3].astype(np.uint16) * 257
+                        for frame in frames
+                    ]
+                    pix_fmt = "rgb48le" if codec == "prores_ks" else "yuv420p"
+            else:
+                pix_fmt = "rgb48le" if codec == "prores_ks" else "yuv420p"
+                frames = [frame.astype(np.uint16) * 257 for frame in frames]
 
         # Prepare the FFmpeg command
         command = [
@@ -258,17 +281,26 @@ class MTB_ExportWithFfmpeg:
             "-",
             "-c:v",
             codec,
-            "-r",
-            str(fps),
-            "-y",
-            out_path,
         ]
+        if codec == "prores_ks":
+            command.extend(["-profile:v", "4444"])
+
+        command.extend(
+            [
+                "-r",
+                str(fps),
+                "-y",
+                out_path,
+            ]
+        )
 
         process = subprocess.Popen(command, stdin=subprocess.PIPE)
 
+        pbar = comfy.utils.ProgressBar(len(frames))
+
         for frame in frames:
-            model_management.throw_exception_if_processing_interrupted()
             process.stdin.write(frame.tobytes())
+            pbar.update(1)
 
         process.stdin.close()
         process.wait()
@@ -280,9 +312,9 @@ def prepare_animated_batch(
     batch: torch.Tensor,
     pingpong=False,
     resize_by=1.0,
-    resample_filter: Optional[Image.Resampling] = None,
+    resample_filter: Image.Resampling | None = None,
     image_type=np.uint8,
-) -> List[Image.Image]:
+) -> list[Image.Image]:
     images = tensor2np(batch)
     images = [frame.astype(image_type) for frame in images]
 
@@ -308,7 +340,10 @@ def prepare_animated_batch(
 
 # todo: deprecate for apng
 class MTB_SaveGif:
-    """Save the images from the batch as a GIF"""
+    """Save the images from the batch as a GIF.
+
+    [DEPRACATED] Use VHS nodes instead
+    """
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -328,6 +363,7 @@ class MTB_SaveGif:
     OUTPUT_NODE = True
     CATEGORY = "mtb/IO"
     FUNCTION = "save_gif"
+    DEPRECATED = True
 
     def save_gif(
         self,
