@@ -59,6 +59,36 @@ class MTB_SplitBbox:
         return (bbox[0], bbox[1], bbox[2], bbox[3])
 
 
+class MTB_UpscaleBboxBy:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "bbox": ("BBOX",),
+                "scale": ("FLOAT", {"default": 1.0}),
+            },
+        }
+
+    CATEGORY = "mtb/crop"
+    RETURN_TYPES = ("BBOX",)
+
+    FUNCTION = "upscale"
+
+    def upscale(
+        self, bbox: tuple[int, int, int, int], scale: float
+    ) -> tuple[tuple[int, int, int, int]]:
+        x, y, width, height = bbox
+        # scaled = (x * scale, y * scale, width * scale, height * scale)
+        scaled = (
+            int(x * scale),
+            int(y * scale),
+            int(width * scale),
+            int(height * scale),
+        )
+
+        return (scaled,)
+
+
 class MTB_BboxFromMask:
     """From a mask extract the bounding box"""
 
@@ -342,4 +372,11 @@ class MTB_Uncrop:
         return (pil2tensor(out_images),)
 
 
-__nodes__ = [MTB_BboxFromMask, MTB_Bbox, MTB_Crop, MTB_Uncrop, MTB_SplitBbox]
+__nodes__ = [
+    MTB_BboxFromMask,
+    MTB_Bbox,
+    MTB_Crop,
+    MTB_Uncrop,
+    MTB_SplitBbox,
+    MTB_UpscaleBboxBy,
+]
