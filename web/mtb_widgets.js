@@ -20,7 +20,7 @@ import { infoLogger } from './comfy_shared.js'
 import { NumberInputWidget } from './numberInput.js'
 
 // NOTE: new widget types registered by MTB Widgets
-const newTypes = [/*'BOOL'*/ , 'COLOR', 'BBOX']
+const newTypes = [, /*'BOOL'*/ 'COLOR', 'BBOX']
 
 const deprecated_nodes = {
   //  'Animation Builder':
@@ -709,17 +709,17 @@ const mtb_widgets = {
 
   getCustomWidgets: () => {
     return {
-      BOOL: (node, inputName, inputData, _app) => {
-        console.debug('Registering bool')
-
-        return {
-          widget: node.addCustomWidget(
-            MtbWidgets.BOOL(inputName, inputData[1]?.default || false),
-          ),
-          minWidth: 150,
-          minHeight: 30,
-        }
-      },
+      // BOOL: (node, inputName, inputData, _app) => {
+      //   console.debug('Registering bool')
+      //
+      //   return {
+      //     widget: node.addCustomWidget(
+      //       MtbWidgets.BOOL(inputName, inputData[1]?.default || false),
+      //     ),
+      //     minWidth: 150,
+      //     minHeight: 30,
+      //   }
+      // },
 
       COLOR: (node, inputName, inputData, _app) => {
         console.debug('Registering color')
