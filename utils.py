@@ -163,9 +163,9 @@ class IPChecker:
     def __init__(self):
         self.ips = list(self.get_local_ips())
         log.debug(f"Found {len(self.ips)} local ips")
-        self.checked_ips = set()
+        self.checked_ips: set[str] = set()
 
-    def get_working_ip(self, test_url_template):
+    def get_working_ip(self, test_url_template: str):
         for ip in self.ips:
             if ip not in self.checked_ips:
                 self.checked_ips.add(ip)
@@ -175,7 +175,7 @@ class IPChecker:
         return None
 
     @staticmethod
-    def get_local_ips(prefix="192.168."):
+    def get_local_ips(prefix: str = "192.168."):
         hostname = socket.gethostname()
         log.debug(f"Getting local ips for {hostname}")
         for info in socket.getaddrinfo(hostname, None):
@@ -185,9 +185,9 @@ class IPChecker:
             if info[0] == socket.AF_INET and info[4][0].startswith(prefix):
                 yield info[4][0]
 
-    def _test_url(self, url):
+    def _test_url(self, url: str):
         try:
-            response = requests.get(url)
+            response = requests.get(url, timeout=10)
             return response.status_code == 200
         except Exception:
             return False
@@ -198,7 +198,7 @@ def get_server_info():
     from comfy.cli_args import args
 
     ip_checker = IPChecker()
-    base_url = args.listen
+    base_url: str = args.listen
     if base_url == "0.0.0.0":
         log.debug("Server set to 0.0.0.0, we will try to resolve the host IP")
         base_url = ip_checker.get_working_ip(

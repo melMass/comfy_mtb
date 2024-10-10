@@ -1123,6 +1123,10 @@ const mtb_widgets = {
         shared.setupDynamicConnections(nodeType, 'video', 'VIDEO')
         break
       }
+      case 'Interpolate Condition (mtb)': {
+        shared.setupDynamicConnections(nodeType, 'condition', 'CONDITIONING')
+        break
+      }
       case 'Psd Save (mtb)': {
         shared.setupDynamicConnections(nodeType, 'input_', 'PSDLAYER')
         break
