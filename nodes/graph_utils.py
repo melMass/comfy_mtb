@@ -417,7 +417,7 @@ class MTB_AnyToString:
     @classmethod
     def INPUT_TYPES(cls):
         return {
-            "required": {"input": ("*")},
+            "required": {"input": ("*",)},
         }
 
     RETURN_TYPES = ("STRING",)
