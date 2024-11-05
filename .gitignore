@@ -6,3 +6,6 @@ node_modules/
 compose.yaml
 comfy_mtb.wsb
 Dockerfile
+
+# I store the gh-pages worktrees (src & build) there
+.worktrees
