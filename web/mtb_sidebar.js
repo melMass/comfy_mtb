@@ -1,5 +1,5 @@
 import { app } from '../../scripts/app.js'
-import { api } from '../../scripts/api.js'
+// import { api } from '../../scripts/api.js'
 
 import * as shared from './comfy_shared.js'
 import { createOutliner } from './dist/mtb_inspector.js'
@@ -12,7 +12,7 @@ if (window?.__COMFYUI_FRONTEND_VERSION__) {
     id: 'mtb-nodes',
     icon: 'pi pi-bolt',
     title: 'MTB',
-    tooltip: 'sidebar for mtb nodes',
+    tooltip: 'MTB: API outliner',
     type: 'custom',
     // this is run everytime the tab's diplay is toggled on.
     render: (el) => {

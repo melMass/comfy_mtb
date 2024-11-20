@@ -263,13 +263,13 @@ const camelToKebab = (prop) =>
  */
 const parseStyleString = (styleString) => {
   const styleObj = {}
-  styleString.split(';').forEach((rule) => {
+  for (const rule of styleString.split(';')) {
     const [property, value] = rule.split(':').map((item) => item.trim())
     if (property && value) {
       const camelProp = property.replace(/-([a-z])/g, (g) => g[1].toUpperCase())
       styleObj[camelProp] = value
     }
-  })
+  }
   return styleObj
 }
 

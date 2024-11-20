@@ -669,28 +669,29 @@ const mtb_widgets = {
 		}
 	},
 
-	setup: () => {
-		app.ui.settings.addSetting({
-			id: 'mtb.Debug.enabled',
-			name: '[⚡mtb] Enable Debug (py and js)',
-			type: 'boolean',
-			defaultValue: false,
+  setup: () => {
+    app.ui.settings.addSetting({
+      id: 'mtb.Main.debug-enabled',
+      category: ['mtb', 'Main', 'debug-enabled'],
+      name: 'Enable Debug (py and js)',
+      type: 'boolean',
+      defaultValue: false,
 
-			tooltip:
-				'This will enable debug messages in the console and in the python console respectively',
-			attrs: {
-				style: {
-					fontFamily: 'monospace',
-				},
-			},
-			async onChange(value) {
-				if (!window.MTB) {
-					window.MTB = {}
-				}
-				window.MTB.DEBUG = value
-				if (value) {
-					infoLogger('Enabled DEBUG mode')
-				}
+      tooltip:
+        'This will enable debug messages in the console and in the python console respectively, no need to restart the server, but do reload the webui',
+      attrs: {
+        style: {
+          // fontFamily: 'monospace',
+        },
+      },
+      async onChange(value) {
+        if (!window.MTB) {
+          window.MTB = {}
+        }
+        window.MTB.DEBUG = value
+        if (value) {
+          infoLogger('Enabled DEBUG mode')
+        }
 
 				await api
 					.fetchApi('/mtb/debug', {
