@@ -799,17 +799,17 @@ app.registerExtension({
   name: 'mtb.noteplus',
   setup: () => {
     app.ui.settings.addSetting({
-      id: 'mtb.Use Shiki',
-
-      name: '[⚡Note+] use shiki to highlight code',
+      id: 'mtb.noteplus.use-shiki',
+      category: ['mtb', 'Note+', 'use-shiki'],
+      name: 'Use shiki to highlight code',
       tooltip:
-        'This will load a larger version of @mtb/markdown-parser that bundles shiki, it supports all shiki transformers (supported langs: html,css,python,markdown',
+        'This will load a larger version of @mtb/markdown-parser that bundles shiki, it supports all shiki transformers (supported langs: html,css,python,markdown)',
 
       type: 'boolean',
       defaultValue: false,
       attrs: {
         style: {
-          fontFamily: 'monospace',
+          // fontFamily: 'monospace',
         },
       },
       async onChange(value) {
