@@ -1,6 +1,6 @@
 import csv
 import os
-import random
+import secrets
 import sys
 from pathlib import Path
 from typing import Any
@@ -56,7 +56,13 @@ def ACTIONS_installDependency(dependency_names=None):
     #             break
 
 
-def ACTIONS_getUserImages(mode: str, count=200, offset=0):
+def ACTIONS_getUserImages(
+    mode: str,
+    count=200,
+    offset=0,
+    sort: str | None = None,
+    include_subfolders: bool = False,
+):
     # TODO: find a better name :s
     enabled = "MTB_EXPOSE" in os.environ
     if not enabled:
@@ -64,13 +70,45 @@ def ACTIONS_getUserImages(mode: str, count=200, offset=0):
 
     imgs = {}
     entry_dir = input_dir if mode == "input" else output_dir
-    for i, img in enumerate(entry_dir.glob("*.png")):
+    pattern = "**/*.png" if include_subfolders else "*.png"
+
+    entry_gen = entry_dir.glob(pattern)
+
+    entries = {}
+
+    if sort:
+        sort = sort.lower()
+        if sort == "none":
+            entries = entry_gen
+        elif sort == "modified":
+            entries = sorted(
+                entry_gen, key=lambda x: x.stat().st_mtime, reverse=True
+            )
+        elif sort == "modified-reverse":
+            entries = sorted(entry_gen, key=lambda x: x.stat().st_mtime)
+        elif sort == "name":
+            entries = sorted(entry_gen, key=lambda x: x.name)
+        elif sort == "name-reverse":
+            entries = sorted(entry_gen, key=lambda x: x.name, reverse=True)
+        else:
+            endlog.warning(f"Sort mode {sort} not supported")
+            entries = entry_gen
+    else:
+        entries = entry_gen
+
+    for i, img in enumerate(entries):
         if i < offset:
             continue
-        imgs[img.stem] = (
-            f"/mtb/view?filename={img.name}&width=512&type={mode}&subfolder=&preview=&rand={random.random()}"
+
+        subfolder = (
+            img.parent.relative_to(entry_dir) if include_subfolders else ""
         )
-        if i >= count:
+        imgs[img.stem] = (
+            f"/mtb/view?filename={img.name}&width=512&type={mode}&subfolder="
+            f"{subfolder}"
+            f"&preview=&rand={secrets.randbelow(424242)}"
+        )
+        if i >= count + offset - 1:
             break
     return imgs
 
