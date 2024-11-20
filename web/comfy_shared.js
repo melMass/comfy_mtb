@@ -261,6 +261,16 @@ export function inner_value_change(widget, val, event = undefined) {
   }
 }
 
+export const getNamedWidget = (node, ...names) => {
+  const out = {}
+
+  for (const name of names) {
+    out[name] = node.widgets.find((w) => w.name === name)
+  }
+
+  return out
+}
+
 /**
  * @param {LGraphNode} node
  * @param {LLink} link
