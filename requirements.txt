@@ -2,7 +2,8 @@ qrcode[pil]
 onnxruntime-gpu
 requirements-parser
 # opencv-contrib
-rembg
+# Replace rembg with fork that removes numba dependency
+git+https://github.com/gazai-io/rembg.git@feat/remove-numba-for-serverless
 imageio_ffmpeg
 rich
 rich_argparse
