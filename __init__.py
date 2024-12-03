@@ -232,10 +232,13 @@ if failed:
 
 if hasattr(PromptServer, "instance"):
     img_cache = None
+    prompt_cache = None
+
     with contextlib.suppress(ImportError):
         from cachetools import TTLCache
 
         img_cache = TTLCache(maxsize=100, ttl=5)  # 1 min TTL
+        prompt_cache = TTLCache(maxsize=100, ttl=5)  # 1 min TTL
 
     restore_deps = ["basicsr"]
     onnx_deps = ["onnxruntime"]
@@ -315,10 +318,10 @@ if hasattr(PromptServer, "instance"):
             }
         )
 
-    @PromptServer.instance.routes.post("/mtb/debug")
-    async def set_debug(request: Request):
+    @PromptServer.instance.routes.post("/mtb/server-info")
+    async def set_server_info(request: Request):
         json_data: dict[str, bool] = await request.json()
-        enabled = json_data.get("enabled")
+        enabled = json_data.get("debug")
         if enabled:
             os.environ["MTB_DEBUG"] = "true"
             log.setLevel(logging.DEBUG)
@@ -344,7 +347,7 @@ if hasattr(PromptServer, "instance"):
             html_response = """
             <div class="flex-container menu">
                 <a href="/mtb/manage">manage</a>
-                <a href="/mtb/debug">debug</a>
+                <a href="/mtb/server-info">Server Info</a>
                 <a href="/mtb/status">status</a>
             </div>
             """
@@ -369,16 +372,20 @@ if hasattr(PromptServer, "instance"):
             return img_cache[cache_key]
 
         with Image.open(file_path) as img:
+            info = img.info
             if preview_params:
                 img = process_preview(img, preview_params)
             if channel:
                 img = process_channel(img, channel)
+            if prompt_cache:
+                prompt_cache[cache_key] = info
             if img_cache:
                 img_cache[cache_key] = img.getvalue()
                 return img_cache[cache_key]
+
             return img.getvalue()
 
-    def process_preview(img: Image, preview_params):
+    def process_preview(img: Image.Image, preview_params):
         image_format, quality, width = preview_params
         quality = int(quality)
 
@@ -387,7 +394,9 @@ if hasattr(PromptServer, "instance"):
             img.thumbnail((width, int(width * img.height / img.width)))
 
         buffer = BytesIO()
-        img.save(buffer, format=image_format, quality=quality)
+        img.save(
+            buffer, format=image_format, quality=quality, metadata=img.info
+        )
         buffer.seek(0)
         return buffer
 
@@ -423,6 +432,8 @@ if hasattr(PromptServer, "instance"):
             headers={"Content-Disposition": f'filename="{filename}"'},
         )
 
+    # TODO: Embed the metadatas somehow so we can drag and drop
+    #       to load workflows in the sidebar
     @PromptServer.instance.routes.get("/mtb/view")
     async def view_image(request: Request):
         import folder_paths
@@ -481,25 +492,40 @@ if hasattr(PromptServer, "instance"):
 
         return await get_image_response(file, filename, preview_info, channel)
 
-    @PromptServer.instance.routes.get("/mtb/debug")
+    @PromptServer.instance.routes.get("/mtb/server-info")
     async def get_debug(request: Request):
         from . import endpoint
 
         _ = reload(endpoint)
-        enabled = "MTB_DEBUG" in os.environ
+        isdebug = "MTB_DEBUG" in os.environ
+        exposed = "MTB_EXPOSE" in os.environ
+
+        def render_property(name: str, val: str):
+            return f"""<strong>{name}:</strong>
+                <p>
+                    {val}
+                </p>"""
+
         # Check if the request prefers HTML content
         if "text/html" in request.headers.get("Accept", ""):
             # # Return an HTML page
-            html_response = f"""
-                <h1>MTB Debug Status: {'Enabled' if enabled else 'Disabled'}</h1>
-            """
+            html_response = ""
+
+            html_response += render_property(
+                "Debug", "Enabled" if isdebug else "Disabled"
+            )
+
+            html_response += render_property("Exposed", str(exposed))
+
             return web.Response(
-                text=endpoint.render_base_template("Debug", html_response),
+                text=endpoint.render_base_template(
+                    "Server Info", html_response
+                ),
                 content_type="text/html",
             )
 
         # Return JSON for other requests
-        return web.json_response({"enabled": enabled})
+        return web.json_response({"exposed": exposed, "debug": isdebug})
 
     @PromptServer.instance.routes.get("/mtb/actions")
     async def no_route(request: Request):

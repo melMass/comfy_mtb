@@ -12,7 +12,7 @@ import {
   renderSidebar,
 } from './mtb_ui.js'
 
-let offset = 0
+const offset = 0
 let currentWidth = 200
 let currentMode = 'input'
 let currentSort = 'None'
@@ -91,139 +91,166 @@ const getUrls = async () => {
   return output?.result || {}
 }
 
+//NOTE: do not load if using the old ui
 if (window?.__COMFYUI_FRONTEND_VERSION__) {
-  let handle
-  const version = window?.__COMFYUI_FRONTEND_VERSION__
-  console.log(`%c ${version}`, 'background: orange; color: white;')
+  // NOTE: removed this for now since I'm not actually exposing anything a client
+  // cannot already access from "/view"...
+  // let exposed = false
 
-  ensureMTBStyles()
+  const sidebar_extension = {
+    name: 'mtb.io-sidebar',
+    // init: async () => {
+    //   try {
+    //     const res = await api.fetchApi('/mtb/server-info')
+    //     const msg = await res.json()
+    //     exposed = msg.exposed
+    //   } catch (e) {
+    //     console.error('Error:', e)
+    //   }
+    // },
+    init: () => {
+      let handle
+      const version = window?.__COMFYUI_FRONTEND_VERSION__
+      console.log(`%c ${version}`, 'background: orange; color: white;')
 
-  app.ui.settings.addSetting({
-    id: 'mtb.io-sidebar.count',
-    category: ['mtb', 'Input & Output Sidebar', 'count'],
+      ensureMTBStyles()
 
-    name: 'Number of images to fetch',
-    type: 'number',
-    defaultValue: 1000,
+      app.ui.settings.addSetting({
+        id: 'mtb.io-sidebar.count',
+        category: ['mtb', 'Input & Output Sidebar', 'count'],
 
-    tooltip:
-      "This setting affects the input/output sidebar to determine how many images to fetch per pagination (pagination is not yet supported so for now it's the static total)",
-    attrs: {
-      style: {
-        // fontFamily: 'monospace',
-      },
-    },
-  })
+        name: 'Number of images to fetch',
+        type: 'number',
+        defaultValue: 1000,
 
-  app.ui.settings.addSetting({
-    id: 'mtb.io-sidebar.img-size',
-    category: ['mtb', 'Input & Output Sidebar', 'img-size'],
+        tooltip:
+          "This setting affects the input/output sidebar to determine how many images to fetch per pagination (pagination is not yet supported so for now it's the static total)",
+        attrs: {
+          style: {
+            // fontFamily: 'monospace',
+          },
+        },
+      })
 
-    name: 'Resolution of the images',
-    type: 'number',
-    defaultValue: 512,
+      app.ui.settings.addSetting({
+        id: 'mtb.io-sidebar.img-size',
+        category: ['mtb', 'Input & Output Sidebar', 'img-size'],
 
-    tooltip: "It's recommended to keep it at 512px",
-    attrs: {
-      style: {
-        // fontFamily: 'monospace',
-      },
-    },
-  })
-  app.ui.settings.addSetting({
-    id: 'mtb.io-sidebar.sort',
-    category: ['mtb', 'Input & Output Sidebar', 'sort'],
-    name: 'Default sort mode',
-    type: 'combo',
+        name: 'Resolution of the images',
+        type: 'number',
+        defaultValue: 512,
 
-    onChange: (v) => {
-      // alert(`Sort is now ${v}`)
-      currentSort = v
-    },
+        tooltip: "It's recommended to keep it at 512px",
+        attrs: {
+          style: {
+            // fontFamily: 'monospace',
+          },
+        },
+      })
+      app.ui.settings.addSetting({
+        id: 'mtb.io-sidebar.sort',
+        category: ['mtb', 'Input & Output Sidebar', 'sort'],
+        name: 'Default sort mode',
+        type: 'combo',
 
-    defaultValue: 'Modified',
-    // tooltip: "It's recommended to keep it at 512px",
-    options: ['None', 'Modified', 'Modified-Reverse', 'Name', 'Name-Reverse'],
-  })
+        onChange: (v) => {
+          // alert(`Sort is now ${v}`)
+          currentSort = v
+        },
 
-  app.extensionManager.registerSidebarTab({
-    id: 'mtb-inputs-outputs',
-    icon: 'pi pi-images',
-    title: 'Input & Outputs',
-    tooltip: 'MTB: Browse inputs and outputs directories.',
-    type: 'custom',
+        defaultValue: 'Modified',
+        // tooltip: "It's recommended to keep it at 512px",
+        options: [
+          'None',
+          'Modified',
+          'Modified-Reverse',
+          'Name',
+          'Name-Reverse',
+        ],
+      })
 
-    // this is run everytime the tab's diplay is toggled on.
-    render: async (el) => {
-      if (handle) {
-        handle.unregister()
-        handle = undefined
-      }
+      app.extensionManager.registerSidebarTab({
+        id: 'mtb-inputs-outputs',
+        icon: 'pi pi-images',
+        title: 'Input & Outputs',
+        tooltip: 'MTB: Browse inputs and outputs directories.',
+        type: 'custom',
 
-      if (el.parentNode) {
-        el.parentNode.style.overflowY = 'clip'
-      }
-
-      const urls = await getUrls(currentMode)
-      let imgs = {}
-
-      const cont = makeElement('div.mtb_sidebar')
-
-      const imgGrid = makeElement('div.mtb_img_grid')
-      const selector = makeSelect(['input', 'output'], currentMode)
-
-      selector.addEventListener('change', async (e) => {
-        const newMode = e.target.value
-        const changed = newMode !== currentMode
-        currentMode = newMode
-        if (changed) {
-          imgGrid.innerHTML = ''
-          const urls = await getUrls()
-          if (urls) {
-            imgs = getImgsFromUrls(urls, imgGrid)
+        // this is run everytime the tab's diplay is toggled on.
+        render: async (el) => {
+          if (handle) {
+            handle.unregister()
+            handle = undefined
           }
-        }
-      })
 
-      const imgTools = makeElement('div.mtb_tools')
-      const orderSelect = makeSelect(
-        ['None', 'Modified', 'Modified-Reverse', 'Name', 'Name-Reverse'],
-        currentSort,
-      )
-
-      orderSelect.addEventListener('change', async (e) => {
-        const newSort = e.target.value
-        const changed = newSort !== currentSort
-        currentSort = newSort
-        if (changed) {
-          imgGrid.innerHTML = ''
-          const urls = await getUrls()
-          if (urls) {
-            imgs = getImgsFromUrls(urls, imgGrid)
+          if (el.parentNode) {
+            el.parentNode.style.overflowY = 'clip'
           }
-        }
+
+          const urls = await getUrls(currentMode)
+          let imgs = {}
+
+          const cont = makeElement('div.mtb_sidebar')
+
+          const imgGrid = makeElement('div.mtb_img_grid')
+          const selector = makeSelect(['input', 'output'], currentMode)
+
+          selector.addEventListener('change', async (e) => {
+            const newMode = e.target.value
+            const changed = newMode !== currentMode
+            currentMode = newMode
+            if (changed) {
+              imgGrid.innerHTML = ''
+              const urls = await getUrls()
+              if (urls) {
+                imgs = getImgsFromUrls(urls, imgGrid)
+              }
+            }
+          })
+
+          const imgTools = makeElement('div.mtb_tools')
+          const orderSelect = makeSelect(
+            ['None', 'Modified', 'Modified-Reverse', 'Name', 'Name-Reverse'],
+            currentSort,
+          )
+
+          orderSelect.addEventListener('change', async (e) => {
+            const newSort = e.target.value
+            const changed = newSort !== currentSort
+            currentSort = newSort
+            if (changed) {
+              imgGrid.innerHTML = ''
+              const urls = await getUrls()
+              if (urls) {
+                imgs = getImgsFromUrls(urls, imgGrid)
+              }
+            }
+          })
+
+          const sizeSlider = makeSlider(64, 1024, currentWidth, 1)
+          imgTools.appendChild(orderSelect)
+
+          imgTools.appendChild(sizeSlider)
+
+          imgs = getImgsFromUrls(urls, imgGrid)
+
+          sizeSlider.addEventListener('input', (e) => {
+            currentWidth = e.target.value
+            for (const img of imgs) {
+              img.style.width = `${e.target.value}px`
+            }
+          })
+          handle = renderSidebar(el, cont, [selector, imgGrid, imgTools])
+        },
+        destroy: () => {
+          if (handle) {
+            handle.unregister()
+            handle = undefined
+          }
+        },
       })
-
-      const sizeSlider = makeSlider(64, 1024, currentWidth, 1)
-      imgTools.appendChild(orderSelect)
-
-      imgTools.appendChild(sizeSlider)
-
-      imgs = getImgsFromUrls(urls, imgGrid)
-
-      sizeSlider.addEventListener('input', (e) => {
-        currentWidth = e.target.value
-        for (const img of imgs) {
-          img.style.width = `${e.target.value}px`
-        }
-      })
-      handle = renderSidebar(el, cont, [selector, imgGrid, imgTools])
     },
-    destroy: () => {
-      if (handle) {
-        handle.unregister()
-        handle = undefined
-      }
-    },
-  })
+  }
+
+  app.registerExtension(sidebar_extension)
 }

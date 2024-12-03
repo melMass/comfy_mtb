@@ -1,5 +1,4 @@
 import csv
-import os
 import secrets
 import sys
 from pathlib import Path
@@ -63,10 +62,9 @@ def ACTIONS_getUserImages(
     sort: str | None = None,
     include_subfolders: bool = False,
 ):
-    # TODO: find a better name :s
-    enabled = "MTB_EXPOSE" in os.environ
-    if not enabled:
-        return {"error": "Session not authorized to getInputs"}
+    # enabled = "MTB_EXPOSE" in os.environ
+    # if not enabled:
+    #     return {"error": "Session not authorized to getInputs"}
 
     imgs = {}
     entry_dir = input_dir if mode == "input" else output_dir
