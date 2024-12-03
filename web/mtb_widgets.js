@@ -672,6 +672,15 @@ const mtb_widgets = {
 
   setup: () => {
     app.ui.settings.addSetting({
+      id: 'mtb.postshot.path',
+      category: ['mtb', 'PostShot', 'path'],
+      name: 'Path to Postshot CLI',
+      type: 'string',
+      defaultValue: 'C:/Program Files/Jawset Postshot/bin/postshot-cli.exe',
+      tooltip: 'The path to the postshot CLI',
+    })
+
+    app.ui.settings.addSetting({
       id: 'mtb.Main.debug-enabled',
       category: ['mtb', 'Main', 'debug-enabled'],
       name: 'Enable Debug (py and js)',
@@ -852,6 +861,22 @@ const mtb_widgets = {
         nodeType.prototype.onExecuted = function (message) {
           const r = onExecuted ? onExecuted.apply(this, message) : undefined
           return r
+        }
+
+        break
+      }
+      case 'Postshot Train (mtb)':
+      case 'Postshot Export (mtb)': {
+        const onNodeCreated = nodeType.prototype.onNodeCreated
+        nodeType.prototype.onNodeCreated = function (...args) {
+          const r = onNodeCreated ? onNodeCreated.apply(this, args) : undefined
+          const { postshot_cli } = shared.getNamedWidget(this, 'postshot_cli')
+
+          shared.hideWidgetForGood(this, postshot_cli)
+
+          api.getSetting('mtb.postshot.path').then((p) => {
+            postshot_cli._value = p
+          })
         }
 
         break

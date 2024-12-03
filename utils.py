@@ -592,6 +592,37 @@ def tensor2np(tensor: torch.Tensor) -> list[npt.NDArray[np.uint8]]:
     return handle_batch(tensor, single_tensor2np)
 
 
+def nextAvailable(path: Path | str) -> Path:
+    """
+    Find the next available path by adding a numbered suffix. (mimics comfy's version).
+
+    Args:
+        path (Path): The original path to check
+
+    Returns
+    -------
+        Path: A path that doesn't exist yet
+    """
+    path = Path(path)
+
+    if not path.is_absolute():
+        path = output_dir / path
+
+    if not path.exists():
+        return path
+
+    stem = path.stem
+    suffix = path.suffix
+    parent = path.parent
+
+    counter = 1
+    while True:
+        new_path = parent / f"{stem}_{counter:04d}{suffix}"
+        if not new_path.exists():
+            return new_path
+        counter += 1
+
+
 def pad(img, left, right, top, bottom):
     pad_width = np.array(((0, 0), (top, bottom), (left, right)))
     print(
