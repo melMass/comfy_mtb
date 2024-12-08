@@ -2,6 +2,7 @@ import contextlib
 import functools
 import importlib
 import math
+import operator
 import os
 import shlex
 import shutil
@@ -11,6 +12,7 @@ import sys
 import uuid
 from collections.abc import Callable, Sequence
 from enum import Enum
+from functools import reduce
 from pathlib import Path
 from typing import TypeVar
 
@@ -212,6 +214,37 @@ def get_server_info():
 
 
 # region MISC Utilities
+def glob_multiple(
+    path: Path, patterns: list[str], recursive: bool = False
+) -> list[Path]:
+    """Combine multiple glob patterns into a single iterator."""
+    return list(reduce(operator.or_, (set(path.glob(p)) for p in patterns)))
+
+
+def build_glob_patterns(
+    extensions: list[str], recursive: bool = False
+) -> list[str]:
+    """Build glob patterns for given extensions."""
+    prefix = "**/" if recursive else ""
+    return [f"{prefix}*.{ext}" for ext in extensions]
+
+
+class SortMode(Enum):
+    NONE = "none"
+    MODIFIED = "modified"
+    MODIFIED_REVERSE = "modified-reverse"
+    NAME = "name"
+    NAME_REVERSE = "name-reverse"
+
+    @classmethod
+    def from_str(cls, value: str | None) -> "SortMode|None":
+        if not value:
+            return None
+        try:
+            return cls(value.lower())
+        except ValueError:
+            log.warning(f"Sort mode {value} not supported")
+            return None
 
 
 # TODO: use mtb.core directly instead of copying parts here

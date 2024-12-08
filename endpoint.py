@@ -2,13 +2,16 @@ import csv
 import secrets
 import sys
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from aiohttp import web
 
 from .log import mklog
 from .utils import (
+    SortMode,
     backup_file,
+    build_glob_patterns,
+    glob_multiple,
     import_install,
     input_dir,
     output_dir,
@@ -56,7 +59,7 @@ def ACTIONS_installDependency(dependency_names=None):
 
 
 def ACTIONS_getUserImages(
-    mode: str,
+    mode: Literal["input", "output"],
     count=200,
     offset=0,
     sort: str | None = None,
@@ -68,46 +71,34 @@ def ACTIONS_getUserImages(
 
     imgs = {}
     entry_dir = input_dir if mode == "input" else output_dir
-    pattern = "**/*.png" if include_subfolders else "*.png"
-
-    entry_gen = entry_dir.glob(pattern)
+    supported = ["png", "jpg", "jpeg", "webp", "gif"]
 
     entries = {}
+    patterns = build_glob_patterns(supported, recursive=include_subfolders)
+    entries = glob_multiple(entry_dir, patterns)
 
-    if sort:
-        sort = sort.lower()
-        if sort == "none":
-            entries = entry_gen
-        elif sort == "modified":
-            entries = sorted(
-                entry_gen, key=lambda x: x.stat().st_mtime, reverse=True
-            )
-        elif sort == "modified-reverse":
-            entries = sorted(entry_gen, key=lambda x: x.stat().st_mtime)
-        elif sort == "name":
-            entries = sorted(entry_gen, key=lambda x: x.name)
-        elif sort == "name-reverse":
-            entries = sorted(entry_gen, key=lambda x: x.name, reverse=True)
-        else:
-            endlog.warning(f"Sort mode {sort} not supported")
-            entries = entry_gen
-    else:
-        entries = entry_gen
+    sort_mode = SortMode.from_str(sort)
 
-    for i, img in enumerate(entries):
-        if i < offset:
-            continue
+    if sort_mode:
+        sort_key = {
+            SortMode.MODIFIED: lambda x: x.stat().st_mtime,
+            SortMode.MODIFIED_REVERSE: lambda x: x.stat().st_mtime,
+            SortMode.NAME: lambda x: x.name,
+            SortMode.NAME_REVERSE: lambda x: x.name,
+        }.get(sort_mode)
+        if sort_key:
+            reverse = sort_mode in (SortMode.MODIFIED, SortMode.NAME_REVERSE)
+            entries = sorted(entries, key=sort_key, reverse=reverse)
 
-        subfolder = (
-            img.parent.relative_to(entry_dir) if include_subfolders else ""
-        )
-        imgs[img.stem] = (
+    imgs = {
+        img.name: (
             f"/mtb/view?filename={img.name}&width=512&type={mode}&subfolder="
-            f"{subfolder}"
+            f"{img.parent.relative_to(entry_dir) if include_subfolders else ''}"
             f"&preview=&rand={secrets.randbelow(424242)}"
         )
-        if i >= count + offset - 1:
-            break
+        for i, img in enumerate(entries)
+        if offset <= i < offset + count
+    }
     return imgs
 
 

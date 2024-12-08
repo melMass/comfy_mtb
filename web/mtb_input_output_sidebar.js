@@ -54,7 +54,7 @@ const getImgsFromUrls = (urls, target) => {
         }
 
         for (const [_id, node] of Object.entries(app.canvas.selected_nodes)) {
-          updateImage(node, `${key}.png`)
+          updateImage(node, key)
         }
       }
     } else {
