@@ -27,7 +27,7 @@ export def "comfy start" [--clean,--old-ui, --listen] {
 
     let root = get_root --clean=($clean)
     cd $root
-    MTB_DEBUG=true python main.py --port 3000 ...(if $old_ui { ["--front-end-version", "Comfy-Org/ComfyUI_legacy_frontend@latest"]} else {[]}) --preview-method auto ...(if $listen {["--listen"]} else {[]})
+    MTB_DEBUG=true python main.py --port 3000 ...(if $old_ui { ["--front-end-version", "Comfy-Org/ComfyUI_legacy_frontend@latest"]} else {[ --front-end-version Comfy-Org/ComfyUI_frontend@latest]}) --preview-method auto ...(if $listen {["--listen"]} else {[]})
 }
 
 # update comfy itself and merge master in current branch
@@ -67,8 +67,14 @@ export def "comfy update" [
     git checkout master
 
     print $"(ansi yellow_italic)Fetching and pulling remote updates(ansi reset)"
-    git fetch
-    git pull
+    if ($clean) {
+        git fetch local master
+        git pull local master
+    } else {
+        git fetch
+        git pull
+    }
+
 
     print $"(ansi yellow_italic)Back to our branch \(($branch_name)\)(ansi reset)"
     git checkout -
@@ -135,7 +141,7 @@ export def "comfy update_extensions" [--clean] {
     let root = get_root --clean=($clean)
     cd $root
     cd custom_nodes
-    git multipull .
+    git multipull . -s -q
 }
 
 def --env path-add [pth] {
@@ -146,7 +152,7 @@ def --env path-add [pth] {
 
 export-env {
   $env.COMFY_MTB = ("." | path expand)
-  $env.CUDA_ROOT =  'C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.1\'
+  # $env.CUDA_ROOT =  'C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.1\'
 
   $env.CUDA_HOME = $env.CUDA_ROOT
 
