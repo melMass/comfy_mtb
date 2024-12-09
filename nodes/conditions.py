@@ -1,13 +1,131 @@
-import csv, shutil
+import csv
+import shutil
 from pathlib import Path
 
 import folder_paths
+import torch
 
 from ..log import log
 from ..utils import here
 
+Conditioning = list[tuple[torch.Tensor, dict[str, torch.Tensor]]]
 
-class InterpolateClipSequential:
+
+def check_condition(conditioning: Conditioning):
+    has_cn = False
+    if len(conditioning) > 1:
+        log.warn(
+            "More than one conditioning was provided. Only the first one will be used."
+        )
+    first = conditioning[0]
+    cond, kwargs = first
+
+    log.debug("Conditioning Shape")
+    log.debug(cond.shape)
+    log.debug("Conditioning keys")
+    log.debug([f"\t{k} - {type(kwargs[k])}" for k in kwargs])
+    if "control" in kwargs:
+        log.debug("Conditioning contains a controlnet")
+        has_cn = True
+    if "pooled_output" not in kwargs:
+        raise ValueError(
+            "Conditioning is not valid. Missing 'pooled_output' key."
+        )
+    return has_cn
+
+
+class MTB_InterpolateCondition:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "blend": (
+                    "FLOAT",
+                    {"default": 0.0, "min": 0.0, "max": 1.0, "step": 0.01},
+                ),
+            },
+        }
+
+    RETURN_TYPES = ("CONDITIONING",)
+    CATEGORY = "mtb/conditioning"
+    FUNCTION = "execute"
+
+    def execute(
+        self, blend: float, **kwargs: Conditioning
+    ) -> tuple[Conditioning]:
+        blend = max(0.0, min(1.0, blend))
+
+        conditions: list[Conditioning] = list(kwargs.values())
+        num_conditions = len(conditions)
+
+        if num_conditions < 2:
+            raise ValueError("At least two conditioning inputs are required.")
+
+        segment_length = 1.0 / (num_conditions - 1)
+
+        segment_index = min(int(blend // segment_length), num_conditions - 2)
+
+        local_blend = (
+            blend - (segment_index * segment_length)
+        ) / segment_length
+
+        cond_from = conditions[segment_index]
+        cond_to = conditions[segment_index + 1]
+
+        from_cn = check_condition(cond_from)
+        to_cn = check_condition(cond_to)
+
+        if from_cn and to_cn:
+            raise ValueError(
+                "Interpolating conditions cannot both contain ControlNets"
+            )
+
+        try:
+            interpolated_condition = [
+                (1.0 - local_blend) * c_from + local_blend * c_to
+                for c_from, c_to in zip(
+                    cond_from[0][0], cond_to[0][0], strict=False
+                )
+            ]
+        except Exception as e:
+            print(f"Error during interpolation: {e}")
+            raise
+
+        pooled_from = cond_from[0][1].get(
+            "pooled_output",
+            torch.zeros_like(
+                next(iter(cond_from[0][1].values()), torch.tensor([]))
+            ),
+        )
+
+        pooled_to = cond_to[0][1].get(
+            "pooled_output",
+            torch.zeros_like(
+                next(iter(cond_from[0][1].values()), torch.tensor([]))
+            ),
+        )
+
+        interpolated_pooled = (
+            1.0 - local_blend
+        ) * pooled_from + local_blend * pooled_to
+
+        res = {"pooled_output": interpolated_pooled}
+
+        if from_cn:
+            res["control"] = cond_from[0][1]["control"]
+            res["control_apply_to_uncond"] = cond_from[0][1][
+                "control_apply_to_uncond"
+            ]
+        if to_cn:
+            res["control"] = cond_to[0][1]["control"]
+            res["control_apply_to_uncond"] = cond_to[0][1][
+                "control_apply_to_uncond"
+            ]
+
+        return ([(torch.stack(interpolated_condition), res)],)
+
+
+class MTB_InterpolateClipSequential:
     @classmethod
     def INPUT_TYPES(cls):
         return {
@@ -28,7 +146,12 @@ class InterpolateClipSequential:
     CATEGORY = "mtb/conditioning"
 
     def interpolate_encodings_sequential(
-        self, base_text, text_to_replace, clip, interpolation_strength, **replacements
+        self,
+        base_text,
+        text_to_replace,
+        clip,
+        interpolation_strength,
+        **replacements,
     ):
         log.debug(f"Received interpolation_strength: {interpolation_strength}")
 
@@ -63,20 +186,30 @@ class InterpolateClipSequential:
             log.debug("Using the base text a the base blend")
             # -  Start with the base_text condition
             tokens = clip.tokenize(base_text)
-            cond_from, pooled_from = clip.encode_from_tokens(tokens, return_pooled=True)
+            cond_from, pooled_from = clip.encode_from_tokens(
+                tokens, return_pooled=True
+            )
         else:
             base_replace = list(replacements.values())[segment_index - 1]
             log.debug(f"Using {base_replace} a the base blend")
 
             # - Start with the base_text condition replaced by the closest replacement
-            tokens = clip.tokenize(base_text.replace(text_to_replace, base_replace))
-            cond_from, pooled_from = clip.encode_from_tokens(tokens, return_pooled=True)
+            tokens = clip.tokenize(
+                base_text.replace(text_to_replace, base_replace)
+            )
+            cond_from, pooled_from = clip.encode_from_tokens(
+                tokens, return_pooled=True
+            )
 
             replacement_text = list(replacements.values())[segment_index]
 
-        interpolated_text = base_text.replace(text_to_replace, replacement_text)
+        interpolated_text = base_text.replace(
+            text_to_replace, replacement_text
+        )
         tokens = clip.tokenize(interpolated_text)
-        cond_to, pooled_to = clip.encode_from_tokens(tokens, return_pooled=True)
+        cond_to, pooled_to = clip.encode_from_tokens(
+            tokens, return_pooled=True
+        )
 
         # - Linearly interpolate between the two conditions
         interpolated_condition = (
@@ -86,10 +219,12 @@ class InterpolateClipSequential:
             1.0 - local_strength
         ) * pooled_from + local_strength * pooled_to
 
-        return ([[interpolated_condition, {"pooled_output": interpolated_pooled}]],)
+        return (
+            [[interpolated_condition, {"pooled_output": interpolated_pooled}]],
+        )
 
 
-class SmartStep:
+class MTB_SmartStep:
     """Utils to control the steps start/stop of the KAdvancedSampler in percentage"""
 
     @classmethod
@@ -136,7 +271,7 @@ def install_default_styles(force=False):
     return dest_style
 
 
-class StylesLoader:
+class MTB_StylesLoader:
     """Load csv files and populate a dropdown from the rows (à la A111)"""
 
     options = {}
@@ -148,16 +283,18 @@ class StylesLoader:
             if not input_dir.exists():
                 install_default_styles()
 
-            if not (files := [f for f in input_dir.iterdir() if f.suffix == ".csv"]):
+            if not (
+                files := [f for f in input_dir.iterdir() if f.suffix == ".csv"]
+            ):
                 log.warn(
                     "No styles found in the styles folder, place at least one csv file in the styles folder at the root of ComfyUI (for instance ComfyUI/styles/mystyle.csv)"
                 )
 
             for file in files:
-                with open(file, "r", encoding="utf8") as f:
+                with open(file, encoding="utf8") as f:
                     parsed = csv.reader(f)
                     for i, row in enumerate(parsed):
-                        log.debug(f"Adding style {row[0]}")
+                        # log.debug(f"Adding style {row[0]}")
                         try:
                             name, positive, negative = (row + [None] * 3)[:3]
                             positive = positive or ""
@@ -193,4 +330,9 @@ class StylesLoader:
         return (self.options[style_name][0], self.options[style_name][1])
 
 
-__nodes__ = [SmartStep, StylesLoader, InterpolateClipSequential]
+__nodes__ = [
+    MTB_SmartStep,
+    MTB_StylesLoader,
+    MTB_InterpolateClipSequential,
+    MTB_InterpolateCondition,
+]

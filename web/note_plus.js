@@ -1,155 +1,122 @@
+/// <reference path="../types/typedefs.js" />
+
 import { app } from '../../scripts/app.js'
+
 import * as shared from './comfy_shared.js'
 import { infoLogger, successLogger, errorLogger } from './comfy_shared.js'
+import {
+  DEFAULT_CSS,
+  DEFAULT_HTML,
+  DEFAULT_MD,
+  DEFAULT_MODE,
+  DEFAULT_THEME,
+  THEMES,
+  CSS_RESET,
+  DEMO_CONTENT,
+} from './note_plus.constants.js'
+import { LocalStorageManager } from './comfy_shared.js'
 
-const DEFAULT_CSS = ''
-const DEFAULT_HTML = `<p style='color:red;font-family:monospace'>
-    Note+
-</p>`
-const DEFAULT_MD = '## Note+'
-const DEFAULT_MODE = 'markdown'
-const DEFAULT_THEME = 'one_dark'
+const storage = new LocalStorageManager('mtb')
 
-const CSS_RESET = `
-* {
-  font-family: monospace;
-  line-height: 1.25em;
+/**
+ * Uses `@mtb/markdown-parser` (a fork of marked)
+ * It is statically stored to avoid having
+ * more than 1 instance ever.
+ * The size difference between both libraries...
+ * ╭───┬────────────────────────────────┬──────────╮
+ * │ # │              name              │   size   │
+ * ├───┼────────────────────────────────┼──────────┤
+ * │ 0 │ web-dist/mtb_markdown_plus.mjs │   1.2 MB │ <- with shiki
+ * │ 1 │ web-dist/mtb_markdown.mjs      │  44.7 KB │
+ * ╰───┴────────────────────────────────┴──────────╯
+ */
+let useShiki = storage.get('np-use-shiki', false)
+
+const makeResizable = (dialog) => {
+  dialog.style.resize = 'both'
+  dialog.style.transformOrigin = 'top left'
+  dialog.style.overflow = 'auto'
 }
 
-h1, h2, h3, h4, h5, h6 {
-  margin: 0;
-  padding: 0;
-  font-weight: normal;
+const makeDraggable = (dialog, handle) => {
+  let offsetX = 0
+  let offsetY = 0
+  let isDragging = false
+
+  const onMouseMove = (e) => {
+    if (isDragging) {
+      dialog.style.left = `${e.clientX - offsetX}px`
+      dialog.style.top = `${e.clientY - offsetY}px`
+    }
+  }
+
+  const onMouseUp = () => {
+    isDragging = false
+    document.removeEventListener('mousemove', onMouseMove)
+    document.removeEventListener('mouseup', onMouseUp)
+  }
+
+  handle.addEventListener('mousedown', (e) => {
+    isDragging = true
+    offsetX = e.clientX - dialog.offsetLeft
+    offsetY = e.clientY - dialog.offsetTop
+    document.addEventListener('mousemove', onMouseMove)
+    document.addEventListener('mouseup', onMouseUp)
+  })
 }
 
-p, ul, ol, dl, blockquote {
-  margin: 0.3em;
-  padding: 0;
-}
-
-
-ul, ol {
-  
-  padding-left: 1em;
-  
-}
-
-a {
-  color: inherit;
-  text-decoration: none;
-  pointer-events: all;
-  color: cyan;
-}
-
-img {
-  padding: 1em 0;
-  max-width: 100%;
-}
-
-iframe {
-  width: 100%;
-  height: auto;
-  border:none;
-  pointer-events:all;
-}
-
-blockquote {
-  border-left: 4px solid #ccc;
-  padding-left: 1em;
-  margin-left: 0;
-  font-style: italic;
-}
-
-pre, code {
-  font-family: monospace;
-}
-
-table {
-  border-collapse: collapse;
-  width: 100%;
-  border-bottom: 1px solid #000;
-  margin: 1em 0;
-}
-
-th, td {
-  border-left: 1px solid #000;
-  border-right: 1px solid #000;
-  padding: 8px;
-  text-align: left;
-}
-
-th {
-  border: 1px solid #000;
-
-  background-color: rgba(0,0,0,0.5);
-}
-
-input[type="checkbox"] {
-  margin-right: 10px;
-}
-
-`
-
-const themes = [
-  'ambiance',
-  'chaos',
-  'chrome',
-  'cloud9_day',
-  'cloud9_night',
-  'cloud9_night_low_color',
-  'cloud_editor',
-  'cloud_editor_dark',
-  'clouds',
-  'clouds_midnight',
-  'cobalt',
-  'crimson_editor',
-  'dawn',
-  'dracula',
-  'dreamweaver',
-  'eclipse',
-  'github',
-  'github_dark',
-  'gob',
-  'gruvbox',
-  'gruvbox_dark_hard',
-  'gruvbox_light_hard',
-  'idle_fingers',
-  'iplastic',
-  'katzenmilch',
-  'kr_theme',
-  'kuroir',
-  'merbivore',
-  'merbivore_soft',
-  'mono_industrial',
-  'monokai',
-  'nord_dark',
-  'one_dark',
-  'pastel_on_dark',
-  'solarized_dark',
-  'solarized_light',
-  'sqlserver',
-  'terminal',
-  'textmate',
-  'tomorrow',
-  'tomorrow_night',
-  'tomorrow_night_blue',
-  'tomorrow_night_bright',
-  'tomorrow_night_eighties',
-  'twilight',
-  'vibrant_ink',
-  'vscode',
-]
+/** @extends {LGraphNode} */
 class NotePlus extends LiteGraph.LGraphNode {
   // same values as the comfy note
   color = LGraphCanvas.node_colors.yellow.color
   bgcolor = LGraphCanvas.node_colors.yellow.bgcolor
   groupcolor = LGraphCanvas.node_colors.yellow.groupcolor
 
+  /* NOTE: this is not serialized and only there to make multiple
+   *  note+ nodes in the same graph unique.
+   */
+  uuid
+
+  /** Stores the dialog observer*/
+  resizeObserver
+
+  /** Live update the preview*/
+  live = true
+  /** DOM height by adding child size together*/
+  calculated_height = 0
+
+  /** ????*/
+  _raw_html
+
+  /** might not be needed anymore */
+  inner
+
+  /** the dialog DOM widget*/
+  dialog
+
+  /** widgets*/
+
+  /** used to store the raw value and display the parsed html at the same time*/
+  html_widget
+
+  /** hidden widgets for serialization*/
+  css_widget
+  edit_mode_widget
+  theme_widget
+
+  editorsContainer
+  /** ACE editors instances*/
+  html_editor
+  css_editor
+
   constructor() {
     super()
     this.uuid = shared.makeUUID()
 
     infoLogger('Constructing Note+ instance')
+    shared.ensureMarkdownParser((_p) => {
+      this.updateHTML()
+    })
     // - litegraph settings
     this.collapsable = true
     this.isVirtualNode = true
@@ -159,35 +126,30 @@ class NotePlus extends LiteGraph.LGraphNode {
     // - default values, serialization is done through widgets
     this._raw_html = DEFAULT_MODE === 'html' ? DEFAULT_HTML : DEFAULT_MD
 
-    // - mardown converter
-    this.markdownConverter = new showdown.Converter({
-      tables: true,
-      strikethrough: true,
-      emoji: true,
-      ghCodeBlocks: true,
-      tasklists: true,
-      ghMentions: true,
-      smoothLivePreview: true,
-      simplifiedAutoLink: true,
-      parseImgDimensions: true,
-      openLinksInNewWindow: true,
-    })
-
     // - state
     this.live = true
     this.calculated_height = 0
 
     // - add widgets
-    const inner = document.createElement('div')
-    inner.style.margin = '0'
-    inner.style.padding = '0'
-    inner.style.pointerEvents = 'none'
-    this.html_widget = this.addDOMWidget('HTML', 'html', inner, {
+    const cinner = document.createElement('div')
+    this.inner = document.createElement('div')
+
+    cinner.append(this.inner)
+    this.inner.classList.add('note-plus-preview')
+    cinner.style.margin = '0'
+    cinner.style.padding = '0'
+    this.html_widget = this.addDOMWidget('HTML', 'html', cinner, {
       setValue: (val) => {
         this._raw_html = val
       },
       getValue: () => this._raw_html,
       getMinHeight: () => this.calculated_height, // (the edit button),
+      onDraw: () => {
+        // HACK: dirty hack for now until it's addressed upstream...
+        this.html_widget.element.style.pointerEvents = 'none'
+        // NOTE: not sure about this, it avoid the visual "bugs" but scrolling over the wrong area will affect zoom...
+        // this.html_widget.element.style.overflow = 'scroll'
+      },
       hideOnZoom: false,
     })
 
@@ -197,22 +159,48 @@ class NotePlus extends LiteGraph.LGraphNode {
   }
 
   /**
-   *
-   * @param {CanvasRenderingContext2D} ctx
-   * @param {LGraphCanvas} graphcanvas
-   * @returns
+   * @param {CanvasRenderingContext2D} ctx canvas context
+   * @param {any} _graphcanvas
    */
-
   onDrawForeground(ctx, _graphcanvas) {
     if (this.flags.collapsed) return
+    this.drawEditIcon(ctx)
+    this.drawSideHandle(ctx)
 
-    // Define the size and position of the icon
-    const iconSize = 14 // Size of the icon
-    const iconMargin = 8 // Margin from the edges
-    const x = this.size[0] - iconSize - iconMargin
-    const y = iconMargin * 1.5
+    // DEBUG BACKGROUND
+    // ctx.fillStyle = 'rgba(0, 255, 0, 0.3)'
+    // const rect = this.rect
+    // ctx.fillRect(rect.x, rect.y, rect.width, rect.height)
+  }
+  drawSideHandle(ctx) {
+    const handleRect = this.sideHandleRect
+    const chamfer = 20
+    ctx.beginPath()
 
-    // Create a new Path2D object from SVG path data
+    // top left
+    ctx.moveTo(handleRect.x, handleRect.y + chamfer)
+    // top right
+    ctx.lineTo(handleRect.x + handleRect.width, handleRect.y)
+
+    // bottom right
+    ctx.lineTo(
+      handleRect.x + handleRect.width,
+      handleRect.y + handleRect.height,
+    )
+    // bottom left
+    ctx.lineTo(handleRect.x, handleRect.y + handleRect.height - chamfer)
+    ctx.closePath()
+
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.05)'
+    ctx.fill()
+  }
+
+  drawEditIcon(ctx) {
+    const rect = this.iconRect
+    // DEBUG ICON POSITION
+    // ctx.fillStyle = 'rgba(0, 255, 0, 0.3)'
+    // ctx.fillRect(rect.x, rect.y, rect.width, rect.height)
+
     const pencilPath = new Path2D(
       'M21.28 6.4l-9.54 9.54c-.95.95-3.77 1.39-4.4.76-.63-.63-.2-3.45.75-4.4l9.55-9.55a2.58 2.58 0 1 1 3.64 3.65z',
     )
@@ -220,41 +208,73 @@ class NotePlus extends LiteGraph.LGraphNode {
       'M11 4H6a4 4 0 0 0-4 4v10a4 4 0 0 0 4 4h11c2.21 0 3-1.8 3-4v-5',
     )
 
-    // Draw the paths
     ctx.save()
-    ctx.translate(x, y) // Position the icon on the canvas
-    ctx.scale(iconSize / 32, iconSize / 32) // Scale the icon to the desired size
-    ctx.strokeStyle = 'rgba(255,255,255,0.3)'
-
+    ctx.translate(rect.x, rect.y)
+    ctx.scale(rect.width / 32, rect.height / 32)
+    ctx.strokeStyle = 'rgba(255,255,255,0.4)'
     ctx.lineCap = 'round'
     ctx.lineJoin = 'round'
-
     ctx.lineWidth = 2.4
     ctx.stroke(pencilPath)
     ctx.stroke(folderPath)
     ctx.restore()
   }
-  onMouseDown(_e, localPos, _graphcanvas) {
-    // Check if the click is within the pencil icon bounds
-    const iconSize = 14
-    const iconMargin = 8
-    const iconX = this.size[0] - iconSize - iconMargin
-    const iconY = iconMargin * 1.5
-
-    if (
-      localPos[0] > iconX &&
-      localPos[0] < iconX + iconSize &&
-      localPos[1] > iconY &&
-      localPos[1] < iconY + iconSize
-    ) {
-      // Pencil icon was clicked, open the editor
-      this.openEditorDialog()
-      return true // Return true to indicate the event was handled
+  /**
+   * @param {number} x
+   * @param {number} y
+   * @param {{x:number,y:number,width:number,height:number}} rect
+   * @returns {}
+   */
+  inRect(x, y, rect) {
+    rect = rect || this.iconRect
+    return (
+      x >= rect.x &&
+      x <= rect.x + rect.width &&
+      y >= rect.y &&
+      y <= rect.y + rect.height
+    )
+  }
+  get rect() {
+    return {
+      x: 0,
+      y: 0,
+      width: this.size[0],
+      height: this.size[1],
     }
+  }
+  get sideHandleRect() {
+    const w = this.size[0]
+    const h = this.size[1]
 
-    return false // Return false to let the event propagate
+    const bw = 32
+    const bho = 64
+
+    return {
+      x: w - bw,
+      y: bho,
+      width: bw,
+      height: h - bho * 1.5,
+    }
+  }
+  get iconRect() {
+    const iconSize = 32
+    const iconMargin = 16
+    return {
+      x: this.size[0] - iconSize - iconMargin,
+      y: iconMargin * 1.5,
+      width: iconSize,
+      height: iconSize,
+    }
+  }
+  onMouseDown(_e, localPos, _graphcanvas) {
+    if (this.inRect(localPos[0], localPos[1])) {
+      this.openEditorDialog()
+      return true
+    }
+    return false
   }
 
+  /* Hidden widgets to store note+ settings in the workflow (stripped in API)*/
   setupSerializationWidgets() {
     infoLogger('Setup Serializing widgets')
 
@@ -283,15 +303,36 @@ class NotePlus extends LiteGraph.LGraphNode {
     shared.hideWidgetForGood(this, this.css_widget)
     shared.hideWidgetForGood(this, this.theme_widget)
   }
+
   setupDialog() {
     infoLogger('Setup dialog')
-    // this.addWidget('button', 'Edit', 'Edit', this.openEditorDialog.bind(this))
 
     this.dialog = new app.ui.dialog.constructor()
     this.dialog.element.classList.add('comfy-settings')
 
+    Object.assign(this.dialog.element.style, {
+      position: 'absolute',
+      boxShadow: 'none',
+    })
+
+    const subcontainer = this.dialog.textElement.parentElement
+
+    if (subcontainer) {
+      Object.assign(subcontainer.style, {
+        width: '100%',
+      })
+    }
     const closeButton = this.dialog.element.querySelector('button')
     closeButton.textContent = 'CANCEL'
+    closeButton.id = 'cancel-editor-dialog'
+    closeButton.title =
+      "Cancel the changes since last opened (doesn't support live mode)"
+    closeButton.disabled = this.live
+
+    closeButton.style.background = this.live
+      ? 'repeating-linear-gradient(45deg,#606dbc,#606dbc 10px,#465298 10px,#465298 20px)'
+      : ''
+
     const saveButton = document.createElement('button')
     saveButton.textContent = 'SAVE'
     saveButton.onclick = () => {
@@ -313,32 +354,54 @@ class NotePlus extends LiteGraph.LGraphNode {
 
   closeEditorDialog(accept) {
     infoLogger('Closing editor dialog', accept)
-    if (accept) {
+    if (accept && !this.live) {
       this.updateHTML(this.html_editor.getValue())
       this.updateCSS(this.css_editor.getValue())
+    }
+    if (this.resizeObserver) {
+      this.resizeObserver.disconnect()
+      this.resizeObserver = null
     }
     this.teardownEditors()
     this.dialog.close()
   }
 
+  /**
+   * @param {HTMLElement} elem
+   */
+  hookResize(elem) {
+    if (!this.resizeObserver) {
+      const observer = () => {
+        this.html_editor.resize()
+        this.css_editor.resize()
+        Object.assign(this.editorsContainer.style, {
+          minHeight: `${(this.dialog.element.clientHeight / 100) * 50}px`, //'200px',
+        })
+      }
+      this.resizeObserver = new ResizeObserver(observer).observe(elem)
+    }
+  }
   openEditorDialog() {
     infoLogger(`Current edit mode ${this.edit_mode_widget.value}`)
+    this.hookResize(this.dialog.element)
     const container = document.createElement('div')
-
     Object.assign(container.style, {
       display: 'flex',
       gap: '10px',
       flexDirection: 'column',
     })
 
-    const editorsContainer = document.createElement('div')
-    Object.assign(editorsContainer.style, {
+    this.editorsContainer = document.createElement('div')
+
+    Object.assign(this.editorsContainer.style, {
       display: 'flex',
       gap: '10px',
       flexDirection: 'row',
+      minHeight: this.dialog.element.offsetHeight, //'200px',
+      width: '100%',
     })
 
-    container.append(editorsContainer)
+    container.append(this.editorsContainer)
 
     this.dialog.show('')
     this.dialog.textElement.append(container)
@@ -346,30 +409,39 @@ class NotePlus extends LiteGraph.LGraphNode {
     const aceHTML = document.createElement('div')
     aceHTML.id = 'noteplus-html-editor'
     Object.assign(aceHTML.style, {
-      width: '300px',
-      height: '300px',
-      // backgroundColor: 'rgb(30,30,30)',
-      // color: 'whitesmoke',
+      width: '100%',
+      height: '100%',
+
+      minWidth: '300px',
+      minHeight: 'inherit',
     })
 
-    editorsContainer.append(aceHTML)
+    this.editorsContainer.append(aceHTML)
 
     const aceCSS = document.createElement('div')
     aceCSS.id = 'noteplus-css-editor'
     Object.assign(aceCSS.style, {
-      width: '300px',
-      height: '300px',
-      // backgroundColor: 'rgb(30,30,30)',
-      // color: 'whitesmoke',
+      width: '100%',
+      height: '100%',
+      minHeight: 'inherit',
     })
 
-    editorsContainer.append(aceCSS)
+    this.editorsContainer.append(aceCSS)
 
     const live_edit = document.createElement('input')
     live_edit.type = 'checkbox'
     live_edit.checked = this.live
     live_edit.onchange = () => {
       this.live = live_edit.checked
+      const cancel_button = this.dialog.element.querySelector(
+        '#cancel-editor-dialog',
+      )
+      if (cancel_button) {
+        cancel_button.disabled = this.live
+        cancel_button.style.background = this.live
+          ? 'repeating-linear-gradient(45deg,#606dbc,#606dbc 10px,#465298 10px,#465298 20px)'
+          : ''
+      }
     }
 
     //- "Dynamic" elements
@@ -388,15 +460,14 @@ class NotePlus extends LiteGraph.LGraphNode {
             const md = this.html_editor.getValue()
             this.edit_mode_widget.value = 'html'
             select_mode.value = 'html'
-            const html = this.markdownConverter.makeHtml(md)
-            this.html_widget.value = html
-            this.html_editor.setValue(html)
-            this.html_editor.session.setMode('ace/mode/html')
-            this.updateHTML(this.html_widget.value)
-
-            convert_to_html.remove()
+            MTB.mdParser.parse(md).then((content) => {
+              this.html_widget.value = content
+              this.html_editor.setValue(content)
+              this.html_editor.session.setMode('ace/mode/html')
+              this.updateHTML(this.html_widget.value)
+              convert_to_html.remove()
+            })
           }
-
           firstButton.before(convert_to_html)
         }
       } else {
@@ -406,6 +477,19 @@ class NotePlus extends LiteGraph.LGraphNode {
         }
       }
       select_mode.value = this.edit_mode_widget.value
+
+      // the header for dragging the dialog
+      const header = document.createElement('div')
+      header.style.padding = '8px'
+      header.style.cursor = 'move'
+      header.style.backgroundColor = 'rgba(0,0,0,0.5)'
+      header.style.userSelect = 'none'
+
+      header.style.borderBottom = '1px solid #ddd'
+      header.textContent = 'MTB Note+ Editor'
+      container.prepend(header)
+      makeDraggable(this.dialog.element, header)
+      makeResizable(this.dialog.element)
     }
     //- combobox
     let theme_select = this.dialog.element.querySelector('#theme_select')
@@ -421,7 +505,7 @@ class NotePlus extends LiteGraph.LGraphNode {
         option.textContent = label
         theme_select.append(option)
       }
-      for (const t of themes) {
+      for (const t of THEMES) {
         addOption(t)
       }
 
@@ -491,54 +575,59 @@ class NotePlus extends LiteGraph.LGraphNode {
   onCreate() {
     errorLogger('NotePlus onCreate')
   }
-  configure(info) {
-    super.configure(info)
-    infoLogger('Restoring serialized values', info)
-    // - update view from serialzed data
+  restoreNodeState(info) {
     this.html_widget.element.id = `note-plus-${this.uuid}`
     this.setMode(this.edit_mode_widget.value)
     this.setTheme(this.theme_widget.value)
     this.updateHTML(this.html_widget.value)
     this.updateCSS(this.css_widget.value)
-    this.setSize(info.size)
+    if (info?.size) {
+      this.setSize(info.size)
+    }
+  }
+  configure(info) {
+    super.configure(info)
+    infoLogger('Restoring serialized values', info)
+    this.restoreNodeState(info)
+    // - update view from serialzed data
   }
   onNodeCreated() {
     infoLogger('Node created', this.uuid)
-    this.html_widget.element.id = `note-plus-${this.uuid}`
-    this.setMode(this.edit_mode_widget.value)
-    this.setTheme(this.theme_widget.value)
-    this.updateHTML(this.html_widget.value) // widget is populated here since we called super
-    this.updateCSS(this.css_widget.value)
+    this.restoreNodeState({})
+    // this.html_widget.element.id = `note-plus-${this.uuid}`
+    // this.setMode(this.edit_mode_widget.value)
+    // this.setTheme(this.theme_widget.value)
+    // this.updateHTML(this.html_widget.value) // widget is populated here since we called super
+    // this.updateCSS(this.css_widget.value)
   }
   onRemoved() {
     infoLogger('Node removed', this.uuid)
   }
   getExtraMenuOptions() {
-    const options = []
-    // {
-    //       content: string;
-    //       callback?: ContextMenuEventListener;
-    //       /** Used as innerHTML for extra child element */
-    //       title?: string;
-    //       disabled?: boolean;
-    //       has_submenu?: boolean;
-    //       submenu?: {
-    //           options: ContextMenuItem[];
-    //       } & IContextMenuOptions;
-    //       className?: string;
-    //   }
-    options.push({
-      content: `Set to ${
-        this.edit_mode_widget.value === 'html' ? 'markdown' : 'html'
-      }`,
-      callback: () => {
-        this.edit_mode_widget.value =
-          this.edit_mode_widget.value === 'html' ? 'markdown' : 'html'
-        this.updateHTML(this.html_widget.value)
-      },
-    })
+    const currentMode = this.edit_mode_widget.value
+    const newMode = currentMode === 'html' ? 'markdown' : 'html'
 
-    return options
+    const debugItems = window.MTB?.DEBUG
+      ? [
+          {
+            content: 'Replace with demo content (debug)',
+            callback: () => {
+              this.html_widget.value = DEMO_CONTENT
+            },
+          },
+        ]
+      : []
+
+    return [
+      ...debugItems,
+      {
+        content: `Set to ${newMode}`,
+        callback: () => {
+          this.edit_mode_widget.value = newMode
+          this.updateHTML(this.html_widget.value)
+        },
+      },
+    ]
   }
 
   _setupEditor(editor) {
@@ -663,17 +752,44 @@ class NotePlus extends LiteGraph.LGraphNode {
     // this.setSize(this.computeSize())
   }
 
-  updateHTML(val) {
-    const cleanHTML = DOMPurify.sanitize(val, { ADD_TAGS: ['iframe'] })
-    this.html_widget.value = cleanHTML
+  parserInitiated() {
+    if (window.MTB?.mdParser) return true
+    return false
+  }
 
-    // update our widget preview
-    if (this.edit_mode_widget.value === 'html') {
-      this.html_widget.element.innerHTML = cleanHTML
-    } else if (this.edit_mode_widget.value === 'markdown') {
-      this.html_widget.element.innerHTML =
-        this.markdownConverter.makeHtml(cleanHTML)
+  /** to easilty swap purification methods*/
+  purify(content) {
+    return DOMPurify.sanitize(content, {
+      ADD_TAGS: ['iframe', 'detail', 'summary'],
+    })
+  }
+
+  updateHTML(val) {
+    if (!this.parserInitiated()) {
+      return
     }
+    val = val || this.html_widget.value
+    const isHTML = this.edit_mode_widget.value === 'html'
+
+    const cleanHTML = this.purify(val)
+
+    const value = isHTML
+      ? cleanHTML
+      : cleanHTML.replaceAll('&gt;', '>').replaceAll('&lt;', '<')
+    // .replaceAll('&amp;', '&')
+    // .replaceAll('&quot;', '"')
+    // .replaceAll('&#039;', "'")
+
+    this.html_widget.value = value
+
+    if (isHTML) {
+      this.inner.innerHTML = value
+    } else {
+      MTB.mdParser.parse(value).then((e) => {
+        this.inner.innerHTML = e
+      })
+    }
+    // this.html_widget.element.innerHTML = `<div id="note-plus-spacer"></div>${value}`
     this.calculateHeight()
     // this.setSize(this.computeSize())
   }
@@ -681,6 +797,27 @@ class NotePlus extends LiteGraph.LGraphNode {
 
 app.registerExtension({
   name: 'mtb.noteplus',
+  setup: () => {
+    app.ui.settings.addSetting({
+      id: 'mtb.noteplus.use-shiki',
+      category: ['mtb', 'Note+', 'use-shiki'],
+      name: 'Use shiki to highlight code',
+      tooltip:
+        'This will load a larger version of @mtb/markdown-parser that bundles shiki, it supports all shiki transformers (supported langs: html,css,python,markdown)',
+
+      type: 'boolean',
+      defaultValue: false,
+      attrs: {
+        style: {
+          // fontFamily: 'monospace',
+        },
+      },
+      async onChange(value) {
+        storage.set('np-use-shiki', value)
+        useShiki = value
+      },
+    })
+  },
 
   registerCustomNodes() {
     LiteGraph.registerNodeType('Note Plus (mtb)', NotePlus)

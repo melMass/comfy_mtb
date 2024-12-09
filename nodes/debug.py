@@ -1,3 +1,6 @@
+import base64
+import io
+import json
 from pathlib import Path
 from typing import Optional
 
@@ -36,6 +39,8 @@ def process_list(anything: list[object]) -> dict[str, list[str]]:
         text.append(
             f"List of Tensors: {first_element.shape} (x{len(anything)})"
         )
+    else:
+        text.append(f"Array ({len(anything)}): {anything}")
 
     return {"text": text}
 
@@ -55,7 +60,10 @@ def process_dict(anything: dict[str, dict[str, any]]) -> dict[str, str]:
         )
         res.append(f"Latent Samples: {anything['samples'].shape} {is_empty}")
 
-    return {"text": res}
+    else:
+        text.append(json.dumps(anything, indent=2))
+
+    return {"text": text}
 
 
 def process_bool(anything: bool) -> dict[str, str]:
@@ -91,7 +99,7 @@ class MTB_Debug:
     CATEGORY = "mtb/debug"
     OUTPUT_NODE = True
 
-    def do_debug(self, output_to_console, **kwargs):
+    def do_debug(self, output_to_console: bool, **kwargs):
         output = {
             "ui": {"b64_images": [], "text": [], "geometry": []},
             # "result": ("A"),
@@ -104,6 +112,9 @@ class MTB_Debug:
             bool: process_bool,
             o3d.geometry.Geometry: process_geometry,
         }
+        if output_to_console:
+            for k, v in kwargs.items():
+                log.info(f"{k}: {v}")
 
         for anything in kwargs.values():
             processor = processors.get(type(anything))

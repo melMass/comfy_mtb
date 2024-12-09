@@ -12,4 +12,5 @@ pillow
 imageio
 imageio-ffmpeg
 aiohttp-cors
-open3d==0.17.0 
+open3d==0.17.0
+cachetools

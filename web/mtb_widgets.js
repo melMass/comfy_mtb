@@ -7,20 +7,24 @@
  *
  */
 
+/// <reference path="../types/typedefs.js" />
+
 // TODO: Use the builtin addDOMWidget everywhere appropriate
 
 import { app } from '../../scripts/app.js'
 import { api } from '../../scripts/api.js'
 
+import * as mtb_ui from './mtb_ui.js'
 import parseCss from './extern/parse-css.js'
 import * as shared from './comfy_shared.js'
 import { o3d_to_three, make_wireframe } from './geometry_nodes.js'
 import * as THREE from './extern/three.module.js'
 
-import { log } from './comfy_shared.js'
+import { infoLogger } from './comfy_shared.js'
+import { NumberInputWidget } from './numberInput.js'
 
 // NOTE: new widget types registered by MTB Widgets
-const newTypes = [/*'BOOL'n,*/ 'COLOR', 'BBOX']
+const newTypes = [/*'BOOL'*/, 'COLOR', 'BBOX']
 
 const deprecated_nodes = {
   //  'Animation Builder':
@@ -57,7 +61,250 @@ const calculateTextDimensions = (ctx, value, width, fontSize = 16) => {
   return { textHeight, maxLineWidth }
 }
 
+export function addMultilineWidget(node, name, opts, callback) {
+  const inputEl = document.createElement('textarea')
+  inputEl.className = 'comfy-multiline-input'
+  inputEl.value = opts.defaultVal
+  inputEl.placeholder = opts.placeholder || name
+
+  const widget = node.addDOMWidget(name, 'textmultiline', inputEl, {
+    getValue() {
+      return inputEl.value
+    },
+    setValue(v) {
+      inputEl.value = v
+    },
+  })
+  widget.inputEl = inputEl
+
+  inputEl.addEventListener('input', () => {
+    callback?.(widget.value)
+    widget.callback?.(widget.value)
+  })
+  widget.onRemove = () => {
+    inputEl.remove()
+  }
+
+  return { minWidth: 400, minHeight: 200, widget }
+}
+
+export const VECTOR_AXIS = {
+  0: 'x',
+  1: 'y',
+  2: 'z',
+  3: 'w',
+}
+
+export function addVectorWidgetW(
+  node,
+  name,
+  value,
+  vector_size,
+  _callback,
+  app,
+) {
+  // const inputEl = document.createElement('div')
+  // const vecEl = document.createElement('div')
+  //
+  // inputEl.style.background = 'red'
+  //
+  // inputEl.className = 'comfy-vector-container'
+  // vecEl.className = 'comfy-vector-input'
+  //
+  // vecEl.style.display = 'flex'
+  // inputEl.appendChild(vecEl)
+  const inputs = []
+
+  for (let i = 0; i < vector_size; i++) {
+    // const input = document.createElement('input')
+    // input.type = 'number'
+    // input.value = value[VECTOR_AXIS[i]]
+    const input = node.addWidget(
+      'number',
+      `${name}_${VECTOR_AXIS[i]}`,
+      value[VECTOR_AXIS[i]],
+      (val) => { },
+    )
+
+    inputs.push(input)
+    // vecEl.appendChild(input)
+  }
+  //
+  // const widget = node.addDOMWidget(name, 'vector', inputEl, {
+  //   getValue() {
+  //     return JSON.stringify(widget._value)
+  //   },
+  //   setValue(v) {
+  //     widget._value = v
+  //   },
+  //   afterResize(node, widget) {
+  //     console.log('After resize', { that: this, node, widget })
+  //   },
+  // })
+  //
+  // console.log('prev callback', widget.callback)
+  // widget.callback = callback
+  // widget._value = value
+  //
+  // for (let i = 0; i < vector_size; i++) {
+  //   const input = inputs[i]
+  //   input.addEventListener('change', (event) => {
+  //     widget._value[VECTOR_AXIS[i]] = Number.parseFloat(event.target.value)
+  //     widget.callback?.(widget._value)
+  //     node.graph._version++
+  //     node.setDirtyCanvas(true, true)
+  //   })
+  // }
+  // // document.body.append(inputEl)
+  //
+  // widget.inputEl = inputEl
+  // widget.vecEl = vecEl
+  //
+  // inputEl.addEventListener('input', () => {
+  //   widget.callback?.(widget.value)
+  // })
+  //
+  return { minWidth: 400, minHeight: 200, widget }
+}
+export function addVectorWidget(node, name, value, vector_size, callback, app) {
+  const inputEl = document.createElement('div')
+  const vecEl = document.createElement('div')
+
+  inputEl.className = 'comfy-vector-container'
+  vecEl.className = 'comfy-vector-input'
+  vecEl.id = 'vecEl'
+
+  vecEl.style.display = 'flex'
+  vecEl.style.flexDirection = 'column'
+  inputEl.appendChild(vecEl)
+  const inputs = []
+
+  //
+  // for (let i = 0; i < vector_size; i++) {
+  //   const input = document.createElement('input')
+  //   input.type = 'number'
+  //   input.value = value[VECTOR_AXIS[i]]
+  //   inputs.push(input)
+  //   vecEl.appendChild(input)
+  // }
+
+  const widget = node.addDOMWidget(name, 'vector', inputEl, {
+    getValue() {
+      return JSON.stringify(widget._value)
+    },
+    setValue(v) {
+      widget._value = v
+    },
+  })
+  const vec = new NumberInputWidget('vecEl', vector_size, true)
+  vec.setValue(...Object.values(value))
+  vec.onChange = (value) => {
+    for (let i = 0; i < value.length; i++) {
+      const val = value[i]
+      widget._value[VECTOR_AXIS[i]] = Number.parseFloat(val)
+    }
+
+    widget.callback?.(widget._value)
+    // widget._value[VECTOR_AXIS[index]] = Number.parseFloat(value)
+  }
+
+  console.log('prev callback', widget.callback)
+  widget.callback = callback
+  widget._value = value
+
+  // for (let i = 0; i < vector_size; i++) {
+  //   const input = inputs[i]
+  //   input.addEventListener('change', (event) => {
+  //     widget._value[VECTOR_AXIS[i]] = Number.parseFloat(event.target.value)
+  //     widget.callback?.(widget._value)
+  //     node.graph._version++
+  //     node.setDirtyCanvas(true, true)
+  //   })
+  // }
+
+  widget.inputEl = inputEl
+  widget.vecEl = vecEl
+  widget.vec = vec
+
+  return { minWidth: 400, minHeight: 200 * vector_size, widget }
+}
 export const MtbWidgets = {
+  //TODO: complete this properly
+
+  /**
+   * Creates a vector widget.
+   * @param {string} key - The key for the widget.
+   * @param {number[]} [val] - The initial value for the widget.
+   * @param {number} size - The size of the vector.
+   * @returns {VectorWidget} The vector widget.
+   */
+  VECTOR: (key, val, size) => {
+    shared.infoLogger('Adding VECTOR widget', { key, val, size })
+    /** @type {VectorWidget} */
+    const widget = {
+      name: key,
+      type: `vector${size}`,
+      y: 0,
+      options: { default: Array.from({ length: size }, () => 0.0) },
+      _value: val || Array.from({ length: size }, () => 0.0),
+      draw: (ctx, node, width, widgetY, height) => {
+        ctx.textAlign = 'left'
+        ctx.strokeStyle = outline_color
+        ctx.fillStyle = background_color
+        ctx.beginPath()
+        if (show_text)
+          ctx.roundRect(margin, y, widget_width - margin * 2, H, [H * 0.5])
+        else ctx.rect(margin, y, widget_width - margin * 2, H)
+        ctx.fill()
+        if (show_text) {
+          if (!w.disabled) ctx.stroke()
+          ctx.fillStyle = text_color
+          if (!w.disabled) {
+            ctx.beginPath()
+            ctx.moveTo(margin + 16, y + 5)
+            ctx.lineTo(margin + 6, y + H * 0.5)
+            ctx.lineTo(margin + 16, y + H - 5)
+            ctx.fill()
+            ctx.beginPath()
+            ctx.moveTo(widget_width - margin - 16, y + 5)
+            ctx.lineTo(widget_width - margin - 6, y + H * 0.5)
+            ctx.lineTo(widget_width - margin - 16, y + H - 5)
+            ctx.fill()
+          }
+          ctx.fillStyle = secondary_text_color
+          ctx.fillText(w.label || w.name, margin * 2 + 5, y + H * 0.7)
+          ctx.fillStyle = text_color
+          ctx.textAlign = 'right'
+          if (w.type === 'number') {
+            ctx.fillText(
+              Number(w.value).toFixed(
+                w.options.precision !== undefined ? w.options.precision : 3,
+              ),
+              widget_width - margin * 2 - 20,
+              y + H * 0.7,
+            )
+          } else {
+            let v = w.value
+            if (w.options.values) {
+              let values = w.options.values
+              if (values.constructor === Function) values = values()
+              if (values && values.constructor !== Array) v = values[w.value]
+            }
+            ctx.fillText(v, widget_width - margin * 2 - 20, y + H * 0.7)
+          }
+        }
+      },
+      get value() {
+        return this._value
+      },
+      set value(val) {
+        this._value = val
+        this.callback?.(this._value)
+      },
+    }
+
+    return widget
+  },
   BBOX: (key, val) => {
     /** @type {import("./types/litegraph").IWidget} */
     const widget = {
@@ -68,7 +315,7 @@ export const MtbWidgets = {
       value: val?.default || [0, 0, 0, 0],
       options: {},
 
-      draw: function (ctx, node, widget_width, widgetY, height) {
+      draw: function (ctx, _node, widget_width, widgetY, _height) {
         const hide = this.type !== 'BBOX' && app.canvas.ds.scale > 0.5
 
         const show_text = true
@@ -78,13 +325,13 @@ export const MtbWidgets = {
         const secondary_text_color = LiteGraph.WIDGET_SECONDARY_TEXT_COLOR
         const H = LiteGraph.NODE_WIDGET_HEIGHT
 
-        let margin = 15
-        let numWidgets = 4 // Number of stacked widgets
+        const margin = 15
+        const numWidgets = 4 // Number of stacked widgets
 
         if (hide) return
 
         for (let i = 0; i < numWidgets; i++) {
-          let currentY = widgetY + i * (H + margin) // Adjust Y position for each widget
+          const currentY = widgetY + i * (H + margin) // Adjust Y position for each widget
 
           ctx.textAlign = 'left'
           ctx.strokeStyle = outline_color
@@ -204,7 +451,7 @@ export const MtbWidgets = {
                     try {
                       //solve the equation if possible
                       v = eval(v)
-                    } catch (e) {}
+                    } catch (e) { }
                   }
                   this.value = Number(v)
                   shared.inner_value_change(this, this.value, event)
@@ -300,6 +547,7 @@ export const MtbWidgets = {
 
             picker.addEventListener('change', () => {
               this.value = picker.value
+              this.callback?.(this.value)
               node.graph._version++
               node.setDirtyCanvas(true, true)
               picker.remove()
@@ -572,49 +820,60 @@ const mtb_widgets = {
   name: 'mtb.widgets',
 
   init: async () => {
-    log('Registering mtb.widgets')
+    infoLogger('Registering mtb.widgets')
     try {
-      const res = await api.fetchApi('/mtb/debug')
+      const res = await api.fetchApi('/mtb/server-info')
       const msg = await res.json()
       if (!window.MTB) {
         window.MTB = {}
       }
-      window.MTB.DEBUG = msg.enabled
+      window.MTB.DEBUG = msg.debug
     } catch (e) {
-      console.error('Error:', error)
+      console.error('Error:', e)
     }
   },
 
   setup: () => {
     app.ui.settings.addSetting({
-      id: 'mtb.Debug.enabled',
-      name: '[⚡mtb] Enable Debug (py and js)',
+      id: 'mtb.postshot.path',
+      category: ['mtb', 'PostShot', 'path'],
+      name: 'Path to Postshot CLI',
+      type: 'string',
+      defaultValue: 'C:/Program Files/Jawset Postshot/bin/postshot-cli.exe',
+      tooltip: 'The path to the postshot CLI',
+    })
+
+    app.ui.settings.addSetting({
+      id: 'mtb.Main.debug-enabled',
+      category: ['mtb', 'Main', 'debug-enabled'],
+      name: 'Enable Debug (py and js)',
       type: 'boolean',
       defaultValue: false,
 
       tooltip:
-        'This will enable debug messages in the console and in the python console respectively',
+        'This will enable debug messages in the console and in the python console respectively, no need to restart the server, but do reload the webui',
       attrs: {
         style: {
-          fontFamily: 'monospace',
+          // fontFamily: 'monospace',
         },
       },
       async onChange(value) {
-        if (value) {
-          console.log('Enabled DEBUG mode')
-        }
         if (!window.MTB) {
           window.MTB = {}
         }
         window.MTB.DEBUG = value
+        if (value) {
+          infoLogger('Enabled DEBUG mode')
+        }
+
         await api
-          .fetchApi('/mtb/debug', {
+          .fetchApi('/mtb/server-info', {
             method: 'POST',
             body: JSON.stringify({
-              enabled: value,
+              debug: value,
             }),
           })
-          .then((response) => {})
+          .then((_response) => { })
           .catch((error) => {
             console.error('Error:', error)
           })
@@ -622,21 +881,21 @@ const mtb_widgets = {
     })
   },
 
-  getCustomWidgets: function () {
+  getCustomWidgets: () => {
     return {
-      BOOL: (node, inputName, inputData, app) => {
-        console.debug('Registering bool')
+      // BOOL: (node, inputName, inputData, _app) => {
+      //   console.debug('Registering bool')
+      //
+      //   return {
+      //     widget: node.addCustomWidget(
+      //       MtbWidgets.BOOL(inputName, inputData[1]?.default || false),
+      //     ),
+      //     minWidth: 150,
+      //     minHeight: 30,
+      //   }
+      // },
 
-        return {
-          widget: node.addCustomWidget(
-            MtbWidgets.BOOL(inputName, inputData[1]?.default || false),
-          ),
-          minWidth: 150,
-          minHeight: 30,
-        }
-      },
-
-      COLOR: (node, inputName, inputData, app) => {
+      COLOR: (node, inputName, inputData, _app) => {
         console.debug('Registering color')
         return {
           widget: node.addCustomWidget(
@@ -658,15 +917,15 @@ const mtb_widgets = {
     }
   },
   /**
-   * @param {import("./types/comfy").NodeType} nodeType
-   * @param {import("./types/comfy").NodeDef} nodeData
+   * @param {NodeType} nodeType
+   * @param {NodeData} nodeData
    * @param {import("./types/comfy").App} app
    */
   async beforeRegisterNodeDef(nodeType, nodeData, app) {
     // const rinputs = nodeData.input?.required
 
     let has_custom = false
-    if (nodeData.input && nodeData.input.required) {
+    if (nodeData.input?.required) {
       for (const i of Object.keys(nodeData.input.required)) {
         const input_type = nodeData.input.required[i][0]
 
@@ -679,10 +938,8 @@ const mtb_widgets = {
     if (has_custom) {
       //- Add widgets on node creation
       const onNodeCreated = nodeType.prototype.onNodeCreated
-      nodeType.prototype.onNodeCreated = function () {
-        const r = onNodeCreated
-          ? onNodeCreated.apply(this, arguments)
-          : undefined
+      nodeType.prototype.onNodeCreated = function (...args) {
+        const r = onNodeCreated ? onNodeCreated.apply(this, args) : undefined
         this.serialize_widgets = true
         this.setSize?.(this.computeSize())
 
@@ -700,8 +957,8 @@ const mtb_widgets = {
           ? origGetExtraMenuOptions.apply(this, arguments)
           : undefined
         if (this.widgets) {
-          let toInput = []
-          let toWidget = []
+          const toInput = []
+          const toWidget = []
           for (const w of this.widgets) {
             if (w.type === shared.CONVERTED_TYPE) {
               //- This is already handled by widgetinputs.js
@@ -735,6 +992,10 @@ const mtb_widgets = {
     if (!nodeData.name.endsWith('(mtb)')) {
       return
     }
+    // console.log('MTB Node', { description: nodeData.description, nodeType })
+
+    shared.addDocumentation(nodeData, nodeType)
+
     const deprecation = deprecated_nodes[nodeData.name.replace(' (mtb)', '')]
 
     if (deprecation) {
@@ -742,29 +1003,12 @@ const mtb_widgets = {
     }
     //- Extending Python Nodes
     switch (nodeData.name) {
-      case 'Psd Save (mtb)': {
-        const onConnectionsChange = nodeType.prototype.onConnectionsChange
-        nodeType.prototype.onConnectionsChange = function (
-          type,
-          index,
-          connected,
-          link_info,
-        ) {
-          const r = onConnectionsChange
-            ? onConnectionsChange.apply(this, arguments)
-            : undefined
-          shared.dynamic_connection(this, index, connected)
-          return r
-        }
-        break
-      }
       //TODO: remove this non sense
-      case 'Get Batch From History (mtb)': {
+      case 'Get Batch From History (mtb)':
+      case 'Get Batch From History V2 (mtb)': {
         const onNodeCreated = nodeType.prototype.onNodeCreated
         nodeType.prototype.onNodeCreated = function () {
-          const r = onNodeCreated
-            ? onNodeCreated.apply(this, arguments)
-            : undefined
+          const r = onNodeCreated ? onNodeCreated.apply(this, []) : undefined
           const internal_count = this.widgets.find(
             (w) => w.name === 'internal_count',
           )
@@ -780,6 +1024,22 @@ const mtb_widgets = {
         nodeType.prototype.onExecuted = function (message) {
           const r = onExecuted ? onExecuted.apply(this, message) : undefined
           return r
+        }
+
+        break
+      }
+      case 'Postshot Train (mtb)':
+      case 'Postshot Export (mtb)': {
+        const onNodeCreated = nodeType.prototype.onNodeCreated
+        nodeType.prototype.onNodeCreated = function (...args) {
+          const r = onNodeCreated ? onNodeCreated.apply(this, args) : undefined
+          const { postshot_cli } = shared.getNamedWidget(this, 'postshot_cli')
+
+          shared.hideWidgetForGood(this, postshot_cli)
+
+          api.getSetting('mtb.postshot.path').then((p) => {
+            postshot_cli._value = p
+          })
         }
 
         break
@@ -806,7 +1066,7 @@ const mtb_widgets = {
                 imgURLs = imgURLs.concat(
                   message.gif.map((params) => {
                     return api.apiURL(
-                      '/view?' + new URLSearchParams(params).toString(),
+                      `/view?${new URLSearchParams(params).toString()}`,
                     )
                   }),
                 )
@@ -815,7 +1075,7 @@ const mtb_widgets = {
                 imgURLs = imgURLs.concat(
                   message.apng.map((params) => {
                     return api.apiURL(
-                      '/view?' + new URLSearchParams(params).toString(),
+                      `/view?${new URLSearchParams(params).toString()}`,
                     )
                   }),
                 )
@@ -843,37 +1103,71 @@ const mtb_widgets = {
       }
       case 'Animation Builder (mtb)': {
         const onNodeCreated = nodeType.prototype.onNodeCreated
-        nodeType.prototype.onNodeCreated = function () {
-          const r = onNodeCreated
-            ? onNodeCreated.apply(this, arguments)
-            : undefined
+        nodeType.prototype.onNodeCreated = function (...args) {
+          const r = onNodeCreated ? onNodeCreated.apply(this, args) : undefined
 
           this.changeMode(LiteGraph.ALWAYS)
-
-          const raw_iteration = this.widgets.find(
-            (w) => w.name === 'raw_iteration',
-          )
-          const raw_loop = this.widgets.find((w) => w.name === 'raw_loop')
-
-          const total_frames = this.widgets.find(
-            (w) => w.name === 'total_frames',
-          )
-          const loop_count = this.widgets.find((w) => w.name === 'loop_count')
+          const { raw_iteration, raw_loop, total_frames, loop_count } =
+            shared.getNamedWidget(
+              this,
+              'raw_iteration',
+              'raw_loop',
+              'total_frames',
+              'loop_count',
+            )
 
           shared.hideWidgetForGood(this, raw_iteration)
           shared.hideWidgetForGood(this, raw_loop)
 
           raw_iteration._value = 0
 
-          const value_preview = this.addCustomWidget(
-            MtbWidgets['DEBUG_STRING']('value_preview', 'Idle'),
-          )
-          value_preview.parent = this
+          // const value_preview = this.addCustomWidget(
+          // MtbWidgets.DEBUG_STRING('value_preview', 'Idle'),
+          // )
 
-          const loop_preview = this.addCustomWidget(
-            MtbWidgets['DEBUG_STRING']('loop_preview', 'Iteration: Idle'),
+          const dom_value_preview = mtb_ui.makeElement('p', {
+            fontWeigth: '700',
+            textAlign: 'center',
+            fontSize: '1.5em',
+            margin: 0,
+          })
+          const value_preview = this.addDOMWidget(
+            'value_preview',
+            'DISPLAY',
+            dom_value_preview,
+            {
+              hideOnZoom: false,
+              setValue: (val) => {
+                if (val) {
+                  value_preview.element.innerHTML = val
+                }
+              },
+            },
           )
-          loop_preview.parent = this
+          value_preview.value = 'Idle'
+
+          const dom_loop_preview = mtb_ui.makeElement('p', {
+            textAlign: 'center',
+            margin: 0,
+          })
+
+          const loop_preview = this.addDOMWidget(
+            'loop_preview',
+            'DISPLAY',
+            dom_loop_preview,
+            {
+              hideOnZoom: false,
+              setValue: (val) => {
+                if (val) {
+                  dom_loop_preview.innerHTML = val
+                }
+              },
+              getValue: () => {
+                dom_loop_preview.innerHTML
+              },
+            },
+          )
+          loop_preview.value = 'Iteration: Idle'
 
           const onReset = () => {
             raw_iteration.value = 0
@@ -885,19 +1179,15 @@ const mtb_widgets = {
             app.canvas.setDirty(true)
           }
 
-          const reset_button = this.addWidget(
-            'button',
-            `Reset`,
-            'reset',
-            onReset,
-          )
+          // reset button
+          this.addWidget('button', 'Reset', 'reset', onReset)
 
-          const run_button = this.addWidget('button', `Queue`, 'queue', () => {
+          // run button
+          this.addWidget('button', 'Queue', 'queue', () => {
             onReset() // this could maybe be a setting or checkbox
             app.queuePrompt(0, total_frames.value * loop_count.value)
             window.MTB?.notify?.(
-              `Started a queue of ${total_frames.value} frames (for ${
-                loop_count.value
+              `Started a queue of ${total_frames.value} frames (for ${loop_count.value
               } loop, so ${total_frames.value * loop_count.value})`,
               5000,
             )
@@ -912,16 +1202,14 @@ const mtb_widgets = {
             this.value++
             raw_loop.value = Math.floor(this.value / total_frames.value)
 
-            value_preview.value = `frame: ${
-              raw_iteration.value % total_frames.value
-            } / ${total_frames.value - 1}`
+            value_preview.value = `frame: ${raw_iteration.value % total_frames.value
+              } / ${total_frames.value - 1}`
 
             if (raw_loop.value + 1 > loop_count.value) {
               loop_preview.value = 'Done 😎!'
             } else {
-              loop_preview.value = `current loop: ${raw_loop.value + 1}/${
-                loop_count.value
-              }`
+              loop_preview.value = `current loop: ${raw_loop.value + 1}/${loop_count.value
+                }`
             }
           }
 
@@ -930,28 +1218,11 @@ const mtb_widgets = {
 
         break
       }
-      case 'Text Encore Frames (mtb)': {
-        const onConnectionsChange = nodeType.prototype.onConnectionsChange
-        nodeType.prototype.onConnectionsChange = function (
-          type,
-          index,
-          connected,
-          link_info,
-        ) {
-          const r = onConnectionsChange
-            ? onConnectionsChange.apply(this, arguments)
-            : undefined
-
-          shared.dynamic_connection(this, index, connected)
-          return r
-        }
-        break
-      }
       case 'Interpolate Clip Sequential (mtb)': {
         const onNodeCreated = nodeType.prototype.onNodeCreated
-        nodeType.prototype.onNodeCreated = function () {
+        nodeType.prototype.onNodeCreated = function (...args) {
           const r = onNodeCreated
-            ? onNodeCreated.apply(this, arguments)
+            ? onNodeCreated.apply(this, ...args)
             : undefined
           const addReplacement = () => {
             const input = this.addInput(
@@ -963,19 +1234,14 @@ const mtb_widgets = {
             this.addWidget('STRING', `replacement_${this.widgets.length}`, '')
           }
           //- add
-          this.addWidget('button', '+', 'add', function (value, widget, node) {
+          this.addWidget('button', '+', 'add', (value, widget, node) => {
             console.log('Button clicked', value, widget, node)
             addReplacement()
           })
           //- remove
-          this.addWidget(
-            'button',
-            '-',
-            'remove',
-            function (value, widget, node) {
-              console.log(`Button clicked: ${value}`, widget, node)
-            },
-          )
+          this.addWidget('button', '-', 'remove', (value, widget, node) => {
+            console.log(`Button clicked: ${value}`, widget, node)
+          })
 
           return r
         }
@@ -994,10 +1260,7 @@ const mtb_widgets = {
                 method: 'POST',
                 body: JSON.stringify({
                   name: 'getStyles',
-                  args:
-                    node.widgets && node.widgets[0].value
-                      ? node.widgets[0].value
-                      : '',
+                  args: node.widgets?.[0].value ? node.widgets[0].value : '',
                 }),
               })
 
@@ -1017,7 +1280,8 @@ const mtb_widgets = {
                     window.MTB?.notify?.(
                       `Extracted positive from ${this.widgets[0].value}`,
                     )
-                    const tn = LiteGraph.createNode('Text box')
+                    // const tn = LiteGraph.createNode('Text box')
+                    const tn = LiteGraph.createNode('CLIPTextEncode')
                     app.graph.add(tn)
                     tn.title = `${this.widgets[0].value} (Positive)`
                     tn.widgets[0].value = style[0]
@@ -1038,7 +1302,7 @@ const mtb_widgets = {
                     window.MTB?.notify?.(
                       `Extracted negative from ${this.widgets[0].value}`,
                     )
-                    const tn = LiteGraph.createNode('Text box')
+                    const tn = LiteGraph.createNode('CLIPTextEncode')
                     app.graph.add(tn)
                     tn.title = `${this.widgets[0].value} (Negative)`
                     tn.widgets[0].value = style[1]
@@ -1056,6 +1320,8 @@ const mtb_widgets = {
 
         break
       }
+
+      //NOTE: dynamic nodes
       case 'Apply Text Template (mtb)': {
         shared.setupDynamicConnections(nodeType, 'var', '*')
         break
@@ -1068,13 +1334,30 @@ const mtb_widgets = {
         shared.setupDynamicConnections(nodeType, 'video', 'VIDEO')
         break
       }
+      case 'Interpolate Condition (mtb)': {
+        shared.setupDynamicConnections(nodeType, 'condition', 'CONDITIONING')
+        break
+      }
+      case 'Psd Save (mtb)': {
+        shared.setupDynamicConnections(nodeType, 'input_', 'PSDLAYER')
+        break
+      }
+      // case 'Text Encode Frames (mtb)' : {
+      //   shared.setupDynamicConnections(nodeType, 'input_', 'IMAGE')
+      //   break
+      // }
       case 'Stack Images (mtb)':
       case 'Concat Images (mtb)': {
         shared.setupDynamicConnections(nodeType, 'image', 'IMAGE')
-
+        break
+      }
+      case 'Audio Sequence (mtb)':
+      case 'Audio Stack (mtb)': {
+        shared.setupDynamicConnections(nodeType, 'audio', 'AUDIO')
         break
       }
       case 'Batch Float Assemble (mtb)':
+      case 'Batch Float Math (mtb)':
       case 'Plot Batch Float (mtb)': {
         shared.setupDynamicConnections(nodeType, 'floats', 'FLOATS')
         break
@@ -1091,13 +1374,13 @@ const mtb_widgets = {
           const r = onNodeCreated
             ? onNodeCreated.apply(this, arguments)
             : undefined
-          this.addInput(`x`, '*')
+          this.addInput('x', '*')
           return r
         }
 
         const onConnectionsChange = nodeType.prototype.onConnectionsChange
         nodeType.prototype.onConnectionsChange = function (
-          type,
+          _type,
           index,
           connected,
           link_info,
@@ -1105,16 +1388,14 @@ const mtb_widgets = {
           const r = onConnectionsChange
             ? onConnectionsChange.apply(this, arguments)
             : undefined
-          shared.dynamic_connection(this, index, connected, 'var_', '*', [
-            'x',
-            'y',
-            'z',
-          ])
+          shared.dynamic_connection(this, index, connected, 'var_', '*', {
+            nameArray: ['x', 'y', 'z'],
+          })
 
           //- infer type
           if (link_info) {
             const fromNode = this.graph._nodes.find(
-              (otherNode) => otherNode.id == link_info.origin_id,
+              (otherNode) => otherNode.id !== link_info.origin_id,
             )
             const type = fromNode.outputs[link_info.origin_slot].type
             this.inputs[index].type = type
@@ -1127,6 +1408,34 @@ const mtb_widgets = {
           }
         }
 
+        break
+      }
+
+      case 'Batch Shape (mtb)':
+      case 'Mask To Image (mtb)':
+      case 'Text To Image (mtb)': {
+        shared.addMenuHandler(nodeType, function (_app, options) {
+          /** @type {ContextMenuItem} */
+          const item = {
+            content: 'swap colors',
+            title: 'Swap BG/FG Color ⚡',
+            callback: (_menuItem) => {
+              const color_w = this.widgets.find((w) => w.name === 'color')
+              const bg_w = this.widgets.find(
+                (w) => w.name === 'background' || w.name === 'bg_color',
+              )
+
+              const color = color_w.value
+              const bg = bg_w.value
+
+              color_w.value = bg
+              bg_w.value = color
+            },
+          }
+
+          options.push(item)
+          return [item]
+        })
         break
       }
       case 'Save Tensors (mtb)': {

@@ -8,6 +8,7 @@ import io
 import itertools
 import json
 import math
+import operator
 import os
 import shlex
 import shutil
@@ -15,11 +16,15 @@ import socket
 import subprocess
 import sys
 import uuid
+from collections.abc import Callable, Sequence
+from enum import Enum
+from functools import reduce
 from pathlib import Path
-from typing import List, Optional, Union
+from typing import TypeVar
 
 import folder_paths
 import numpy as np
+import numpy.typing as npt
 import requests
 import torch
 from PIL import Image
@@ -175,9 +180,9 @@ class IPChecker:
     def __init__(self):
         self.ips = list(self.get_local_ips())
         log.debug(f"Found {len(self.ips)} local ips")
-        self.checked_ips = set()
+        self.checked_ips: set[str] = set()
 
-    def get_working_ip(self, test_url_template):
+    def get_working_ip(self, test_url_template: str):
         for ip in self.ips:
             if ip not in self.checked_ips:
                 self.checked_ips.add(ip)
@@ -187,7 +192,7 @@ class IPChecker:
         return None
 
     @staticmethod
-    def get_local_ips(prefix="192.168."):
+    def get_local_ips(prefix: str = "192.168."):
         hostname = socket.gethostname()
         log.debug(f"Getting local ips for {hostname}")
         for info in socket.getaddrinfo(hostname, None):
@@ -197,7 +202,7 @@ class IPChecker:
             if info[0] == socket.AF_INET and info[4][0].startswith(prefix):
                 yield info[4][0]
 
-    def _test_url(self, url):
+    def _test_url(self, url: str):
         try:
             response = requests.get(url, timeout=10)
             return response.status_code == 200
@@ -211,7 +216,7 @@ def get_server_info():
     from comfy.cli_args import args
 
     ip_checker = IPChecker()
-    base_url = args.listen
+    base_url: str = args.listen
     if base_url == "0.0.0.0":  # noqa: S104
         log.debug("Server set to 0.0.0.0, we will try to resolve the host IP")
         base_url = ip_checker.get_working_ip(
@@ -225,12 +230,151 @@ def get_server_info():
 
 
 # region MISC Utilities
+def glob_multiple(
+    path: Path, patterns: list[str], recursive: bool = False
+) -> list[Path]:
+    """Combine multiple glob patterns into a single iterator."""
+    return list(reduce(operator.or_, (set(path.glob(p)) for p in patterns)))
+
+
+def build_glob_patterns(
+    extensions: list[str], recursive: bool = False
+) -> list[str]:
+    """Build glob patterns for given extensions."""
+    prefix = "**/" if recursive else ""
+    return [f"{prefix}*.{ext}" for ext in extensions]
+
+
+class SortMode(Enum):
+    NONE = "none"
+    MODIFIED = "modified"
+    MODIFIED_REVERSE = "modified-reverse"
+    NAME = "name"
+    NAME_REVERSE = "name-reverse"
+
+    @classmethod
+    def from_str(cls, value: str | None) -> "SortMode|None":
+        if not value:
+            return None
+        try:
+            return cls(value.lower())
+        except ValueError:
+            log.warning(f"Sort mode {value} not supported")
+            return None
+
+
+# TODO: use mtb.core directly instead of copying parts here
+T = TypeVar("T", bound="StringConvertibleEnum")
+
+
+class StringConvertibleEnum(Enum):
+    """Base class for enums with utility methods for string conversion and member listing."""
+
+    @classmethod
+    def from_str(cls: type[T], label: str | T) -> T:
+        """
+        Convert a string to the corresponding enum value (case sensitive).
+
+        Args:
+            label (Union[str, T]): The string or enum value to convert.
+
+        Returns
+        -------
+            T: The corresponding enum value.
+
+        Raises
+        ------
+            ValueError: If the label does not correspond to any enum member.
+        """
+        if isinstance(label, cls):
+            return label
+        if isinstance(label, str):
+            # from key
+            if label in cls.__members__:
+                return cls[label]
+
+            for member in cls:
+                if member.value == label:
+                    return member
+
+        raise ValueError(
+            f"Unknown label: '{label}'. Valid members: {list(cls.__members__.keys())}, "
+            f"valid values: {cls.list_members()}"
+        )
+
+    @classmethod
+    def to_str(cls: type[T], enum_value: T) -> str:
+        """
+        Convert an enum value to its string representation.
+
+        Args:
+            enum_value (T): The enum value to convert.
+
+        Returns
+        -------
+            str: The string representation of the enum value.
+
+        Raises
+        ------
+            ValueError: If the enum value is invalid.
+        """
+        if isinstance(enum_value, cls):
+            return enum_value.value
+        raise ValueError(f"Invalid Enum: {enum_value}")
+
+    @classmethod
+    def list_members(cls: type[T]) -> list[str]:
+        """
+        Return a list of string representations of all enum members.
+
+        Returns
+        -------
+            List[str]: List of all enum member values.
+        """
+        return [enum.value for enum in cls]
+
+    def __str__(self) -> str:
+        """
+        Returns the string representation of the enum value.
+
+        Returns
+        -------
+            str: The string representation of the enum value.
+        """
+        return self.value
+
+
+class Precision(StringConvertibleEnum):
+    FULL = "full"
+    FP32 = "fp32"
+    FP16 = "fp16"
+    BF16 = "bf16"
+    FP8 = "fp8"
+
+    def to_dtype(self):
+        match self:
+            case Precision.FP32 | Precision.FULL:
+                return torch.float32
+            case Precision.FP16:
+                return torch.float16
+            case Precision.BF16:
+                return torch.bfloat16
+            case Precision.FP8:
+                return torch.float8_e4m3fn
+
+
+class Operation(StringConvertibleEnum):
+    COPY = "copy"
+    CONVERT = "convert"
+    DELETE = "delete"
+
+
 def backup_file(
     fp: Path,
-    target: Optional[Path] = None,
+    target: Path | None = None,
     backup_dir: str = ".bak",
-    suffix: Optional[str] = None,
-    prefix: Optional[str] = None,
+    suffix: str | None = None,
+    prefix: str | None = None,
 ):
     """Backup a file by copying it to a backup directory."""
     if not fp.exists():
@@ -342,10 +486,6 @@ def _run_command(shell_cmd, ignored_lines_start):
     print("Command executed successfully!")
 
 
-# todo use the requirements library
-reqs_map = {value: key for key, value in pip_map.items()}
-
-
 def import_install(package_name):
     """Install and import a package if it is not already imported."""
     package_spec = reqs_map.get(package_name, package_name)
@@ -386,6 +526,7 @@ here = Path(__file__).parent.absolute()
 comfy_dir = Path(folder_paths.base_path)
 models_dir = Path(folder_paths.models_dir)
 output_dir = Path(folder_paths.output_directory)
+input_dir = Path(folder_paths.input_directory)
 styles_dir = comfy_dir / "styles"
 session_id = str(uuid.uuid4())
 # - Construct the path to the font file
@@ -394,6 +535,7 @@ font_path = here / "data" / "font.ttf"
 # - Add extern folder to path
 extern_root = here / "extern"
 add_path(extern_root)
+
 for pth in extern_root.iterdir():
     if pth.is_dir():
         add_path(pth)
@@ -401,7 +543,13 @@ for pth in extern_root.iterdir():
 # - Add the ComfyUI directory and custom nodes path to the sys.path list
 add_path(comfy_dir)
 add_path(comfy_dir / "custom_nodes")
-add_path(comfy_dir / "custom_nodes")
+
+# TODO: use the requirements library
+reqs_map = {value: key for key, value in pip_map.items()}
+
+# NOTE: store already logged warnings to only alert once.
+warned_messages: set[str] = set()
+
 
 PIL_FILTER_MAP = {
     "nearest": Image.Resampling.NEAREST,
@@ -415,71 +563,123 @@ PIL_FILTER_MAP = {
 
 
 # region TENSOR Utilities
+def to_numpy(image: torch.Tensor) -> npt.NDArray[np.uint8]:
+    """Converts a tensor to a ndarray with proper scaling and type conversion."""
+    log.debug(f"Converting tensor to numpy array with shape {image.shape}")
+    np_array = np.clip(255.0 * image.cpu().numpy(), 0, 255).astype(np.uint8)
+    log.debug(f"Numpy array shape after conversion: {np_array.shape}")
+    return np_array
 
 
-def tensor2b64(tensor: torch.Tensor) -> list[str]:
-    images = tensor2pil(tensor)
-    res: list[str] = []
-    for img in images:
-        frame_bytes = io.BytesIO()
-        img.save(frame_bytes, format="PNG")
-        res.append(
-            "data:image/png;base64,"
-            + base64.b64encode(frame_bytes.getvalue()).decode("utf-8")
-        )
-    return res
+def handle_batch(
+    tensor: torch.Tensor,
+    func: Callable[[torch.Tensor], Image.Image | npt.NDArray[np.uint8]],
+) -> list[Image.Image] | list[npt.NDArray[np.uint8]]:
+    """Handles batch processing for a given tensor and conversion function."""
+    return [func(tensor[i]) for i in range(tensor.shape[0])]
 
 
-def tensor2pil(image: torch.Tensor) -> List[Image.Image]:
-    """Convert PyTorch tensor to PIL image."""
-    batch_count = image.size(0) if len(image.shape) > 3 else 1
-    if batch_count > 1:
-        out = []
-        for i in range(batch_count):
-            out.extend(tensor2pil(image[i]))
-        return out
+def tensor2pil(tensor: torch.Tensor) -> list[Image.Image]:
+    """Converts a batch of tensors to a list of PIL Images."""
 
-    return [
-        Image.fromarray(
-            np.clip(255.0 * image.cpu().numpy().squeeze(), 0, 255).astype(  # type: ignore
-                np.uint8
-            )
-        )
-    ]
+    def single_tensor2pil(t: torch.Tensor) -> Image.Image:
+        np_array = to_numpy(t)
+        if np_array.ndim == 2:  # (H, W) for masks
+            return Image.fromarray(np_array, mode="L")
+        elif np_array.ndim == 3:  # (H, W, C) for RGB/RGBA
+            if np_array.shape[2] == 3:
+                return Image.fromarray(np_array, mode="RGB")
+            elif np_array.shape[2] == 4:
+                return Image.fromarray(np_array, mode="RGBA")
+        raise ValueError(f"Invalid tensor shape: {t.shape}")
 
-
-def pil2tensor(image: Union[Image.Image, List[Image.Image]]) -> torch.Tensor:
-    """Convert PIL image to PyTorch tensor."""
-    if isinstance(image, list):
-        return torch.cat([pil2tensor(img) for img in image], dim=0)
-
-    return torch.from_numpy(
-        np.array(image).astype(np.float32) / 255.0  # type: ignore
-    ).unsqueeze(0)
+    return handle_batch(tensor, single_tensor2pil)
 
 
-def np2tensor(img_np: Union[np.ndarray, List[np.ndarray]]) -> torch.Tensor:
-    """Convert Numpy array to PyTorch tensor."""
-    if isinstance(img_np, list):
-        return torch.cat([np2tensor(img) for img in img_np], dim=0)
+def pil2tensor(images: Image.Image | list[Image.Image]) -> torch.Tensor:
+    """Converts a PIL Image or a list of PIL Images to a tensor."""
 
-    return torch.from_numpy(img_np.astype(np.float32) / 255.0).unsqueeze(0)
+    def single_pil2tensor(image: Image.Image) -> torch.Tensor:
+        np_image = np.array(image).astype(np.float32) / 255.0
+        if np_image.ndim == 2:  # Grayscale
+            return torch.from_numpy(np_image).unsqueeze(0)  # (1, H, W)
+        else:  # RGB or RGBA
+            return torch.from_numpy(np_image).unsqueeze(0)  # (1, H, W, C)
+
+    if isinstance(images, Image.Image):
+        return single_pil2tensor(images)
+    else:
+        return torch.cat([single_pil2tensor(img) for img in images], dim=0)
 
 
-def tensor2np(tensor: torch.Tensor) -> List[np.ndarray]:
-    """Convert PyTorch tensor to Numpy array."""
-    batch_count = tensor.size(0) if len(tensor.shape) > 3 else 1
-    if batch_count > 1:
-        out = []
-        for i in range(batch_count):
-            out.extend(tensor2np(tensor[i]))
-        return out
+def np2tensor(
+    np_array: npt.NDArray[np.float32] | Sequence[npt.NDArray[np.float32]],
+) -> torch.Tensor:
+    """Converts a NumPy array or a list of NumPy arrays to a tensor."""
 
-    return [
-        np.clip(255.0 * tensor.cpu().numpy().squeeze(), 0, 255).astype(  # type: ignore
-            np.uint8
-        )
-    ]
+    def single_np2tensor(array: npt.NDArray[np.float32]) -> torch.Tensor:
+        if array.ndim == 2:  # (H, W) for masks
+            return torch.from_numpy(
+                array.astype(np.float32) / 255.0
+            ).unsqueeze(0)  # (1, H, W)
+        elif array.ndim == 3:  # (H, W, C) for RGB/RGBA
+            return torch.from_numpy(
+                array.astype(np.float32) / 255.0
+            ).unsqueeze(0)  # (1, H, W, C)
+        raise ValueError(f"Invalid array shape: {array.shape}")
+
+    if isinstance(np_array, np.ndarray):
+        return single_np2tensor(np_array)
+    else:
+        return torch.cat([single_np2tensor(arr) for arr in np_array], dim=0)
+
+
+def tensor2np(tensor: torch.Tensor) -> list[npt.NDArray[np.uint8]]:
+    """Converts a batch of tensors to a list of NumPy arrays."""
+
+    def single_tensor2np(t: torch.Tensor) -> npt.NDArray[np.uint8]:
+        t = t.squeeze()  # Remove any singleton dimensions
+        if t.ndim == 2:  # (H, W) for masks
+            return to_numpy(t)
+        elif t.ndim == 3:  # (C, H, W) for RGB/RGBA
+            if t.shape[0] in [1, 3, 4]:  # Channel-first format
+                t = t.permute(1, 2, 0)
+            return to_numpy(t)
+        else:
+            raise ValueError(f"Invalid tensor shape: {t.shape}")
+
+    return handle_batch(tensor, single_tensor2np)
+
+
+def nextAvailable(path: Path | str) -> Path:
+    """
+    Find the next available path by adding a numbered suffix. (mimics comfy's version).
+
+    Args:
+        path (Path): The original path to check
+
+    Returns
+    -------
+        Path: A path that doesn't exist yet
+    """
+    path = Path(path)
+
+    if not path.is_absolute():
+        path = output_dir / path
+
+    if not path.exists():
+        return path
+
+    stem = path.stem
+    suffix = path.suffix
+    parent = path.parent
+
+    counter = 1
+    while True:
+        new_path = parent / f"{stem}_{counter:04d}{suffix}"
+        if not new_path.exists():
+            return new_path
+        counter += 1
 
 
 def pad(img: np.ndarray, left, right, top, bottom):
@@ -757,11 +957,11 @@ def get_model_path(fam, model=None):
     if res:
         if isinstance(res, list):
             if len(res) > 1:
-                log.warning(
-                    f"Found multiple match, \
-                        we will pick the first {res[0]}\n{res}"
-                )
-            res = res[0]
+                warn_msg = f"Found multiple match, we will pick the last {res[-1]}\n{res}"
+                if warn_msg not in warned_messages:
+                    log.info(warn_msg)
+                    warned_messages.add(warn_msg)
+            res = res[-1]
         res = Path(res)
         log.debug(f"Resolved model path from folder_paths: {res}")
     else:
@@ -1073,10 +1273,40 @@ def create_uv_map_tensor(width=512, height=512):
 
 
 # region ANIMATION Utilities
-# Back easing functions
-def _in_back(t):
-    s = 1.70158
-    return t * t * ((s + 1) * t - s)
+EASINGS = [
+    "Linear",
+    "Sine In",
+    "Sine Out",
+    "Sine In/Out",
+    "Quart In",
+    "Quart Out",
+    "Quart In/Out",
+    "Cubic In",
+    "Cubic Out",
+    "Cubic In/Out",
+    "Circ In",
+    "Circ Out",
+    "Circ In/Out",
+    "Back In",
+    "Back Out",
+    "Back In/Out",
+    "Elastic In",
+    "Elastic Out",
+    "Elastic In/Out",
+    "Bounce In",
+    "Bounce Out",
+    "Bounce In/Out",
+]
+
+
+def apply_easing(value, easing_type):
+    if easing_type == "Linear":
+        return value
+
+    # Back easing functions
+    def easeInBack(t):
+        s = 1.70158
+        return t * t * ((s + 1) * t - s)
 
 
 def _out_back(t):

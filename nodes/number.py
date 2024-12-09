@@ -77,8 +77,6 @@ class MTB_FloatToNumber:
     def float_to_number(self, float):
         return (float,)
 
-        return (int,)
-
 
 __nodes__ = [
     MTB_FloatToNumber,

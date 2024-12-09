@@ -7,16 +7,167 @@ import torch
 from PIL import Image
 
 from ..log import log
-from ..utils import apply_easing, hex_to_rgb, pil2tensor
-from .transform import TransformImage
+from ..utils import EASINGS, apply_easing, hex_to_rgb, pil2tensor
+from .transform import MTB_TransformImage
 
 
-def hex_to_rgb(hex_color, bgr=False):
+def hex_to_rgb(hex_color: str, bgr: bool = False):
     hex_color = hex_color.lstrip("#")
     if bgr:
         return tuple(int(hex_color[i : i + 2], 16) for i in (4, 2, 0))
 
     return tuple(int(hex_color[i : i + 2], 16) for i in (0, 2, 4))
+
+
+class MTB_BatchFloatMath:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "reverse": ("BOOLEAN", {"default": False}),
+                "operation": (
+                    ["add", "sub", "mul", "div", "pow", "abs"],
+                    {"default": "add"},
+                ),
+            }
+        }
+
+    RETURN_TYPES = ("FLOATS",)
+    CATEGORY = "mtb/utils"
+    FUNCTION = "execute"
+
+    def execute(self, reverse: bool, operation: str, **kwargs: list[float]):
+        res: list[float] = []
+        vals = list(kwargs.values())
+
+        if reverse:
+            vals = vals[::-1]
+
+        ref_count = len(vals[0])
+        for v in vals:
+            if len(v) != ref_count:
+                raise ValueError(
+                    f"All values must have the same length (current: {len(v)}, ref: {ref_count}"
+                )
+
+        match operation:
+            case "add":
+                for i in range(ref_count):
+                    result = sum(v[i] for v in vals)
+                    res.append(result)
+            case "sub":
+                for i in range(ref_count):
+                    result = vals[0][i] - sum(v[i] for v in vals[1:])
+                    res.append(result)
+            case "mul":
+                for i in range(ref_count):
+                    result = vals[0][i] * vals[1][i]
+                    res.append(result)
+            case "div":
+                for i in range(ref_count):
+                    result = vals[0][i] / vals[1][i]
+                    res.append(result)
+            case "pow":
+                for i in range(ref_count):
+                    result: float = vals[0][i] ** vals[1][i]
+                    res.append(result)
+            case "abs":
+                for i in range(ref_count):
+                    result = abs(vals[0][i])
+                    res.append(result)
+            case _:
+                log.info(f"For now this mode ({operation}) is not implemented")
+
+        return (res,)
+
+
+class MTB_BatchFloatNormalize:
+    """Normalize the values in the list of floats"""
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {"floats": ("FLOATS",)},
+        }
+
+    RETURN_TYPES = ("FLOATS",)
+    RETURN_NAMES = ("normalized_floats",)
+    CATEGORY = "mtb/batch"
+    FUNCTION = "execute"
+
+    def execute(
+        self,
+        floats: list[float],
+    ):
+        min_value = min(floats)
+        max_value = max(floats)
+
+        normalized_floats = [
+            (x - min_value) / (max_value - min_value) for x in floats
+        ]
+        log.debug(f"Floats: {floats}")
+        log.debug(f"Normalized Floats: {normalized_floats}")
+
+        return (normalized_floats,)
+
+
+class MTB_BatchTimeWrap:
+    """Remap a batch using a time curve (FLOATS)"""
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "target_count": ("INT", {"default": 25, "min": 2}),
+                "frames": ("IMAGE",),
+                "curve": ("FLOATS",),
+            },
+        }
+
+    RETURN_TYPES = ("IMAGE", "FLOATS")
+    RETURN_NAMES = ("image", "interpolated_floats")
+    CATEGORY = "mtb/batch"
+    FUNCTION = "execute"
+
+    def execute(
+        self, target_count: int, frames: torch.Tensor, curve: list[float]
+    ):
+        """Apply time warping to a list of video frames based on a curve."""
+        log.debug(f"Input frames shape: {frames.shape}")
+        log.debug(f"Curve: {curve}")
+
+        total_duration = sum(curve)
+
+        log.debug(f"Total duration: {total_duration}")
+
+        B, H, W, C = frames.shape
+
+        log.debug(f"Batch Size: {B}")
+
+        normalized_times = np.linspace(0, 1, target_count)
+        interpolated_curve = np.interp(
+            normalized_times, np.linspace(0, 1, len(curve)), curve
+        ).tolist()
+        log.debug(f"Interpolated curve: {interpolated_curve}")
+
+        interpolated_frame_indices = [
+            (B - 1) * value for value in interpolated_curve
+        ]
+        log.debug(f"Interpolated frame indices: {interpolated_frame_indices}")
+
+        rounded_indices = [
+            int(round(idx)) for idx in interpolated_frame_indices
+        ]
+        rounded_indices = np.clip(rounded_indices, 0, B - 1)
+
+        # Gather frames based on interpolated indices
+        warped_frames = []
+        for index in rounded_indices:
+            warped_frames.append(frames[index].unsqueeze(0))
+
+        warped_tensor = torch.cat(warped_frames, dim=0)
+        log.debug(f"Warped frames shape: {warped_tensor.shape}")
+        return (warped_tensor, interpolated_curve)
 
 
 class MTB_BatchMake:
@@ -193,18 +344,21 @@ class MTB_BatchFloatAssemble:
     def INPUT_TYPES(cls):
         return {"required": {"reverse": ("BOOLEAN", {"default": False})}}
 
-    FUNCTION = "assemble_floats"
     RETURN_TYPES = ("FLOATS",)
     CATEGORY = "mtb/batch"
+    FUNCTION = "assemble_floats"
 
-    def assemble_floats(self, reverse, **kwargs):
-        res = []
+    def assemble_floats(self, reverse: bool, **kwargs: list[float]):
+        res: list[float] = []
+
         if reverse:
             for x in reversed(kwargs.values()):
-                res += x
+                if x:
+                    res += x
         else:
             for x in kwargs.values():
-                res += x
+                if x:
+                    res += x
 
         return (res,)
 
@@ -220,7 +374,7 @@ class MTB_BatchFloat:
                     ["Single", "Steps"],
                     {"default": "Steps"},
                 ),
-                "count": ("INT", {"default": 1}),
+                "count": ("INT", {"default": 2}),
                 "min": ("FLOAT", {"default": 0.0, "step": 0.001}),
                 "max": ("FLOAT", {"default": 1.0, "step": 0.001}),
                 "easing": (
@@ -265,6 +419,10 @@ class MTB_BatchFloat:
         max: float = 1.0,  # noqa: A002
         easing: str = "Linear",
     ):
+        if mode == "Steps" and count == 1:
+            raise ValueError(
+                "Steps mode requires at least a count of 2 values"
+            )
         keyframes = []
         if mode == "Single":
             keyframes = [min] * count
@@ -424,7 +582,7 @@ class MTB_Batch2dTransform:
             if count == 0:
                 keyframes[name] = [default_vals[name]] * image.shape[0]
 
-        transformer = TransformImage()
+        transformer = MTB_TransformImage()
         res = [
             transformer.transform(
                 image[i].unsqueeze(0),
@@ -441,6 +599,66 @@ class MTB_Batch2dTransform:
         return (torch.cat(res, dim=0),)
 
 
+class MTB_BatchFloatFit:
+    """Fit a list of floats using a source and target range"""
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "values": ("FLOATS", {"forceInput": True}),
+                "clamp": ("BOOLEAN", {"default": False}),
+                "auto_compute_source": ("BOOLEAN", {"default": False}),
+                "source_min": ("FLOAT", {"default": 0.0, "step": 0.01}),
+                "source_max": ("FLOAT", {"default": 1.0, "step": 0.01}),
+                "target_min": ("FLOAT", {"default": 0.0, "step": 0.01}),
+                "target_max": ("FLOAT", {"default": 1.0, "step": 0.01}),
+                "easing": (
+                    EASINGS,
+                    {"default": "Linear"},
+                ),
+            }
+        }
+
+    FUNCTION = "fit_range"
+    RETURN_TYPES = ("FLOATS",)
+    CATEGORY = "mtb/batch"
+    DESCRIPTION = "Fit a list of floats using a source and target range"
+
+    def fit_range(
+        self,
+        values: list[float],
+        clamp: bool,
+        auto_compute_source: bool,
+        source_min: float,
+        source_max: float,
+        target_min: float,
+        target_max: float,
+        easing: str,
+    ):
+        if auto_compute_source:
+            source_min = min(values)
+            source_max = max(values)
+
+        from .graph_utils import MTB_FitNumber
+
+        res = []
+        fit_number = MTB_FitNumber()
+        for value in values:
+            (transformed_value,) = fit_number.set_range(
+                value,
+                clamp,
+                source_min,
+                source_max,
+                target_min,
+                target_max,
+                easing,
+            )
+            res.append(transformed_value)
+
+        return (res,)
+
+
 class MTB_PlotBatchFloat:
     """Plot floats"""
 
@@ -452,6 +670,7 @@ class MTB_PlotBatchFloat:
                 "height": ("INT", {"default": 768}),
                 "point_size": ("INT", {"default": 4}),
                 "seed": ("INT", {"default": 1}),
+                "start_at_zero": ("BOOLEAN", {"default": False}),
             }
         }
 
@@ -460,10 +679,21 @@ class MTB_PlotBatchFloat:
     FUNCTION = "plot"
     CATEGORY = "mtb/batch"
 
-    def plot(self, width, height, point_size, seed, **kwargs):
+    def plot(
+        self,
+        width: int,
+        height: int,
+        point_size: int,
+        seed: int,
+        start_at_zero: bool,
+        interactive_backend: bool = False,
+        **kwargs,
+    ):
         import matplotlib
 
-        matplotlib.use("Agg")
+        # NOTE: This is for notebook usage or tests, i.e not exposed to comfy that should always use Agg
+        if not interactive_backend:
+            matplotlib.use("Agg")
         import matplotlib.pyplot as plt
 
         fig, ax = plt.subplots(figsize=(width / 100, height / 100), dpi=100)
@@ -474,26 +704,30 @@ class MTB_PlotBatchFloat:
         ax.grid(color="gray", linestyle="-", linewidth=0.5, alpha=0.5)
 
         # Finding global min and max across all lists for scaling the plot
-        global_min = min(min(values) for values in kwargs.values())
-        global_max = max(max(values) for values in kwargs.values())
+        all_values = [value for values in kwargs.values() for value in values]
+        global_min = min(all_values)
+        global_max = max(all_values)
 
-        # Color cycle to ensure each plot has a distinct color
-        colormap = plt.cm.get_cmap("viridis", len(kwargs))  # type: ignore
-        color_normalization_factor = (
-            0.5 if len(kwargs) == 1 else (len(kwargs) - 1)
-        )
+        y_padding = 0.05 * (global_max - global_min)
+        ax.set_ylim(global_min - y_padding, global_max + y_padding)
 
-        # Plotting each list with a unique color
-        for i, (label, values) in enumerate(kwargs.items()):
-            color_value = i / color_normalization_factor
-            ax.plot(values, label=label, color=colormap(color_value))
+        max_length = max(len(values) for values in kwargs.values())
+        if start_at_zero:
+            x_values = np.linspace(0, max_length - 1, max_length)
+        else:
+            x_values = np.linspace(1, max_length, max_length)
 
-        ax.set_ylim(global_min, global_max)  # Scaling the y-axis
+        ax.set_xlim(1, max_length)  # Set X-axis limits
+        np.random.seed(seed)
+        colors = np.random.rand(len(kwargs), 3)  # Generate random RGB values
+        for color, (label, values) in zip(colors, kwargs.items()):
+            ax.plot(x_values[: len(values)], values, label=label, color=color)
         ax.legend(
             title="Legend",
             title_fontsize="large",
             fontsize="medium",
             edgecolor="black",
+            loc="best",
         )
 
         # Setting labels and title
@@ -823,7 +1057,11 @@ __nodes__ = [
     MTB_BatchMake,
     MTB_BatchFloatAssemble,
     MTB_BatchFloatFill,
+    MTB_BatchFloatNormalize,
     MTB_BatchMerge,
     MTB_BatchShake,
     MTB_PlotBatchFloat,
+    MTB_BatchTimeWrap,
+    MTB_BatchFloatFit,
+    MTB_BatchFloatMath,
 ]

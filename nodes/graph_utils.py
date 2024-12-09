@@ -3,17 +3,16 @@ import json
 import urllib.parse
 import urllib.request
 from math import pi
-from typing import Optional
 
 import comfy.model_management as model_management
 import comfy.utils
 import numpy as np
 import torch
-import torchvision.transforms.functional as F
 from PIL import Image
 
 from ..log import log
 from ..utils import (
+    EASINGS,
     apply_easing,
     get_server_info,
     numpy_NFOV,
@@ -72,8 +71,8 @@ class MTB_ToDevice:
         *,
         ignore_errors=False,
         device="cuda",
-        image: Optional[torch.Tensor] = None,
-        mask: Optional[torch.Tensor] = None,
+        image: torch.Tensor | None = None,
+        mask: torch.Tensor | None = None,
     ):
         if not ignore_errors and image is None and mask is None:
             raise ValueError(
@@ -139,6 +138,8 @@ class MTB_MatchDimensions:
     def execute(
         self, source: torch.Tensor, reference: torch.Tensor, match: str
     ):
+        import torchvision.transforms.functional as VF
+
         _batch_size, height, width, _channels = source.shape
         _rbatch_size, rheight, rwidth, _rchannels = reference.shape
 
@@ -156,7 +157,7 @@ class MTB_MatchDimensions:
             new_height = int(rwidth / source_aspect_ratio)
 
         resized_images = [
-            F.resize(
+            VF.resize(
                 source[i],
                 (new_height, new_width),
                 antialias=True,
@@ -170,11 +171,48 @@ class MTB_MatchDimensions:
         return (resized_source, new_width, new_height)
 
 
-class MTB_FloatsToFloat:
-    """AD, IPA, Fitz etc have commonly choose to mistype float lists as FLOAT.
+class MTB_FloatToFloats:
+    """Conversion utility for compatibility with other extensions (AD, IPA, Fitz are using FLOAT to represent list of floats.)"""
 
-    This is just a hack to be compatible with these
-    """
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "float": ("FLOAT", {"default": 0.0, "forceInput": True}),
+            }
+        }
+
+    RETURN_TYPES = ("FLOATS",)
+    RETURN_NAMES = ("floats",)
+    CATEGORY = "mtb/utils"
+    FUNCTION = "convert"
+
+    def convert(self, float: float):
+        return (float,)
+
+
+class MTB_FloatsToInts:
+    """Conversion utility for compatibility with frame interpolation."""
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "floats": ("FLOATS", {"forceInput": True}),
+            }
+        }
+
+    RETURN_TYPES = ("INTS", "INT")
+    CATEGORY = "mtb/utils"
+    FUNCTION = "convert"
+
+    def convert(self, floats: list[float]):
+        vals = [int(x) for x in floats]
+        return (vals, vals)
+
+
+class MTB_FloatsToFloat:
+    """Conversion utility for compatibility with other extensions (AD, IPA, Fitz are using FLOAT to represent list of floats.)"""
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -381,7 +419,7 @@ class MTB_AnyToString:
     @classmethod
     def INPUT_TYPES(cls):
         return {
-            "required": {"value": ("*")},
+            "required": {"input": ("*",)},
         }
 
     RETURN_TYPES = ("STRING",)
@@ -457,14 +495,14 @@ class MTB_MathExpression:
     RETURN_NAMES = ("result (float)", "result (int)")
     CATEGORY = "mtb/math"
     DESCRIPTION = (
-        "evaluate a simple math expression string (!! Fallsback to eval)"
+        "evaluate a simple math expression string, only supports literal_eval"
     )
 
-    def eval_expression(self, expression, **kwargs):
+    def eval_expression(self, expression: str, **kwargs):
         from ast import literal_eval
 
         for key, value in kwargs.items():
-            print(f"Replacing placeholder <{key}> with value {value}")
+            log.debug(f"Replacing placeholder <{key}> with value {value}")
             expression = expression.replace(f"<{key}>", str(value))
 
         result = -1
@@ -475,6 +513,10 @@ class MTB_MathExpression:
                 f"The expression syntax is wrong '{expression}': {e}"
             ) from e
 
+        except Exception as e:
+            raise ValueError(
+                f"Math expression only support literal_eval now: {e}"
+            )
         except ValueError:
             try:
                 expression = expression.replace("^", "**")
@@ -496,35 +538,24 @@ class MTB_FitNumber:
             "required": {
                 "value": ("FLOAT", {"default": 0, "forceInput": True}),
                 "clamp": ("BOOLEAN", {"default": False}),
-                "source_min": ("FLOAT", {"default": 0.0, "step": 0.01}),
-                "source_max": ("FLOAT", {"default": 1.0, "step": 0.01}),
-                "target_min": ("FLOAT", {"default": 0.0, "step": 0.01}),
-                "target_max": ("FLOAT", {"default": 1.0, "step": 0.01}),
+                "source_min": (
+                    "FLOAT",
+                    {"default": 0.0, "step": 0.01, "min": -1e5},
+                ),
+                "source_max": (
+                    "FLOAT",
+                    {"default": 1.0, "step": 0.01, "min": -1e5},
+                ),
+                "target_min": (
+                    "FLOAT",
+                    {"default": 0.0, "step": 0.01, "min": -1e5},
+                ),
+                "target_max": (
+                    "FLOAT",
+                    {"default": 1.0, "step": 0.01, "min": -1e5},
+                ),
                 "easing": (
-                    [
-                        "Linear",
-                        "Sine In",
-                        "Sine Out",
-                        "Sine In/Out",
-                        "Quart In",
-                        "Quart Out",
-                        "Quart In/Out",
-                        "Cubic In",
-                        "Cubic Out",
-                        "Cubic In/Out",
-                        "Circ In",
-                        "Circ Out",
-                        "Circ In/Out",
-                        "Back In",
-                        "Back Out",
-                        "Back In/Out",
-                        "Elastic In",
-                        "Elastic Out",
-                        "Elastic In/Out",
-                        "Bounce In",
-                        "Bounce Out",
-                        "Bounce In/Out",
-                    ],
+                    EASINGS,
                     {"default": "Linear"},
                 ),
             }
@@ -572,18 +603,65 @@ class MTB_ConcatImages:
     def INPUT_TYPES(cls):
         return {
             "required": {"reverse": ("BOOLEAN", {"default": False})},
+            "optional": {
+                "on_mismatch": (
+                    ["Error", "Smallest", "Largest"],
+                    {"default": "Smallest"},
+                )
+            },
         }
 
-    def concatenate_tensors(self, *, reverse: bool, **kwargs):
-        tensors = tuple(kwargs.values())
-        batch_sizes = [tensor.size(0) for tensor in tensors]
+    def concatenate_tensors(
+        self,
+        reverse: bool,
+        on_mismatch: str = "Smallest",
+        **kwargs: torch.Tensor,
+    ) -> tuple[torch.Tensor]:
+        tensors = list(kwargs.values())
+
+        if on_mismatch == "Error":
+            shapes = [tensor.shape for tensor in tensors]
+            if not all(shape == shapes[0] for shape in shapes):
+                raise ValueError(
+                    "All input tensors must have the same shape when on_mismatch is 'Error'."
+                )
+
+        else:
+            import torch.nn.functional as F
+
+            if on_mismatch == "Smallest":
+                target_shape = min(
+                    (tensor.shape for tensor in tensors),
+                    key=lambda s: (s[1], s[2]),
+                )
+            else:  # on_mismatch == "Largest"
+                target_shape = max(
+                    (tensor.shape for tensor in tensors),
+                    key=lambda s: (s[1], s[2]),
+                )
+
+            target_height, target_width = target_shape[1], target_shape[2]
+
+            resized_tensors = []
+            for tensor in tensors:
+                if (
+                    tensor.shape[1] != target_height
+                    or tensor.shape[2] != target_width
+                ):
+                    resized_tensor = F.interpolate(
+                        tensor.permute(0, 3, 1, 2),
+                        size=(target_height, target_width),
+                        mode="bilinear",
+                        align_corners=False,
+                    )
+                    resized_tensor = resized_tensor.permute(0, 2, 3, 1)
+                    resized_tensors.append(resized_tensor)
+                else:
+                    resized_tensors.append(tensor)
+
+            tensors = resized_tensors
 
         concatenated = torch.cat(tensors, dim=0)
-
-        # Update the batch size in the concatenated tensor
-        concatenated_size = list(concatenated.size())
-        concatenated_size[0] = sum(batch_sizes)
-        concatenated = concatenated.view(*concatenated_size)
 
         return (concatenated,)
 
@@ -600,4 +678,6 @@ __nodes__ = [
     MTB_MatchDimensions,
     MTB_AutoPanEquilateral,
     MTB_FloatsToFloat,
+    MTB_FloatToFloats,
+    MTB_FloatsToInts,
 ]

@@ -1,5 +1,4 @@
 from pathlib import Path
-from typing import List
 
 import comfy
 import comfy.model_management as model_management
@@ -14,11 +13,14 @@ from ..log import log
 from ..utils import get_model_path
 
 
-class LoadFilmModel:
-    """Loads a FILM model."""
+class MTB_LoadFilmModel:
+    """Loads a FILM model.
+
+    [DEPRECATED] Use ComfyUI-FrameInterpolation instead
+    """
 
     @staticmethod
-    def get_models() -> List[Path]:
+    def get_models() -> list[Path]:
         models_paths = get_model_path("FILM").iterdir()
 
         return [x for x in models_paths if x.suffix in [".onnx", ".pth"]]
@@ -37,6 +39,7 @@ class LoadFilmModel:
     RETURN_TYPES = ("FILM_MODEL",)
     FUNCTION = "load_model"
     CATEGORY = "mtb/frame iterpolation"
+    DEPRECATED = True
 
     def load_model(self, film_model: str):
         model_path = get_model_path("FILM", film_model)
@@ -55,8 +58,11 @@ class LoadFilmModel:
         return (interpolator.Interpolator(model_path.as_posix(), None),)
 
 
-class FilmInterpolation:
-    """Google Research FILM frame interpolation for large motion."""
+class MTB_FilmInterpolation:
+    """Google Research FILM frame interpolation for large motion.
+
+    [DEPRECATED] Use ComfyUI-FrameInterpolation instead
+    """
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -71,6 +77,7 @@ class FilmInterpolation:
     RETURN_TYPES = ("IMAGE",)
     FUNCTION = "do_interpolation"
     CATEGORY = "mtb/frame iterpolation"
+    DEPRECATED = True
 
     def do_interpolation(
         self,
@@ -123,4 +130,4 @@ class FilmInterpolation:
         return (out_tensors,)
 
 
-__nodes__ = [LoadFilmModel, FilmInterpolation]
+__nodes__ = [MTB_LoadFilmModel, MTB_FilmInterpolation]

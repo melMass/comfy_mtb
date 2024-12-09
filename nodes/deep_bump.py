@@ -69,7 +69,26 @@ def color_to_normals(
     if not model or not model.exists():
         raise ModelNotFound(f"deepbump ({model})")
 
-    ort_session = ort.InferenceSession(model)
+    providers = [
+        "TensorrtExecutionProvider",
+        "CUDAExecutionProvider",
+        "CoreMLProvider",
+        "CPUExecutionProvider",
+    ]
+    available_providers = [
+        provider
+        for provider in providers
+        if provider in ort.get_available_providers()
+    ]
+
+    if not available_providers:
+        raise RuntimeError(
+            "No valid ONNX Runtime providers available on this machine."
+        )
+    log.debug(f"Using ONNX providers: {available_providers}")
+    ort_session = ort.InferenceSession(
+        model.as_posix(), providers=available_providers
+    )
 
     # Predict normal map for each tile
     log.debug("DeepBump Color → Normals : generating")
@@ -303,7 +322,7 @@ def normals_to_height(normals_img, seamless, progress_callback):
 
 
 # - ADDON
-class DeepBump:
+class MTB_DeepBump:
     """Normal & height maps generation from single pictures"""
 
     @classmethod
@@ -386,4 +405,4 @@ class DeepBump:
         return (torch.cat(out_images, dim=0),)
 
 
-__nodes__ = [DeepBump]
+__nodes__ = [MTB_DeepBump]

@@ -1,0 +1,8 @@
+default_language_version:
+  python: python3.10
+repos:
+  - repo: https://github.com/melmass/hooks
+    rev: e8c6c18175ed4f6e30f23991de7989411e09c73b
+    hooks:
+      - id: fix-trailing-whitespace
+      - id: bump-version

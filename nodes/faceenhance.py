@@ -1,7 +1,4 @@
 import os
-import sys
-from pathlib import Path
-from typing import Optional, Tuple
 
 import comfy
 import comfy.utils
@@ -10,14 +7,13 @@ import folder_paths
 import numpy as np
 import torch
 from comfy import model_management
-from gfpgan import GFPGANer
 from PIL import Image
 
 from ..log import NullWriter, log
 from ..utils import get_model_path, np2tensor, pil2tensor, tensor2np
 
 
-class LoadFaceEnhanceModel:
+class MTB_LoadFaceEnhanceModel:
     """Loads a GFPGan or RestoreFormer model for face enhancement."""
 
     def __init__(self) -> None:
@@ -38,7 +34,9 @@ class LoadFaceEnhanceModel:
         fr_models_path, um_models_path = cls.get_models_root()
 
         if fr_models_path is None and um_models_path is None:
-            log.warning("Face restoration models not found.")
+            if not hasattr(cls, "_warned"):
+                log.warning("Face restoration models not found.")
+                cls._warned = True
             return []
         if not fr_models_path.exists():
             # - fallback to upscale_models
@@ -75,8 +73,11 @@ class LoadFaceEnhanceModel:
     RETURN_NAMES = ("model",)
     FUNCTION = "load_model"
     CATEGORY = "mtb/facetools"
+    DEPRECATED = True
 
     def load_model(self, model_name, upscale=2, bg_upsampler=None):
+        from gfpgan import GFPGANer
+
         basic = "RestoreFormer" not in model_name
 
         fr_root, um_root = self.get_models_root()
@@ -146,8 +147,8 @@ class BGUpscaleWrapper:
         return (tensor2np(s)[0],)
 
 
-class RestoreFace:
-    """Uses GFPGan to restore faces."""
+class MTB_RestoreFace:
+    """Uses GFPGan to restore faces"""
 
     def __init__(self) -> None:
         pass
@@ -155,6 +156,7 @@ class RestoreFace:
     RETURN_TYPES = ("IMAGE",)
     FUNCTION = "restore"
     CATEGORY = "mtb/facetools"
+    DEPRECATED = True
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -169,21 +171,32 @@ class RestoreFace:
                 # Adjustable weights
                 "weight": ("FLOAT", {"default": 0.5}),
                 "save_tmp_steps": ("BOOLEAN", {"default": True}),
-            }
+            },
+            "optional": {
+                "preserve_alpha": ("BOOLEAN", {"default": True}),
+            },
         }
 
     def do_restore(
         self,
         image: torch.Tensor,
-        model: GFPGANer,
+        model,
         aligned,
         only_center_face,
         weight,
         save_tmp_steps,
-    ) -> Optional[torch.Tensor]:
+        preserve_alpha: bool = False,
+    ) -> torch.Tensor:
         pimage = tensor2np(image)[0]
         width, height = pimage.shape[1], pimage.shape[0]
         source_img = cv2.cvtColor(np.array(pimage), cv2.COLOR_RGB2BGR)
+
+        alpha_channel = None
+        if (
+            preserve_alpha and image.size(-1) == 4
+        ):  # Check if the image has an alpha channel
+            alpha_channel = pimage[:, :, 3]
+            pimage = pimage[:, :, :3]  # Remove alpha channel for processing
 
         sys.stdout = NullWriter()
         cropped_faces, restored_faces, restored_img = model.enhance(
@@ -203,9 +216,14 @@ class RestoreFace:
             )
         output = None
         if restored_img is not None:
-            output = Image.fromarray(
-                cv2.cvtColor(restored_img, cv2.COLOR_BGR2RGB)
-            )
+            restored_img = cv2.cvtColor(restored_img, cv2.COLOR_BGR2RGB)
+            output = Image.fromarray(restored_img)
+
+            if alpha_channel is not None:
+                alpha_resized = Image.fromarray(alpha_channel).resize(
+                    output.size, Image.LANCZOS
+                )
+                output.putalpha(alpha_resized)
             # imwrite(restored_img, save_restore_path)
             return pil2tensor(output)
         log.warning("No restored image found")
@@ -213,27 +231,25 @@ class RestoreFace:
     def restore(
         self,
         image: torch.Tensor,
-        model: GFPGANer,
+        model,
         aligned=False,
         only_center_face=False,
         weight=0.5,
         save_tmp_steps=True,
-    ) -> Tuple[torch.Tensor]:
-        out = tuple(
-            val
-            for val in (
-                self.do_restore(
-                    image[i],
-                    model,
-                    aligned,
-                    only_center_face,
-                    weight,
-                    save_tmp_steps,
-                )
-                for i in range(image.size(0))
+        preserve_alpha: bool = False,
+    ) -> tuple[torch.Tensor]:
+        out = [
+            self.do_restore(
+                image[i],
+                model,
+                aligned,
+                only_center_face,
+                weight,
+                save_tmp_steps,
+                preserve_alpha,
             )
-            if val is not None
-        )
+            for i in range(image.size(0))
+        ]
 
         if len(out) == 0:
             raise ValueError("No faces restored")
@@ -259,7 +275,7 @@ class RestoreFace:
         self, cropped_faces, restored_faces, height, width
     ):
         for idx, (cropped_face, restored_face) in enumerate(
-            zip(cropped_faces, restored_faces)
+            zip(cropped_faces, restored_faces, strict=False)
         ):
             face_id = idx + 1
             file = self.get_step_image_path("cropped_faces", face_id)
@@ -275,4 +291,4 @@ class RestoreFace:
             cv2.imwrite(file, cmp_img)
 
 
-__nodes__ = [RestoreFace, LoadFaceEnhanceModel]
+__nodes__ = [MTB_RestoreFace, MTB_LoadFaceEnhanceModel]

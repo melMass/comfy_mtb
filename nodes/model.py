@@ -80,8 +80,8 @@ def conv_forward(lyr, tensor, weight, bias):
     )
 
 
-class ModelPatchSeamless:
-    """Experimental patcher to enable the circular padding mode of the sd model layers, requires a custom VAE"""
+class MTB_ModelPatchSeamless:
+    """Uses the stable diffusion 'hack' to infer seamless images by setting the model layers padding mode to circular (experimental)"""
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -152,4 +152,4 @@ class ModelPatchSeamless:
         return (model, hacked_model)
 
 
-__nodes__ = [ModelPatchSeamless, MTB_VaeDecode]
+__nodes__ = [MTB_ModelPatchSeamless, MTB_VaeDecode]

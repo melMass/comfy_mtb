@@ -159,12 +159,13 @@ class MTBCotracker2:
     #     return True
 
 
-class LoadImageSequence:
-    """Load an image sequence from a template string or folder.
+class MTB_LoadImageSequence:
+    """Load an image sequence from a folder. The current frame is used to determine which image to load.
 
     The current_frame property is used to determine which image to load.
     Usually used in conjunction with the `Primitive` node set to increment
     Use -1 to load all matching frames as a batch.
+
     """
 
     @classmethod
@@ -176,7 +177,10 @@ class LoadImageSequence:
                     "INT",
                     {"default": 0, "min": -1, "max": 9999999},
                 ),
-            }
+            },
+            "optional": {
+                "range": ("STRING", {"default": ""}),
+            },
         }
 
     CATEGORY = "mtb/IO"
@@ -185,17 +189,28 @@ class LoadImageSequence:
         "IMAGE",
         "MASK",
         "INT",
+        "INT",
     )
     RETURN_NAMES = (
         "image",
         "mask",
         "current_frame",
+        "total_frames",
     )
 
-    def load_image(self, path=None, current_frame=0):
+    def load_image(self, path=None, current_frame=0, range=""):
         load_all = current_frame == -1
+        total_frames = 1
 
-        if load_all:
+        if range:
+            frames = self.get_frames_from_range(path, range)
+            imgs, masks = zip(*(img_from_path(frame) for frame in frames))
+            out_img = torch.cat(imgs, dim=0)
+            out_mask = torch.cat(masks, dim=0)
+            total_frames = len(imgs)
+            return (out_img, out_mask, -1, total_frames)
+
+        elif load_all:
             log.debug(f"Loading all frames from {path}")
             frames = resolve_all_frames(path)
             log.debug(f"Found {len(frames)} frames")
@@ -203,34 +218,72 @@ class LoadImageSequence:
             imgs = []
             masks = []
 
-            for frame in frames:
-                img, mask = img_from_path(frame)
-                imgs.append(img)
-                masks.append(mask)
+            imgs, masks = zip(*(img_from_path(frame) for frame in frames))
 
             out_img = torch.cat(imgs, dim=0)
             out_mask = torch.cat(masks, dim=0)
+            total_frames = len(imgs)
 
-            return (
-                out_img,
-                out_mask,
-            )
+            return (out_img, out_mask, -1, total_frames)
 
         log.debug(f"Loading image: {path}, {current_frame}")
-
         resolved_path = resolve_path(path, current_frame)
         image_path = folder_paths.get_annotated_filepath(resolved_path)
         image, mask = img_from_path(image_path)
+        return (image, mask, current_frame, total_frames)
 
-        return (
-            image,
-            mask,
-            current_frame,
-        )
+    def get_frames_from_range(self, path, range_str):
+        try:
+            start, end = map(int, range_str.split("-"))
+        except ValueError:
+            raise ValueError(
+                f"Invalid range format: {range_str}. Expected format is 'start-end'."
+            )
+
+        frames = resolve_all_frames(path)
+        total_frames = len(frames)
+
+        if start < 0 or end >= total_frames:
+            raise ValueError(
+                f"Range {range_str} is out of bounds. Total frames available: {total_frames}"
+            )
+
+        if "#" in path:
+            frame_regex = re.escape(path).replace(r"\#", r"(\d+)")
+            frame_number_regex = re.compile(frame_regex)
+
+            matching_frames = []
+            for frame in frames:
+                match = frame_number_regex.search(frame)
+
+                if match:
+                    frame_number = int(match.group(1))
+                    if start <= frame_number <= end:
+                        matching_frames.append(frame)
+
+            return matching_frames
+        else:
+            log.warning(
+                f"Wildcard pattern or directory will use indexes instead of frame numbers for : {path}"
+            )
+
+            selected_frames = frames[start : end + 1]
+
+        return selected_frames
 
     @staticmethod
-    def IS_CHANGED(path="", current_frame=0):
+    def IS_CHANGED(path="", current_frame=0, range=""):
         print(f"Checking if changed: {path}, {current_frame}")
+        if range or current_frame == -1:
+            resolved_paths = resolve_all_frames(path)
+            timestamps = [
+                os.path.getmtime(folder_paths.get_annotated_filepath(p))
+                for p in resolved_paths
+            ]
+            combined_hash = hashlib.sha256(
+                "".join(map(str, timestamps)).encode()
+            )
+            return combined_hash.hexdigest()
         resolved_path = resolve_path(path, current_frame)
         image_path = folder_paths.get_annotated_filepath(resolved_path)
         if os.path.exists(image_path):
@@ -270,11 +323,28 @@ def img_from_path(path):
     )
 
 
-def resolve_all_frames(pattern):
+def resolve_all_frames(path: str):
+    frames: list[str] = []
+    if "#" not in path:
+        pth = Path(path)
+        if pth.is_dir():
+            for f in pth.iterdir():
+                if f.suffix in [".jpg", ".png"]:
+                    frames.append(f.as_posix())
+        elif "*" in path:
+            frames = glob.glob(path)
+        else:
+            raise ValueError(
+                "The path doesn't contain a # or a * or is not a directory"
+            )
+        frames.sort()
+
+        return frames
+
+    pattern = path
     folder_path, file_pattern = os.path.split(pattern)
 
     log.debug(f"Resolving all frames in {folder_path}")
-    frames = []
     hash_count = file_pattern.count("#")
     frame_pattern = re.sub(r"#+", "*", file_pattern)
 
@@ -306,7 +376,7 @@ def resolve_path(path, frame):
     return re.sub("#+", padded_number, path)
 
 
-class SaveImageSequence:
+class MTB_SaveImageSequence:
     """Save an image sequence to a folder. The current frame is used to determine which image to save.
 
     This is merely a wrapper around the `save_images` function with formatting for the output folder and filename.
@@ -402,8 +472,6 @@ class SaveImageSequence:
 
 
 __nodes__ = [
-    LoadImageSequence,
-    MTBLiveVideo,
-    SaveImageSequence,
-    MTBCotracker2,
+    MTB_LoadImageSequence,
+    MTB_SaveImageSequence,
 ]

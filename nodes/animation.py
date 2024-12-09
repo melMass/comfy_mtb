@@ -21,6 +21,36 @@ class MTB_AnimationBuilder:
     RETURN_NAMES = ("frame", "0-1 (scaled)", "count", "loop_ended")
     CATEGORY = "mtb/animation"
     FUNCTION = "build_animation"
+    DESCRIPTION = """
+# Animation Builder
+
+Check the
+[wiki page](https://github.com/melMass/comfy_mtb/wiki/nodes-animation-builder)
+for more info.
+
+
+- This basic example should help to understand the meaning of
+its inputs and outputs thanks to the [debug](nodes-debug) node.
+
+![](https://github.com/melMass/comfy_mtb/assets/7041726/2b5c7e4f-372d-4494-9e73-abb2daa7cb36)
+
+- In this other example Animation Builder is used in combination with
+[Batch From History](https://github.com/melMass/comfy_mtb/wiki/nodes-batch-from-history)
+to create a zoom-in animation on a static image
+
+![](https://github.com/melMass/comfy_mtb/assets/7041726/77d37da1-0a8e-4519-a493-dfdef7f755ea)
+
+## Inputs
+
+| name | description |
+| ---- | :----------:|
+| total_frames | The number of frame to queue (this is multiplied by the `loop_count`)|
+| scale_float | Convenience input to scale the normalized `current value` (a float between 0 and 1 lerp over the current queue length) |
+| loop_count | The number of loops to queue |
+| **Reset Button** | resets the internal counters, although the node is though around using its queue button it should still work fine when using the regular queue button of comfy |
+| **Queue Button** | Convenience button to run the queues (`total_frames` * `loop_count`) |
+
+"""
 
     def build_animation(
         self,

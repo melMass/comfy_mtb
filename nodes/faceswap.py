@@ -2,7 +2,6 @@
 # region imports
 import sys
 from pathlib import Path
-from typing import List, Optional, Set, Union
 
 import comfy.model_management as model_management
 import cv2
@@ -22,7 +21,7 @@ from ..utils import download_antelopev2, get_model_path, pil2tensor, tensor2pil
 log = mklog(__name__)
 
 
-class LoadFaceAnalysisModel:
+class MTB_LoadFaceAnalysisModel:
     """Loads a face analysis model"""
 
     models = []
@@ -41,6 +40,7 @@ class LoadFaceAnalysisModel:
     RETURN_TYPES = ("FACE_ANALYSIS_MODEL",)
     FUNCTION = "load_model"
     CATEGORY = "mtb/facetools"
+    DEPRECATED = True
 
     def load_model(self, faceswap_model: str):
         if faceswap_model == "antelopev2":
@@ -53,7 +53,7 @@ class LoadFaceAnalysisModel:
         return (face_analyser,)
 
 
-class LoadFaceSwapModel:
+class MTB_LoadFaceSwapModel:
     """Loads a faceswap model"""
 
     @staticmethod
@@ -78,6 +78,7 @@ class LoadFaceSwapModel:
     RETURN_TYPES = ("FACESWAP_MODEL",)
     FUNCTION = "load_model"
     CATEGORY = "mtb/facetools"
+    DEPRECATED = True
 
     def load_model(self, faceswap_model: str):
         model_path = get_model_path("insightface", faceswap_model)
@@ -97,7 +98,7 @@ class LoadFaceSwapModel:
 
 
 # region roop node
-class FaceSwap:
+class MTB_FaceSwap:
     """Face swap using deepinsight/insightface models"""
 
     model = None
@@ -119,12 +120,15 @@ class FaceSwap:
                 ),
                 "faceswap_model": ("FACESWAP_MODEL", {"default": "None"}),
             },
-            "optional": {},
+            "optional": {
+                "preserve_alpha": ("BOOLEAN", {"default": True}),
+            },
         }
 
     RETURN_TYPES = ("IMAGE",)
     FUNCTION = "swap"
     CATEGORY = "mtb/facetools"
+    DEPRECATED = True
 
     def swap(
         self,
@@ -133,11 +137,18 @@ class FaceSwap:
         faces_index: str,
         faceanalysis_model,
         faceswap_model,
+        preserve_alpha=False,
     ):
         def do_swap(img):
             model_management.throw_exception_if_processing_interrupted()
             img = tensor2pil(img)[0]
             ref = tensor2pil(reference)[0]
+
+            alpha_channel = None
+            if preserve_alpha and img.mode == "RGBA":
+                alpha_channel = img.getchannel("A")
+                img = img.convert("RGB")
+
             face_ids = {
                 int(x)
                 for x in faces_index.strip(",").split(",")
@@ -148,6 +159,8 @@ class FaceSwap:
                 faceanalysis_model, ref, img, faceswap_model, face_ids
             )
             sys.stdout = sys.__stdout__
+            if alpha_channel:
+                swapped.putalpha(alpha_channel)
             return pil2tensor(swapped)
 
         batch_count = image.size(0)
@@ -194,10 +207,10 @@ def get_face_single(
 
 def swap_face(
     face_analyser,
-    source_img: Union[Image.Image, List[Image.Image]],
-    target_img: Union[Image.Image, List[Image.Image]],
+    source_img: Image.Image | list[Image.Image],
+    target_img: Image.Image | list[Image.Image],
     face_swapper_model,
-    faces_index: Optional[Set[int]] = None,
+    faces_index: set[int] | None = None,
 ) -> Image.Image:
     if faces_index is None:
         faces_index = {0}
@@ -239,4 +252,4 @@ def swap_face(
 # endregion face swap utils
 
 
-__nodes__ = [FaceSwap, LoadFaceSwapModel, LoadFaceAnalysisModel]
+__nodes__ = [MTB_FaceSwap, MTB_LoadFaceSwapModel, MTB_LoadFaceAnalysisModel]
