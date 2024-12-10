@@ -1,4 +1,5 @@
 import torch
+
 from ..utils import create_uv_map_tensor, log
 
 
@@ -21,7 +22,9 @@ class oldDistortImageWithUv:
     FUNCTION = "distort_image_with_uv"
     CATEGORY = "mtb/uv"
 
-    def distort_image_with_uv(self, image, uv_map, strength=1.0, base_uv_map=None):
+    def distort_image_with_uv(
+        self, image, uv_map, strength=1.0, base_uv_map=None
+    ):
         assert (
             image.shape[1:3] == uv_map.shape[1:3]
         ), "Spatial dimensions of image and uv_map must match!"
@@ -97,7 +100,12 @@ class ImageDistortWithUv:
     CATEGORY = "mtb/uv"
 
     def distort_image_with_uv(
-        self, image, uv_map, boundary_mode="wrap", strength=1.0, base_uv_map=None
+        self,
+        image,
+        uv_map,
+        boundary_mode="wrap",
+        strength=1.0,
+        base_uv_map=None,
     ):
         log.debug(f"[UV Distort] Input image shape {image.shape}")
         if image.size(0) == 0:
@@ -127,8 +135,8 @@ class ImageDistortWithUv:
         elif boundary_mode == "reflect":
             U = U % (2 * x)
             V = V % (2 * y)
-            U = torch.where(U > w, 2 * x - U, U)
-            V = torch.where(V > h, 2 * y - V, V)
+            U = torch.where(w < U, 2 * x - U, U)
+            V = torch.where(h < V, 2 * y - V, V)
         elif boundary_mode == "replicate":
             U = torch.clamp(U, 0, x)
             V = torch.clamp(V, 0, y)
@@ -139,15 +147,15 @@ class ImageDistortWithUv:
             raise ValueError("Invalid boundary_mode")
 
         # Check if any UV coordinates are out of bounds and log
-        if torch.any(U >= w) or torch.any(V >= h):
+        if torch.any(w <= U) or torch.any(h <= V):
             log.info("Input UVs out of bounds, clipping")
 
         # Calculate the four corner indices for each UV coordinate
         U0, V0 = torch.floor(U).long(), torch.floor(V).long()
         # For replicate mode, if U0/V0 is at the last pixel, we replicate that pixel for U1/V1
         if boundary_mode == "replicate":
-            U1 = torch.where(U0 < x, U0 + 1, U0)
-            V1 = torch.where(V0 < y, V0 + 1, V0)
+            U1 = torch.where(x > U0, U0 + 1, U0)
+            V1 = torch.where(y > V0, V0 + 1, V0)
         else:
             U1, V1 = U0 + 1, V0 + 1
 
@@ -167,8 +175,14 @@ class ImageDistortWithUv:
             V1 = torch.clamp(V1, 0, y)
 
         # Bilinear interpolation weights
-        w_U0, w_U1 = (U1.float() - U).unsqueeze(-1), (U - U0.float()).unsqueeze(-1)
-        w_V0, w_V1 = (V1.float() - V).unsqueeze(-1), (V - V0.float()).unsqueeze(-1)
+        w_U0, w_U1 = (
+            (U1.float() - U).unsqueeze(-1),
+            (U - U0.float()).unsqueeze(-1),
+        )
+        w_V0, w_V1 = (
+            (V1.float() - V).unsqueeze(-1),
+            (V - V0.float()).unsqueeze(-1),
+        )
 
         # Sample image using bilinear interpolation
         distorted = (
@@ -220,8 +234,12 @@ class UvRemoveSeams:
 
     def remove_uv_seams(self, uv_map, radius):
         # Create masks for U and V coordinates close to 0 or 1
-        u_border_mask = (uv_map[..., 0] < radius) | (uv_map[..., 0] > 1 - radius)
-        v_border_mask = (uv_map[..., 1] < radius) | (uv_map[..., 1] > 1 - radius)
+        u_border_mask = (uv_map[..., 0] < radius) | (
+            uv_map[..., 0] > 1 - radius
+        )
+        v_border_mask = (uv_map[..., 1] < radius) | (
+            uv_map[..., 1] > 1 - radius
+        )
 
         # Soften the UV coordinates near the borders
         uv_map[..., 0] = torch.where(
@@ -257,12 +275,12 @@ class UvTile:
         tiled_uv = uv_map.clone()
 
         if alt_method:
-            tiled_uv[..., 0] = (uv_map[..., 0] * tiles_u).floor() / tiles_u + uv_map[
-                ..., 0
-            ] % (1.0 / tiles_u)
-            tiled_uv[..., 1] = (uv_map[..., 1] * tiles_v).floor() / tiles_v + uv_map[
-                ..., 1
-            ] % (1.0 / tiles_v)
+            tiled_uv[..., 0] = (
+                uv_map[..., 0] * tiles_u
+            ).floor() / tiles_u + uv_map[..., 0] % (1.0 / tiles_u)
+            tiled_uv[..., 1] = (
+                uv_map[..., 1] * tiles_v
+            ).floor() / tiles_v + uv_map[..., 1] % (1.0 / tiles_v)
 
         else:
             tiled_uv[..., 0] = (
@@ -322,12 +340,21 @@ class UvDistort:
     CATEGORY = "mtb/uv"
 
     def distort_uvs(
-        self, uv_map: torch.Tensor, mode, polar_strength, wave_frequency, wave_amplitude
+        self,
+        uv_map: torch.Tensor,
+        mode,
+        polar_strength,
+        wave_frequency,
+        wave_amplitude,
     ):
         if mode == "polar":
             return (self.apply_polar_distortion(uv_map, polar_strength),)
         elif mode == "wave":
-            return (self.apply_wave_distortion(uv_map, wave_frequency, wave_amplitude),)
+            return (
+                self.apply_wave_distortion(
+                    uv_map, wave_frequency, wave_amplitude
+                ),
+            )
         else:
             raise ValueError(f"Unknown mode {mode}")
 
@@ -341,10 +368,10 @@ class UvDistort:
         - frequency (float): Frequency of the wave.
         - amplitude (float): Amplitude of the wave.
 
-        Returns:
+        Returns
+        -------
         - torch.Tensor: Distorted UV map in RGB format.
         """
-
         U = uv_map[:, :, :, 0]
         V = uv_map[:, :, :, 1]
 
@@ -369,7 +396,8 @@ class UvDistort:
         - uv_map (torch.Tensor): The UV map tensor.
         - strength (float): The strength of the distortion.
 
-        Returns:
+        Returns
+        -------
         - torch.Tensor: Distorted UV map in RGB format.
         """
         U = uv_map[:, :, :, 0]
@@ -407,4 +435,11 @@ class UvDistort:
         return torch.stack([R, G, B], dim=-1)
 
 
-__nodes__ = [UvDistort, UvToImage, ImageToUv, ImageDistortWithUv, UvTile, UvRemoveSeams]
+__nodes__ = [
+    UvDistort,
+    UvToImage,
+    ImageToUv,
+    ImageDistortWithUv,
+    UvTile,
+    UvRemoveSeams,
+]

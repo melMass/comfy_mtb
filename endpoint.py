@@ -29,7 +29,13 @@ import platform
 import sys
 from pathlib import Path
 
-import websockets.server
+try:
+    import websockets.server
+except ModuleNotFoundError:
+    endlog.warning(
+        "You do not have websockets installed, the video server won't work"
+    )
+    websockets = False
 
 import_install("requirements")
 import io

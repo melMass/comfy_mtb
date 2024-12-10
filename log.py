@@ -1,7 +1,6 @@
 import logging
 import os
 import re
-from typing import Optional
 
 base_log_level = logging.DEBUG if os.environ.get("MTB_DEBUG") else logging.INFO
 
@@ -56,7 +55,7 @@ class FileFormatter(logging.Formatter):
         super().__init__(self.fmt, "%Y-%m-%d %H:%M:%S")
 
 
-def mklog(name: str, level: int = base_log_level, log_file: Optional[str] = None):
+def mklog(name: str, level: int = base_log_level, log_file: str | None = None):
     logger = logging.getLogger(name)
     logger.setLevel(level)
 
@@ -86,7 +85,7 @@ log = mklog(__package__, base_log_level)
 
 
 def log_user(arg: str):
-    print(ff"\033[34mComfy MTB Utils:\033[0m {arg}")
+    print(f"\033[34mComfy MTB Utils:\033[0m {arg}")
 
 
 def get_summary(docstring: str):

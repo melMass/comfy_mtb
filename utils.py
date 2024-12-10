@@ -2,6 +2,7 @@
 
 import base64
 import contextlib
+import copy
 import functools
 import importlib
 import io
@@ -329,7 +330,7 @@ class StringConvertibleEnum(Enum):
 
         Returns
         -------
-            List[str]: List of all enum member values.
+            list[str]: List of all enum member values.
         """
         return [enum.value for enum in cls]
 
@@ -410,7 +411,7 @@ def hex_to_rgb(hex_color, *, bgr=False):
         return (0, 0, 0)
 
 
-def add_path(path: str | Path | List[str] | List[Path], *, prepend=False):
+def add_path(path: str | Path | list[str] | list[Path], *, prepend=False):
     """Add a path(s) to the system path.
 
     Supports Path, str, and list (of either).
@@ -430,7 +431,7 @@ def add_path(path: str | Path | List[str] | List[Path], *, prepend=False):
             sys.path.append(path)
 
 
-def run_command(cmd, ignored_lines_start: Optional[str | List[str]] = None):
+def run_command(cmd, ignored_lines_start: None | str | list[str] = None):
     """Unsafe command runner."""
     if ignored_lines_start is None:
         ignored_lines_start = []
@@ -577,6 +578,19 @@ def handle_batch(
 ) -> list[Image.Image] | list[npt.NDArray[np.uint8]]:
     """Handles batch processing for a given tensor and conversion function."""
     return [func(tensor[i]) for i in range(tensor.shape[0])]
+
+
+def tensor2b64(tensor: torch.Tensor) -> list[str]:
+    images = tensor2pil(tensor)
+    res: list[str] = []
+    for img in images:
+        frame_bytes = io.BytesIO()
+        img.save(frame_bytes, format="PNG")
+        res.append(
+            "data:image/png;base64,"
+            + base64.b64encode(frame_bytes.getvalue()).decode("utf-8")
+        )
+    return res
 
 
 def tensor2pil(tensor: torch.Tensor) -> list[Image.Image]:
@@ -1068,7 +1082,7 @@ def json_to_mesh(json_data: str):
     return mesh
 
 
-def mesh_to_json(mesh: o3d.geometry.MeshBase):
+def mesh_to_json(mesh: "o3d.geometry.MeshBase"):
     """Convert an Open3D mesh to JSON."""
     mesh_dict = {
         "vertices": np.asarray(mesh.vertices).tolist(),
@@ -1475,7 +1489,7 @@ def apply_easing(value: float, easing_type: str):
         "Circ In": _in_circ,
         "Circ Out": _out_circ,
         "Circ In/Out": _inout_circ,
-        "Back In": _in_back,
+        # "Back In": _in_back,
         "Back Out": _out_back,
         "Back In/Out": _inout_back,
         "Elastic In": _in_elastic,

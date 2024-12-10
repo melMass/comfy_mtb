@@ -419,33 +419,37 @@ class MTB_AnyToString:
     @classmethod
     def INPUT_TYPES(cls):
         return {
-            "required": {"input": ("*",)},
+            "required": {"input_value": ("*",)},
         }
 
     RETURN_TYPES = ("STRING",)
     FUNCTION = "do_str"
     CATEGORY = "mtb/converters"
 
-    def do_str(self, value):
-        if isinstance(value, str):
-            return (value,)
-        elif isinstance(value, torch.Tensor):
-            return (f"Tensor of shape {value.shape} and dtype {value.dtype}",)
-        elif isinstance(value, Image.Image):
-            return (f"PIL Image of size {value.size} and mode {value.mode}",)
-        elif isinstance(value, np.ndarray):
+    def do_str(self, input_value):
+        if isinstance(input_value, str):
+            return (input_value,)
+        elif isinstance(input_value, torch.Tensor):
             return (
-                f"Numpy array of shape {value.shape} and dtype {value.dtype}",
+                f"Tensor of shape {input_value.shape} and dtype {input_value.dtype}",
+            )
+        elif isinstance(input_value, Image.Image):
+            return (
+                f"PIL Image of size {input_value.size} and mode {input_value.mode}",
+            )
+        elif isinstance(input_value, np.ndarray):
+            return (
+                f"Numpy array of shape {input_value.shape} and dtype {input_value.dtype}",
             )
 
-        elif isinstance(value, dict):
+        elif isinstance(input_value, dict):
             return (
-                f"Dictionary of {len(value)} items, with keys {value.keys()}",
+                f"Dictionary of {len(input_value)} items, with keys {input_value.keys()}",
             )
 
         else:
-            log.debug(f"Falling back to string conversion of {value}")
-            return (str(value),)
+            log.debug(f"Falling back to string conversion of {input_value}")
+            return (str(input_value),)
 
 
 class MTB_StringReplace:
