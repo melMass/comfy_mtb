@@ -4,6 +4,7 @@ import sys
 from pathlib import Path
 from typing import Any, Literal
 
+import folder_paths
 from aiohttp import web
 
 from .log import mklog
@@ -13,8 +14,6 @@ from .utils import (
     build_glob_patterns,
     glob_multiple,
     import_install,
-    input_dir,
-    output_dir,
     reqs_map,
     run_command,
     styles_dir,
@@ -70,6 +69,10 @@ def ACTIONS_getUserImages(
     #     return {"error": "Session not authorized to getInputs"}
 
     imgs = {}
+
+    input_dir = Path(folder_paths.get_input_directory())
+    output_dir = Path(folder_paths.get_output_directory())
+
     entry_dir = input_dir if mode == "input" else output_dir
     supported = ["png", "jpg", "jpeg", "webp", "gif"]
 

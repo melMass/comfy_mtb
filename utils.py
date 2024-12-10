@@ -498,8 +498,12 @@ here = Path(__file__).parent.absolute()
 # - Construct the absolute path to the ComfyUI directory
 comfy_dir = Path(folder_paths.base_path)
 models_dir = Path(folder_paths.models_dir)
+
+
+# NOTE: these aren't reliable, better call the getters each time
 output_dir = Path(folder_paths.output_directory)
 input_dir = Path(folder_paths.input_directory)
+
 styles_dir = comfy_dir / "styles"
 session_id = str(uuid.uuid4())
 # - Construct the path to the font file
