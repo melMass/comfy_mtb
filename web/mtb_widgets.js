@@ -536,21 +536,34 @@ export const MtbWidgets = {
             picker.type = 'color'
             picker.value = this.value
 
-            picker.style.position = 'absolute'
-            picker.style.left = '999999px' //(window.innerWidth / 2) + "px";
-            picker.style.top = '999999px' //(window.innerHeight / 2) + "px";
-
-            document.body.appendChild(picker)
-
-            picker.addEventListener('change', () => {
-              this.value = picker.value
-              this.callback?.(this.value)
-              node.graph._version++
-              node.setDirtyCanvas(true, true)
-              picker.remove()
+            Object.assign(picker.style, {
+              position: "fixed",
+              left: `${e.clientX}px`,
+              top: `${e.clientY}px`,
+              height: "0px",
+              width: "0px",
+              padding: "0px",
+              opacity: 0,
             })
 
-            picker.click()
+            picker.addEventListener("blur", () => {
+              this.callback?.(this.value)
+              node.graph._version++
+              picker.remove()
+            })
+            picker.addEventListener("input", () => {
+              if (!picker.value) return
+          
+              this.value = picker.value
+              app.canvas.setDirty(true)
+            })
+          
+            document.body.appendChild(picker)
+
+            requestAnimationFrame(() => {
+              picker.showPicker()
+              picker.focus()
+            })
           }
         }
       }
