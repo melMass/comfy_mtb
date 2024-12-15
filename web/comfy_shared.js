@@ -18,7 +18,7 @@ import { api } from '../../scripts/api.js'
 export function makeUUID() {
   let dt = new Date().getTime()
   const uuid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-    const r = ((dt + Math.random() * 16) % 16) | 0
+    const r = (dt + Math.random() * 16) % 16 | 0
     dt = Math.floor(dt / 16)
     return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16)
   })
@@ -51,7 +51,7 @@ export class LocalStorageManager {
 
   clear() {
     for (const key of Object.keys(localStorage).filter((k) =>
-      k.startsWith(`${this.namespace}:`),
+      k.startsWith(`${this.namespace}:`)
     )) {
       localStorage.removeItem(key)
     }
@@ -66,7 +66,7 @@ function createLogger(emoji, color, consoleMethod = 'log') {
       console[consoleMethod](
         `%c${emoji} ${message}`,
         `color: ${color};`,
-        ...args,
+        ...args
       )
     }
   }
@@ -319,14 +319,14 @@ export function offsetDOMWidget(
   node,
   widgetWidth,
   widgetY,
-  height,
+  height
 ) {
   const margin = 10
   const elRect = ctx.canvas.getBoundingClientRect()
   const transform = new DOMMatrix()
     .scaleSelf(
       elRect.width / ctx.canvas.width,
-      elRect.height / ctx.canvas.height,
+      elRect.height / ctx.canvas.height
     )
     .multiplySelf(ctx.getTransform())
     .translateSelf(margin, margin + widgetY)
@@ -371,23 +371,37 @@ export function getWidgetType(config) {
  * @param {NodeType} nodeType The nodetype to attach the documentation to
  * @param {str} prefix A prefix added to each dynamic inputs
  * @param {str | [str]} inputType The datatype(s) of those dynamic inputs
- * @param {{link?:LLink, ioSlot?:INodeInputSlot | INodeOutputSlot}?} opts
+ * @param {{separator?:string, start_index?:number, link?:LLink, ioSlot?:INodeInputSlot | INodeOutputSlot}?} [opts] Extra options
  * @returns
  */
-export const setupDynamicConnections = (nodeType, prefix, inputType, opts) => {
+export const setupDynamicConnections = (
+  nodeType,
+  prefix,
+  inputType,
+  opts = undefined
+) => {
   infoLogger(
     'Setting up dynamic connections for',
-    Object.getOwnPropertyDescriptors(nodeType).title.value,
+    Object.getOwnPropertyDescriptors(nodeType).title.value
   )
 
-  /** @type {{link?:LLink, ioSlot?:INodeInputSlot | INodeOutputSlot}} */
-  const options = opts || {}
+  /** @type {{separator:string, start_index:number, link?:LLink, ioSlot?:INodeInputSlot | INodeOutputSlot}?} */
+  const options = Object.assign(
+    {
+      separator: '_',
+      start_index: 1,
+    },
+    opts || {}
+  )
   const onNodeCreated = nodeType.prototype.onNodeCreated
   const inputList = typeof inputType === 'object'
 
   nodeType.prototype.onNodeCreated = function () {
     const r = onNodeCreated ? onNodeCreated.apply(this, []) : undefined
-    this.addInput(`${prefix}_1`, inputList ? '*' : inputType)
+    this.addInput(
+      `${prefix}${options.separator}${options.start_index}`,
+      inputList ? '*' : inputType
+    )
     return r
   }
 
@@ -422,9 +436,9 @@ export const setupDynamicConnections = (nodeType, prefix, inputType, opts) => {
       this,
       slotIndex,
       isConnected,
-      `${prefix}_`,
+      `${prefix}${options.separator}`,
       inputType,
-      options,
+      options
     )
     return r
   }
@@ -438,7 +452,7 @@ export const setupDynamicConnections = (nodeType, prefix, inputType, opts) => {
  * @param {bool} connected - Was this event connecting or disconnecting
  * @param {string} [connectionPrefix] - The common prefix of the dynamic inputs
  * @param {string|[string]} [connectionType] - The type of the dynamic connection
- * @param {{link?:LLink, ioSlot?:INodeInputSlot | INodeOutputSlot}} [opts] - extra options
+ * @param {{start_index?:number, link?:LLink, ioSlot?:INodeInputSlot | INodeOutputSlot}} [opts] - extra options
  */
 export const dynamic_connection = (
   node,
@@ -446,15 +460,20 @@ export const dynamic_connection = (
   connected,
   connectionPrefix = 'input_',
   connectionType = '*',
-  opts = undefined,
+  opts = undefined
 ) => {
-  /* @type {{link?:LLink, ioSlot?:INodeInputSlot | INodeOutputSlot}} [opts] - extra options*/
-  const options = opts || {}
+  /* {{start_index:number, link?:LLink, ioSlot?:INodeInputSlot | INodeOutputSlot}} [opts] - extra options*/
+  const options = Object.assign(
+    {
+      start_index: 1,
+    },
+    opts || {}
+  )
 
-  if (
-    node.inputs.length > 0 &&
-    !node.inputs[index].name.startsWith(connectionPrefix)
-  ) {
+  // function to test if input is a dynamic one
+  const isDynamicInput = (inputName) => inputName.startsWith(connectionPrefix)
+
+  if (node.inputs.length > 0 && !isDynamicInput(node.inputs[index].name)) {
     return
   }
 
@@ -473,7 +492,7 @@ export const dynamic_connection = (
     const to_remove = []
     for (let n = 1; n < node.inputs.length; n++) {
       const element = node.inputs[n]
-      if (!element.link) {
+      if (!element.link && isDynamicInput(element.name)) {
         if (node.widgets) {
           const w = node.widgets.find((w) => w.name === element.name)
           if (w) {
@@ -499,14 +518,25 @@ export const dynamic_connection = (
 
     infoLogger('Cleaning inputs: making it sequential again')
     // make inputs sequential again
+    let prefixed_idx = options.start_index
     for (let i = 0; i < node.inputs.length; i++) {
-      let name = `${connectionPrefix}${i + 1}`
+      let name = ''
+      // rename only prefixed inputs
+      if (isDynamicInput(node.inputs[i].name)) {
+        // prefixed => rename and increase index
+        name = `${connectionPrefix}${prefixed_idx}`
+        prefixed_idx += 1
+      } else {
+        // not prefixed => keep same name
+        name = node.inputs[i].name
+      }
 
       if (nameArray.length > 0) {
         name = i < nameArray.length ? nameArray[i] : name
       }
 
-      node.inputs[i].label = name
+      // preserve label if it exists
+      node.inputs[i].label = node.inputs[i].label || name
       node.inputs[i].name = name
     }
   }
@@ -546,11 +576,16 @@ export const dynamic_connection = (
     if (node.inputs.length === 0) return
     // add an extra input
     if (node.inputs[node.inputs.length - 1].link !== null) {
-      const nextIndex = node.inputs.length
+      // count only the prefixed inputs
+      const nextIndex = node.inputs.reduce(
+        (acc, cur) => (isDynamicInput(cur.name) ? ++acc : acc),
+        0
+      )
+
       const name =
         nextIndex < nameArray.length
           ? nameArray[nextIndex]
-          : `${connectionPrefix}${nextIndex + 1}`
+          : `${connectionPrefix}${nextIndex + options.start_index}`
 
       infoLogger(`Adding input ${nextIndex + 1} (${name})`)
       node.addInput(name, conType)
@@ -570,7 +605,7 @@ function getBrightness(rgbObj) {
     (Number.parseInt(rgbObj[0]) * 299 +
       Number.parseInt(rgbObj[1]) * 587 +
       Number.parseInt(rgbObj[2]) * 114) /
-      1000,
+      1000
   )
 }
 // #endregion
@@ -606,7 +641,7 @@ export function calculateTotalChildrenHeight(parentElement) {
 export const loadScript = (
   FILE_URL,
   async = true,
-  type = 'text/javascript',
+  type = 'text/javascript'
 ) => {
   return new Promise((resolve, reject) => {
     try {
@@ -733,7 +768,7 @@ function loadParser(shiki) {
         : '/mtb_async/mtb_markdown.umd.js'
     )
       .then((_module) =>
-        shiki ? MTBMarkdownPlus.getParser() : MTBMarkdown.getParser(),
+        shiki ? MTBMarkdownPlus.getParser() : MTBMarkdown.getParser()
       )
       .then((instance) => {
         window.MTB.mdParser = instance
@@ -800,11 +835,11 @@ export const ensureMarkdownParser = async (callback) => {
 export const addDocumentation = (
   nodeData,
   nodeType,
-  opts = { icon_size: 14, icon_margin: 4 },
+  opts = { icon_size: 14, icon_margin: 4 }
 ) => {
   if (!nodeData.description) {
     infoLogger(
-      `Skipping ${nodeData.name} doesn't have a description, skipping...`,
+      `Skipping ${nodeData.name} doesn't have a description, skipping...`
     )
     return
   }
@@ -900,15 +935,15 @@ export const addDocumentation = (
               startY = e.clientY
               startWidth = Number.parseInt(
                 document.defaultView.getComputedStyle(docElement).width,
-                10,
+                10
               )
               startHeight = Number.parseInt(
                 document.defaultView.getComputedStyle(docElement).height,
-                10,
+                10
               )
             },
 
-            { signal: this.docCtrl.signal },
+            { signal: this.docCtrl.signal }
           )
 
           document.addEventListener(
@@ -927,7 +962,7 @@ export const addDocumentation = (
                 height: `${newHeight}px`,
               }
             },
-            { signal: this.docCtrl.signal },
+            { signal: this.docCtrl.signal }
           )
 
           document.addEventListener(
@@ -935,7 +970,7 @@ export const addDocumentation = (
             () => {
               isResizing = false
             },
-            { signal: this.docCtrl.signal },
+            { signal: this.docCtrl.signal }
           )
         })
       })
@@ -1088,7 +1123,7 @@ export const addDeprecation = (nodeType, reason) => {
   console.log(
     `%c!  ${title} is deprecated:%c ${reason}`,
     styles.title,
-    styles.reason,
+    styles.reason
   )
 }
 
