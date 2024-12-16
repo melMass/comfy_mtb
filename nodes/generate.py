@@ -1,7 +1,7 @@
 from PIL import Image
 
 from ..log import log
-from ..utils import comfy_dir, font_path, pil2tensor
+from ..utils import comfy_dir, create_uv_map_tensor, font_path, pil2tensor
 
 # class MtbExamples:
 #     """MTB Example Images"""
@@ -193,11 +193,11 @@ by default it fallsback to a default font.
                 ),
                 "color": (
                     "COLOR",
-                    {"default": "black"},
+                    {"default": "#000000"},
                 ),
                 "background": (
                     "COLOR",
-                    {"default": "white"},
+                    {"default": "#FFFFFF"},
                 ),
                 "h_align": (("left", "center", "right"), {"default": "left"}),
                 "v_align": (("top", "center", "bottom"), {"default": "top"}),
@@ -292,8 +292,36 @@ by default it fallsback to a default font.
         return (pil2tensor(img),)
 
 
+class MTB_UvMap:
+    """Generates a UV Map tensor given a widht and height"""
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "width": (
+                    "INT",
+                    {"default": 512, "min": 1, "max": 8096, "step": 1},
+                ),
+                "height": (
+                    "INT",
+                    {"default": 512, "min": 1, "max": 8096, "step": 1},
+                ),
+            }
+        }
+
+    RETURN_TYPES = ("UV_MAP",)
+    RETURN_NAMES = ("uv_map",)
+    FUNCTION = "create_uv_map"
+    CATEGORY = "mtb/generate"
+
+    def create_uv_map(self, width, height):
+        return (create_uv_map_tensor(width, height),)
+
+
 __nodes__ = [
     MTB_UnsplashImage,
     MTB_TextToImage,
+    MTB_UvMap,
     #  MtbExamples,
 ]

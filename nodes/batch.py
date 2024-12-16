@@ -1,4 +1,5 @@
 from io import BytesIO
+from typing import List, Literal, Optional, Tuple, Union
 
 import cv2
 import numpy as np
@@ -6,7 +7,7 @@ import torch
 from PIL import Image
 
 from ..log import log
-from ..utils import EASINGS, apply_easing, pil2tensor
+from ..utils import EASINGS, apply_easing, hex_to_rgb, pil2tensor
 from .transform import MTB_TransformImage
 
 
@@ -243,7 +244,7 @@ class MTB_BatchShape:
         bg_color = hex_to_rgb(bg_color)
         shade_color = hex_to_rgb(shade_color)
         res = []
-        for x in range(count):
+        for _x in range(count):
             # Initialize an image canvas
             canvas = np.full(
                 (image_height, image_width, 3), bg_color, dtype=np.uint8
@@ -259,7 +260,7 @@ class MTB_BatchShape:
                 bottom_right = (center[0] + half_size, center[1] + half_size)
                 cv2.rectangle(mask, top_left, bottom_right, 255, -1)
             elif shape == "Circle":
-                cv2.circle(mask, center, shape_size // 2, 255, -1)
+                cv2.circle(mask, center, shape_size // 2, 255, -1)  # type: ignore
             elif shape == "Diamond":
                 pts = np.array(
                     [
@@ -269,7 +270,7 @@ class MTB_BatchShape:
                         [center[0] - shape_size // 2, center[1]],
                     ]
                 )
-                cv2.fillPoly(mask, [pts], 255)
+                cv2.fillPoly(mask, [pts], 255)  # type: ignore
 
             elif shape == "Tube":
                 cv2.ellipse(
@@ -410,7 +411,14 @@ class MTB_BatchFloat:
     RETURN_TYPES = ("FLOATS",)
     CATEGORY = "mtb/batch"
 
-    def set_floats(self, mode, count, min, max, easing):
+    def set_floats(
+        self,
+        mode: Union[Literal["Steps"], Literal["Single"]] = "Steps",
+        count: int = 1,
+        min: float = 0.0,  # noqa: A002
+        max: float = 1.0,  # noqa: A002
+        easing: str = "Linear",
+    ):
         if mode == "Steps" and count == 1:
             raise ValueError(
                 "Steps mode requires at least a count of 2 values"
@@ -527,12 +535,12 @@ class MTB_Batch2dTransform:
         self,
         image: torch.Tensor,
         border_handling: str,
-        constant_color: str,
-        x: list[float] | None = None,
-        y: list[float] | None = None,
-        zoom: list[float] | None = None,
-        angle: list[float] | None = None,
-        shear: list[float] | None = None,
+        constant_color: tuple,
+        x: Optional[List[float]] = None,
+        y=None,
+        zoom=None,
+        angle=None,
+        shear=None,
     ):
         if all(
             self.get_num_elements(param) <= 0
@@ -568,7 +576,8 @@ class MTB_Batch2dTransform:
             count = len(values)
             if count > 0 and count != image.shape[0]:
                 raise ValueError(
-                    f"Length of {name} values ({count}) must match number of images ({image.shape[0]})"
+                    f"Length of {name} values ({count}) must \
+                        match number of images ({image.shape[0]})"
                 )
             if count == 0:
                 keyframes[name] = [default_vals[name]] * image.shape[0]
@@ -577,11 +586,11 @@ class MTB_Batch2dTransform:
         res = [
             transformer.transform(
                 image[i].unsqueeze(0),
-                keyframes["x"][i],
-                keyframes["y"][i],
-                keyframes["zoom"][i],
-                keyframes["angle"][i],
-                keyframes["shear"][i],
+                keyframes["x"][i],  # type: ignore
+                keyframes["y"][i],  # type: ignore
+                keyframes["zoom"][i],  # type: ignore
+                keyframes["angle"][i],  # type: ignore
+                keyframes["shear"][i],  # type: ignore
                 border_handling,
                 constant_color,
             )[0]
@@ -689,7 +698,7 @@ class MTB_PlotBatchFloat:
 
         fig, ax = plt.subplots(figsize=(width / 100, height / 100), dpi=100)
         fig.set_edgecolor("black")
-        fig.patch.set_facecolor("#2e2e2e")
+        fig.patch.set_facecolor("#2e2e2e")  # type: ignore
         # Setting background color and grid
         ax.set_facecolor("#2e2e2e")  # Dark gray background
         ax.grid(color="gray", linestyle="-", linewidth=0.5, alpha=0.5)
@@ -782,10 +791,7 @@ class MTB_PlotBatchFloat:
         error = int(dx / 2.0)
         y = y1
         ystep = None
-        if y1 < y2:
-            ystep = 1
-        else:
-            ystep = -1
+        ystep = 1 if y1 < y2 else -1
         for x in range(x1, x2 + 1):
             coord = (y, x) if is_steep else (x, y)
             image[coord] = color
@@ -798,7 +804,8 @@ class MTB_PlotBatchFloat:
             image[(x2, y2)] = color
 
 
-DEFAULT_INTERPOLANT = lambda t: t * t * t * (t * (t * 6 - 15) + 10)
+def _DEFAULT_INTERPOLANT(t):
+    return t * t * t * (t * (t * 6 - 15) + 10)
 
 
 class MTB_BatchShake:
@@ -832,37 +839,40 @@ class MTB_BatchShake:
     ):
         """Generate a 2D numpy array of perlin noise.
 
-        Args:
-            shape: The shape of the generated array (tuple of two ints).
+        Args
+        ----
+
+        - shape: The shape of the generated array (tuple of two ints).
                 This must be a multple of res.
-            res: The number of periods of noise to generate along each
+        - res: The number of periods of noise to generate along each
                 axis (tuple of two ints). Note shape must be a multiple of
                 res.
-            tileable: If the noise should be tileable along each axis
-                (tuple of two bools). Defaults to (False, False).
-            interpolant: The interpolation function, defaults to
+        - tileable: If the noise should be tileable along each axis
+               (tuple of two bools). Defaults to (False, False).
+        - interpolant: The interpolation function, defaults to
                 t*t*t*(t*(t*6 - 15) + 10).
 
         Returns
         -------
-            A numpy array of shape shape with the generated noise.
+        A numpy array of shape shape with the generated noise.
+
 
         Raises
         ------
-            ValueError: If shape is not a multiple of res.
+        ValueError: If shape is not a multiple of res.
         """
-        interpolant = interpolant or DEFAULT_INTERPOLANT
+        interpolant = interpolant or _DEFAULT_INTERPOLANT
         delta = (res[0] / shape[0], res[1] / shape[1])
         d = (shape[0] // res[0], shape[1] // res[1])
         grid = (
-            np.mgrid[0 : res[0] : delta[0], 0 : res[1] : delta[1]].transpose(
+            np.mgrid[0 : res[0] : delta[0], 0 : res[1] : delta[1]].transpose(  # type: ignore
                 1, 2, 0
             )
             % 1
         )
         # Gradients
         angles = 2 * np.pi * np.random.rand(res[0] + 1, res[1] + 1)
-        gradients = np.dstack((np.cos(angles), np.sin(angles)))
+        gradients = np.dstack((np.cos(angles), np.sin(angles)))  # type: ignore
         if tileable[0]:
             gradients[-1, :] = gradients[0, :]
         if tileable[1]:
@@ -873,11 +883,12 @@ class MTB_BatchShake:
         g01 = gradients[: -d[0], d[1] :]
         g11 = gradients[d[0] :, d[1] :]
         # Ramps
-        n00 = np.sum(np.dstack((grid[:, :, 0], grid[:, :, 1])) * g00, 2)
-        n10 = np.sum(np.dstack((grid[:, :, 0] - 1, grid[:, :, 1])) * g10, 2)
-        n01 = np.sum(np.dstack((grid[:, :, 0], grid[:, :, 1] - 1)) * g01, 2)
+        n00 = np.sum(np.dstack((grid[:, :, 0], grid[:, :, 1])) * g00, 2)  # type: ignore
+        n10 = np.sum(np.dstack((grid[:, :, 0] - 1, grid[:, :, 1])) * g10, 2)  # type: ignore
+        n01 = np.sum(np.dstack((grid[:, :, 0], grid[:, :, 1] - 1)) * g01, 2)  # type: ignore
         n11 = np.sum(
-            np.dstack((grid[:, :, 0] - 1, grid[:, :, 1] - 1)) * g11, 2
+            np.dstack((grid[:, :, 0] - 1, grid[:, :, 1] - 1)) * g11,  # type: ignore
+            2,
         )
         # Interpolation
         t = interpolant(grid)
@@ -897,31 +908,32 @@ class MTB_BatchShake:
     ):
         """Generate a 2D numpy array of fractal noise.
 
-        Args:
-            shape: The shape of the generated array (tuple of two ints).
-                This must be a multiple of lacunarity**(octaves-1)*res.
-            res: The number of periods of noise to generate along each
-                axis (tuple of two ints). Note shape must be a multiple of
-                (lacunarity**(octaves-1)*res).
-            octaves: The number of octaves in the noise. Defaults to 1.
-            persistence: The scaling factor between two octaves.
-            lacunarity: The frequency factor between two octaves.
-            tileable: If the noise should be tileable along each axis
-                (tuple of two bools). Defaults to (True,True).
-            interpolant: The, interpolation function, defaults to
-                t*t*t*(t*(t*6 - 15) + 10).
+        Args
+        ----
+        - shape: The shape of the generated array (tuple of two ints).
+            This must be a multiple of lacunarity**(octaves-1)*res.
+        - res: The number of periods of noise to generate along each
+            axis (tuple of two ints). Note shape must be a multiple of
+            (lacunarity**(octaves-1)*res).
+        - octaves: The number of octaves in the noise. Defaults to 1.
+        - persistence: The scaling factor between two octaves.
+        - lacunarity: The frequency factor between two octaves.
+        - tileable: If the noise should be tileable along each axis
+            (tuple of two bools). Defaults to (True,True).
+        - interpolant: The, interpolation function, defaults to
+            t*t*t*(t*(t*6 - 15) + 10).
 
         Returns
         -------
-            A numpy array of fractal noise and of shape shape generated by
-            combining several octaves of perlin noise.
+        A numpy array of fractal noise and of shape shape generated by
+        combining several octaves of perlin noise.
 
         Raises
         ------
-            ValueError: If shape is not a multiple of
-                (lacunarity**(octaves-1)*res).
+        - `ValueError`:
+           If shape is not a multiple of (lacunarity**(octaves-1)*res).
         """
-        interpolant = interpolant or DEFAULT_INTERPOLANT
+        interpolant = interpolant or _DEFAULT_INTERPOLANT
 
         noise = np.zeros(shape)
         frequency = 1
@@ -938,8 +950,12 @@ class MTB_BatchShake:
         return noise
 
     def fbm(self, x, y, octaves):
-        # noise_2d = self.generate_fractal_noise_2d((256, 256), (8, 8), octaves)
-        # Now, extract a single noise value based on x and y, wrapping indices if necessary
+        # noise_2d = self.generate_fractal_noise_2d(
+        # (256, 256),
+        # (8, 8),
+        # octaves)
+        # Now, extract a single noise value based on x and y,
+        # wrapping indices if necessary
         x_idx = int(x) % 256
         y_idx = int(y) % 256
         return self.noise_pattern[x_idx, y_idx]
@@ -963,7 +979,8 @@ class MTB_BatchShake:
             (512, 512), (32, 32), (True, True)
         )
 
-        # Assuming frame count is derived from the first dimension of images tensor
+        # Assuming frame count is derived from
+        # the first dimension of images tensor
         frame_count = images.shape[0]
 
         frequency = frequency / frequency_divider
@@ -987,11 +1004,14 @@ class MTB_BatchShake:
 
             # np_position = np.array(
             #     [
-            #         self.fbm(self.position_offset[0] + frame_num, time, octaves),
-            #         self.fbm(self.position_offset[1] + frame_num, time, octaves),
+            #         self.fbm(self.position_offset[0] +
+            #               frame_num, time, octaves),
+            #         self.fbm(self.position_offset[1] +
+            #               frame_num, time, octaves),
             #     ]
             # )
-            # np_rotation = self.fbm(self.rotation_offset[2] + frame_num, time, octaves)
+            # np_rotation = self.fbm(self.rotation_offset[2] +
+            # frame_num, time, octaves)
 
             rot_idx = (self.rotation_offset[2] + frame_num) % 256
             np_rotation = self.fbm(rot_idx, time, octaves)
@@ -1009,14 +1029,19 @@ class MTB_BatchShake:
         transform = MTB_Batch2dTransform()
 
         log.debug(
-            f"Applying shaking with parameters: \nposition {position_amount_x}, {position_amount_y}\nrotation {rotation_amount}\nfrequency {frequency}\noctaves {octaves}"
+            f"Applying shaking with parameters: \n \
+                position {position_amount_x}, \
+                {position_amount_y}\nrotation {rotation_amount}\n \
+                frequency {frequency}\noctaves {octaves}"
         )
 
         # Apply shaking transformations to images
         shaken_images = transform.transform_batch(
             images,
-            border_handling="edge",  # Assuming edge handling as default
-            constant_color="#000000",  # Assuming black as default constant color
+            # Assuming edge handling as default
+            border_handling="edge",
+            # Assuming black as default constant color
+            constant_color="#000000",  # type: ignore
             x=x_translations,
             y=y_translations,
             angle=rotations,

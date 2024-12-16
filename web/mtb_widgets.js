@@ -3,7 +3,7 @@
  * Project: comfy_mtb
  * Author: Mel Massadian
  *
- * Copyright (c) 2023 Mel Massadian
+ * Copyright (c) 2023-2025 Mel Massadian
  *
  */
 
@@ -15,8 +15,10 @@ import { app } from '../../scripts/app.js'
 import { api } from '../../scripts/api.js'
 
 import * as mtb_ui from './mtb_ui.js'
+import { GeometryPreview } from './mtb_3d.js'
 import parseCss from './extern/parse-css.js'
 import * as shared from './comfy_shared.js'
+
 import { infoLogger } from './comfy_shared.js'
 import { NumberInputWidget } from './numberInput.js'
 
@@ -205,7 +207,7 @@ export function addVectorWidget(node, name, value, vector_size, callback, app) {
     // widget._value[VECTOR_AXIS[index]] = Number.parseFloat(value)
   }
 
-  console.log('prev callback', widget.callback)
+  // console.log('prev callback', widget.callback)
   widget.callback = callback
   widget._value = value
 
@@ -236,7 +238,7 @@ export const MtbWidgets = {
    * @returns {VectorWidget} The vector widget.
    */
   VECTOR: (key, val, size) => {
-    shared.infoLogger('Adding VECTOR widget', { key, val, size })
+    infoLogger('Adding VECTOR widget', { key, val, size })
     /** @type {VectorWidget} */
     const widget = {
       name: key,
@@ -438,7 +440,7 @@ export const MtbWidgets = {
             this.type == 'BBOX'
           ) {
             let delta = x < 40 ? -1 : x > widget_width - 40 ? 1 : 0
-            if (event.click_time < 200 && delta == 0) {
+            if (event.click_time < 200 && delta === 0) {
               this.prompt(
                 'Value',
                 this.value,
@@ -600,11 +602,14 @@ export const MtbWidgets = {
 
     w.inputEl = document.createElement('img')
     w.inputEl.src = w.value
-    w.inputEl.onload = function () {
+    w.inputEl.onload = () => {
       w.inputRatio = w.inputEl.naturalWidth / w.inputEl.naturalHeight
     }
     document.body.appendChild(w.inputEl)
     return w
+  },
+  DEBUG_GEOM: async (node, name, val) => {
+    return await GeometryPreview(node, name, val)
   },
   DEBUG_STRING: (name, val) => {
     const fontSize = 16
@@ -1083,17 +1088,17 @@ const mtb_widgets = {
               'STRING',
               '',
             )
-            console.log(input)
+            // console.log(input)
             this.addWidget('STRING', `replacement_${this.widgets.length}`, '')
           }
           //- add
           this.addWidget('button', '+', 'add', (value, widget, node) => {
-            console.log('Button clicked', value, widget, node)
+            // console.log('Button clicked', value, widget, node)
             addReplacement()
           })
           //- remove
           this.addWidget('button', '-', 'remove', (value, widget, node) => {
-            console.log(`Button clicked: ${value}`, widget, node)
+            // console.log(`Button clicked: ${value}`, widget, node)
           })
 
           return r
@@ -1217,7 +1222,6 @@ const mtb_widgets = {
       }
       case 'Batch Merge (mtb)': {
         shared.setupDynamicConnections(nodeType, 'batches', 'IMAGE')
-
         break
       }
       // TODO: remove this, recommend pythongoss's version that is much better

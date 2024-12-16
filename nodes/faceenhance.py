@@ -39,12 +39,7 @@ class MTB_LoadFaceEnhanceModel:
                 cls._warned = True
             return []
         if not fr_models_path.exists():
-            # log.warning(
-            #     f"No Face Restore checkpoints found at {fr_models_path} (if you've used mtb before these checkpoints were saved in upscale_models before)"
-            # )
-            # log.warning(
-            #     "For now we fallback to upscale_models but this will be removed in a future version"
-            # )
+            # - fallback to upscale_models
             if um_models_path.exists():
                 return [
                     x
@@ -122,7 +117,7 @@ class BGUpscaleWrapper:
         tile = 128 + 64
         overlap = 8
 
-        imgt = np2tensor(img)
+        imgt = pil2tensor(img)
         imgt = imgt.movedim(-1, -3).to(device)
 
         steps = imgt.shape[0] * comfy.utils.get_tiled_scale_steps(
@@ -150,9 +145,6 @@ class BGUpscaleWrapper:
         self.upscale_model.cpu()
         s = torch.clamp(s.movedim(-3, -1), min=0, max=1.0)
         return (tensor2np(s)[0],)
-
-
-import sys
 
 
 class MTB_RestoreFace:
@@ -233,8 +225,8 @@ class MTB_RestoreFace:
                 )
                 output.putalpha(alpha_resized)
             # imwrite(restored_img, save_restore_path)
-
-        return pil2tensor(output)
+            return pil2tensor(output)
+        log.warning("No restored image found")
 
     def restore(
         self,
@@ -259,6 +251,9 @@ class MTB_RestoreFace:
             for i in range(image.size(0))
         ]
 
+        if len(out) == 0:
+            raise ValueError("No faces restored")
+        print(f"Restored {len(out)} faces")
         return (torch.cat(out, dim=0),)
 
     def get_step_image_path(self, step, idx):

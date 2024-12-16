@@ -1,5 +1,85 @@
 # NOTE: This file is only use for development you can ignore it
 
+
+# NOTE: for CI it's easier to extract parts of my cli for now
+
+const THREE_VERSION = "0.171.0"
+# Update the external web extensions
+export def "comfy mtb update-web" [] {
+
+  let async_dir = $"($env.COMFY_MTB)/web_async"
+  let three_base = $"https://cdn.jsdelivr.net/npm/three@($THREE_VERSION)"
+  let three = {
+    "." : [
+      "build/three.module.js",
+      "build/three.core.js",
+    ],
+    three_addons/capabilities: [
+      "examples/jsm/capabilities/WebGPU.js",
+      "examples/jsm/controls/ArcballControls.js",
+      "examples/jsm/controls/DragControls.js",
+      "examples/jsm/controls/FirstPersonControls.js",
+      "examples/jsm/controls/FlyControls.js",
+      "examples/jsm/controls/MapControls.js",
+      "examples/jsm/controls/OrbitControls.js",
+      "examples/jsm/controls/PointerLockControls.js",
+      "examples/jsm/controls/TrackballControls.js",
+      "examples/jsm/controls/TransformControls.js",
+    ],
+    three_addons/offscreen: [
+      "jank.js",
+      "offscreen.js",
+      "scene.js",
+    ],
+    thee_addons/exporters : [
+      "examples/jsm/exporters/DRACOExporter.js",
+      "examples/jsm/exporters/EXRExporter.js",
+      "examples/jsm/exporters/GLTFExporter.js",
+      "examples/jsm/exporters/KTX2Exporter.js",
+      "examples/jsm/exporters/MMDExporter.js",
+      "examples/jsm/exporters/OBJExporter.js",
+      "examples/jsm/exporters/PLYExporter.js",
+      "examples/jsm/exporters/STLExporter.js",
+      "examples/jsm/exporters/USDZExporter.js"
+    ],
+
+    three_addons/loaders : [
+      "examples/jsm/loaders/3DMLoader.js",
+      "examples/jsm/loaders/BVHLoader.js",
+      "examples/jsm/loaders/ColladaLoader.js",
+      "examples/jsm/loaders/DRACOLoader.js",
+      "examples/jsm/loaders/EXRLoader.js",
+      "examples/jsm/loaders/FBXLoader.js",
+      "examples/jsm/loaders/FontLoader.js",
+      "examples/jsm/loaders/GLTFLoader.js",
+      "examples/jsm/loaders/HDRCubeTextureLoader.js",
+      "examples/jsm/loaders/MaterialXLoader.js",
+      "examples/jsm/loaders/MTLLoader.js",
+      "examples/jsm/loaders/OBJLoader.js",
+      "examples/jsm/loaders/PCDLoader.js",
+      "examples/jsm/loaders/PDBLoader.js",
+      "examples/jsm/loaders/PLYLoader.js",
+      "examples/jsm/loaders/STLLoader.js",
+      "examples/jsm/loaders/UltraHDRLoader.js",
+      "examples/jsm/loaders/USDZLoader.js",
+      "examples/jsm/loaders/VOXLoader.js"
+    ]
+  }
+  $three | items {|root,urls|
+    let dest =  $async_dir | path join $root
+    mkdir $dest
+
+    $urls | par-each {|url|
+      let url = $"($three_base)/($url)"
+      let local = ($dest | path join ($url | path basename))
+      wget -c $url -O ($local)
+    }
+  }
+
+  # $three
+}
+
+
 def get_root [--clean] {
     if $clean {
         $env.COMFY_CLEAN_ROOT
@@ -151,7 +231,7 @@ def --env path-add [pth] {
 
 
 export-env {
-  $env.COMFY_MTB = ("." | path expand)
+  $env.COMFY_MTB = ("." | path expand | str replace -a '\' '/')
   # $env.CUDA_ROOT =  'C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.1\'
 
   $env.CUDA_HOME = $env.CUDA_ROOT

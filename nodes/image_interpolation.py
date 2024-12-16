@@ -14,7 +14,7 @@ from ..utils import get_model_path
 
 
 class MTB_LoadFilmModel:
-    """Loads a FILM model
+    """Loads a FILM model.
 
     [DEPRECATED] Use ComfyUI-FrameInterpolation instead
     """
@@ -59,7 +59,7 @@ class MTB_LoadFilmModel:
 
 
 class MTB_FilmInterpolation:
-    """Google Research FILM frame interpolation for large motion
+    """Google Research FILM frame interpolation for large motion.
 
     [DEPRECATED] Use ComfyUI-FrameInterpolation instead
     """
@@ -108,7 +108,9 @@ class MTB_FilmInterpolation:
         pbar = comfy.utils.ProgressBar(num_frames)
 
         for frame in util.interpolate_recursively_from_memory(
-            in_frames, interpolate, film_model
+            in_frames,  # type: ignore
+            interpolate,
+            film_model,
         ):
             out_tensors.append(
                 torch.from_numpy(frame)

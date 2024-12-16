@@ -147,6 +147,9 @@ show_missing = true
 [tool.coverage.html]
 show_contexts = true
 
+# for now ignoring
+# D100 - document public modules
+# D102 - document public methods of a class
 [tool.ruff]
 line-length = 79
 select = ["A", "B", "C", "D", "E", "F", "FBT", "I", "N", "S", "SIM", "UP", "W"]
@@ -154,10 +157,12 @@ select = ["A", "B", "C", "D", "E", "F", "FBT", "I", "N", "S", "SIM", "UP", "W"]
 # D102 - undocumented-public-method (noisy)
 # D103 - undocumented-public-function (noisy)
 # D100 - undocumented-public-module (noisy)
-# N802 - invalid-function-name (forced by comfy's arch)
-ignore = ["D103", "D102", "D100", "N802"]
+ignore = ["D103", "D102", "D100"]
 # exclude auto generated file
 extend-exclude = ["./docs/conf.py"]
+
+[tool.ruff.lint.pep8-naming]
+extend-ignore-names = ["INPUT_TYPES", "_DEFAULT_INTERPOLANT"]
 
 [tool.ruff.per-file-ignores]
 # imported but unused

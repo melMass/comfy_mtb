@@ -5,31 +5,22 @@ from pathlib import Path
 from typing import Optional
 
 import folder_paths
+import open3d as o3d
 import torch
 
 from ..log import log
-from ..utils import tensor2pil
+from ..utils import mesh_to_json, tensor2b64
 
 
 # region processors
-def process_tensor(tensor):
+def process_tensor(tensor: torch.Tensor):
     log.debug(f"Tensor: {tensor.shape}")
 
-    image = tensor2pil(tensor)
-    b64_imgs = []
-    for im in image:
-        buffered = io.BytesIO()
-        im.save(buffered, format="PNG")
-        b64_imgs.append(
-            "data:image/png;base64,"
-            + base64.b64encode(buffered.getvalue()).decode("utf-8")
-        )
-
-    return {"b64_images": b64_imgs}
+    return {"b64_images": tensor2b64(tensor)}
 
 
-def process_list(anything):
-    text = []
+def process_list(anything: list[object]) -> dict[str, list[str]]:
+    text: list[str] = []
     if not anything:
         return {"text": []}
 
@@ -41,7 +32,7 @@ def process_list(anything):
     ):
         text.append(
             "List of List of Tensors: "
-            f"{first_element[0].shape} (x{len(anything)})"
+            + f"{first_element[0].shape} (x{len(anything)})"
         )
 
     elif isinstance(first_element, torch.Tensor):
@@ -54,13 +45,20 @@ def process_list(anything):
     return {"text": text}
 
 
-def process_dict(anything):
-    text = []
+def process_dict(anything: dict[str, dict[str, any]]) -> dict[str, str]:
+    if "mesh" in anything:
+        m = {"geometry": {}}
+        m["geometry"]["mesh"] = mesh_to_json(anything["mesh"])
+        if "material" in anything:
+            m["geometry"]["material"] = anything["material"]
+        return m
+
+    res = []
     if "samples" in anything:
         is_empty = (
             "(empty)" if torch.count_nonzero(anything["samples"]) == 0 else ""
         )
-        text.append(f"Latent Samples: {anything['samples'].shape} {is_empty}")
+        res.append(f"Latent Samples: {anything['samples'].shape} {is_empty}")
 
     else:
         text.append(json.dumps(anything, indent=2))
@@ -68,12 +66,17 @@ def process_dict(anything):
     return {"text": text}
 
 
-def process_bool(anything):
+def process_bool(anything: bool) -> dict[str, str]:
     return {"text": ["True" if anything else "False"]}
 
 
 def process_text(anything):
     return {"text": [str(anything)]}
+
+
+# NOT USED ANYMORE
+def process_geometry(anything):
+    return {"geometry": [mesh_to_json(anything)]}
 
 
 # endregion
@@ -98,7 +101,7 @@ class MTB_Debug:
 
     def do_debug(self, output_to_console: bool, **kwargs):
         output = {
-            "ui": {"b64_images": [], "text": []},
+            "ui": {"b64_images": [], "text": [], "geometry": []},
             # "result": ("A"),
         }
 
@@ -107,18 +110,39 @@ class MTB_Debug:
             list: process_list,
             dict: process_dict,
             bool: process_bool,
+            o3d.geometry.Geometry: process_geometry,
         }
         if output_to_console:
             for k, v in kwargs.items():
                 log.info(f"{k}: {v}")
 
         for anything in kwargs.values():
-            processor = processors.get(type(anything), process_text)
-
+            processor = processors.get(type(anything))
+            if processor is None:
+                if isinstance(anything, o3d.geometry.Geometry):
+                    processor = process_geometry
+                else:
+                    processor = process_text
+            log.debug(
+                f"Processing: {anything} with processor: {processor.__name__} for type {type(anything)}"
+            )
             processed_data = processor(anything)
 
             for ui_key, ui_value in processed_data.items():
-                output["ui"][ui_key].extend(ui_value)
+                if isinstance(ui_value, list):
+                    output["ui"][ui_key].extend(ui_value)
+                else:
+                    output["ui"][ui_key].append(ui_value)
+            # log.debug(
+            #     f"Processed input {k}, found {len(processed_data.get('b64_images', []))} images and {len(processed_data.get('text', []))} text items."
+            # )
+
+        if output_to_console:
+            from rich.console import Console
+
+            cons = Console()
+            cons.print("OUTPUT:")
+            cons.print(output)
 
         return output
 

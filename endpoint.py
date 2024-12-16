@@ -13,6 +13,7 @@ from .utils import (
     backup_file,
     build_glob_patterns,
     glob_multiple,
+    here,
     import_install,
     reqs_map,
     run_command,
@@ -22,7 +23,93 @@ from .utils import (
 endlog = mklog("mtb endpoint")
 
 # - ACTIONS
+import asyncio
+import platform
+import sys
+from pathlib import Path
+
+try:
+    import websockets.server
+except ModuleNotFoundError:
+    endlog.warning(
+        "You do not have websockets installed, the video server won't work"
+    )
+    websockets = False
+
 import_install("requirements")
+import io
+
+import numpy as np
+from PIL import Image
+
+
+def generate_random_frame():
+    # Generate a random image frame
+    width, height = 640, 480
+    image = np.random.randint(0, 256, (height, width, 3), dtype=np.uint8)
+    pil_image = Image.fromarray(image)
+    byte_buffer = io.BytesIO()
+    pil_image.save(byte_buffer, format="JPEG")
+    frame_data = byte_buffer.getvalue()
+    return frame_data
+
+
+class VideoStreamingManager:
+    def __init__(self):
+        self.video_servers = {}
+        self.next_port = (
+            8767  # Start with a default port and increment for each server
+        )
+
+    async def start_video_streaming_server(self, video_id):
+        if video_id not in self.video_servers:
+            # Create and start a new video streaming server for the specified video
+            video_server = await self.create_video_streaming_server(video_id)
+            self.video_servers[video_id] = video_server
+
+            return video_server
+
+    async def video_stream(self, websocket, path):
+        # Implement the logic to continuously capture and send video frames here
+        while True:
+            # frame_data = capture_and_encode_frame()  # Implement this function
+            frame_data = generate_random_frame()
+            await websocket.send(frame_data)
+            await asyncio.sleep(0.033)  # Adjust the frame rate as needed
+
+    async def create_video_streaming_server(self, video_id):
+        # Create and start a new WebSocket server for the specified video
+        port = self.next_port
+        self.next_port += 1  # Increment port number for the next server
+
+        server = await websockets.server.serve(
+            self.video_stream, "localhost", port
+        )
+
+        return server
+
+    async def stop_video_streaming_server(self, video_id):
+        if video_id in self.video_servers:
+            # Terminate and remove the video streaming server for the specified video
+            video_server = self.video_servers[video_id]
+            video_server.close()
+            await video_server.wait_closed()
+            del self.video_servers[video_id]
+
+
+async def start_video_streaming_server():
+    async def video_stream(websocket, path):
+        # Continuously capture and send video frames here
+        while True:
+            frame_data = capture_and_encode_frame()  # Implement this function
+            await websocket.send(frame_data)
+            await asyncio.sleep(0.033)  # Adjust the frame rate as needed
+
+    start_server = websockets.server.serve(
+        video_stream, "localhost", 8766
+    )  # Use a different port (e.g., 8766)
+
+    return await start_server
 
 
 def ACTIONS_installDependency(dependency_names=None):
@@ -318,7 +405,7 @@ def add_split_pane(
     """
 
 
-def add_dropdown(title: str, options: list[str]):
+def add_dropdown(title, options):
     option_str = "\n".join(
         [f"<option value='{opt}'>{opt}</option>" for opt in options]
     )

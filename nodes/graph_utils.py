@@ -22,8 +22,9 @@ from ..utils import (
 
 
 def get_image(filename, subfolder, folder_type):
+    """Use the comfyUI "/view" endpoint to get an image from the server."""
     log.debug(
-        f"Getting image {filename} from foldertype {folder_type} {f'in subfolder: {subfolder}' if subfolder else ''}"
+        f"Getting image {filename} from foldertype {folder_type} {f'in subfolder: {subfolder}' if subfolder else ''}"  # noqa: E501
     )
     data = {"filename": filename, "subfolder": subfolder, "type": folder_type}
     base_url, port = get_server_info()
@@ -31,7 +32,8 @@ def get_image(filename, subfolder, folder_type):
     url_values = urllib.parse.urlencode(data)
     url = f"http://{base_url}:{port}/view?{url_values}"
     log.debug(f"Fetching image from {url}")
-    with urllib.request.urlopen(url) as response:
+
+    with urllib.request.urlopen(url) as response:  # noqa: S310
         return io.BytesIO(response.read())
 
 
@@ -369,7 +371,7 @@ class MTB_GetBatchFromHistory:
         history_url = f"http://{base_url}:{port}/history"
         log.debug(f"Fetching history from {history_url}")
         output = torch.zeros(0)
-        with urllib.request.urlopen(history_url) as response:
+        with urllib.request.urlopen(history_url) as response:  # noqa: S310
             output = self.load_batch_frames(response, offset, count, frames)
 
         if output.size(0) == 0:
@@ -417,36 +419,42 @@ class MTB_AnyToString:
     @classmethod
     def INPUT_TYPES(cls):
         return {
-            "required": {"input": ("*",)},
+            "required": {"input_value": ("*",)},
         }
 
     RETURN_TYPES = ("STRING",)
     FUNCTION = "do_str"
     CATEGORY = "mtb/converters"
 
-    def do_str(self, input):
-        if isinstance(input, str):
-            return (input,)
-        elif isinstance(input, torch.Tensor):
-            return (f"Tensor of shape {input.shape} and dtype {input.dtype}",)
-        elif isinstance(input, Image.Image):
-            return (f"PIL Image of size {input.size} and mode {input.mode}",)
-        elif isinstance(input, np.ndarray):
+    def do_str(self, input_value):
+        if isinstance(input_value, str):
+            return (input_value,)
+        elif isinstance(input_value, torch.Tensor):
             return (
-                f"Numpy array of shape {input.shape} and dtype {input.dtype}",
+                f"Tensor of shape {input_value.shape} and dtype {input_value.dtype}",
+            )
+        elif isinstance(input_value, Image.Image):
+            return (
+                f"PIL Image of size {input_value.size} and mode {input_value.mode}",
+            )
+        elif isinstance(input_value, np.ndarray):
+            return (
+                f"Numpy array of shape {input_value.shape} and dtype {input_value.dtype}",
             )
 
-        elif isinstance(input, dict):
+        elif isinstance(input_value, dict):
             return (
-                f"Dictionary of {len(input)} items, with keys {input.keys()}",
+                f"Dictionary of {len(input_value)} items, with keys {input_value.keys()}",
             )
 
         else:
-            log.debug(f"Falling back to string conversion of {input}")
-            return (str(input),)
+            log.debug(f"Falling back to string conversion of {input_value}")
+            return (str(input_value),)
 
 
 class MTB_StringReplace:
+    """Basic string replacement."""
+
     """Basic string replacement."""
 
     @classmethod
@@ -476,7 +484,7 @@ class MTB_StringReplace:
 
 
 class MTB_MathExpression:
-    """Node to evaluate a simple math expression string"""
+    """Node to evaluate a simple math expression string."""
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -513,6 +521,14 @@ class MTB_MathExpression:
             raise ValueError(
                 f"Math expression only support literal_eval now: {e}"
             )
+        except ValueError:
+            try:
+                expression = expression.replace("^", "**")
+                result = eval(expression)  # noqa: S307
+            except Exception as e:
+                raise ValueError(
+                    f"Error evaluating expression '{expression}': {e}"
+                ) from e
 
         return (result, int(result))
 
@@ -556,13 +572,14 @@ class MTB_FitNumber:
 
     def set_range(
         self,
+        *,
         value: float,
         clamp: bool,
-        source_min: float,
-        source_max: float,
-        target_min: float,
-        target_max: float,
-        easing: str,
+        source_min=0.0,
+        source_max=1.0,
+        target_min=0.0,
+        target_max=1.0,
+        easing="Linear",
     ):
         if source_min == source_max:
             normalized_value = 0
