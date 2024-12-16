@@ -3,7 +3,7 @@
  * Project: comfy_mtb
  * Author: Mel Massadian
  *
- * Copyright (c) 2023 Mel Massadian
+ * Copyright (c) 2023-2025 Mel Massadian
  *
  */
 
@@ -15,16 +15,15 @@ import { app } from '../../scripts/app.js'
 import { api } from '../../scripts/api.js'
 
 import * as mtb_ui from './mtb_ui.js'
+import { GeometryPreview } from './mtb_3d.js'
 import parseCss from './extern/parse-css.js'
 import * as shared from './comfy_shared.js'
-import { o3d_to_three, make_wireframe } from './geometry_nodes.js'
-import * as THREE from './extern/three.module.js'
 
 import { infoLogger } from './comfy_shared.js'
 import { NumberInputWidget } from './numberInput.js'
 
 // NOTE: new widget types registered by MTB Widgets
-const newTypes = [/*'BOOL'*/, 'COLOR', 'BBOX']
+const newTypes = [/*'BOOL'*/ , 'COLOR', 'BBOX']
 
 const deprecated_nodes = {
   //  'Animation Builder':
@@ -123,7 +122,7 @@ export function addVectorWidgetW(
       'number',
       `${name}_${VECTOR_AXIS[i]}`,
       value[VECTOR_AXIS[i]],
-      (val) => { },
+      (val) => {},
     )
 
     inputs.push(input)
@@ -208,7 +207,7 @@ export function addVectorWidget(node, name, value, vector_size, callback, app) {
     // widget._value[VECTOR_AXIS[index]] = Number.parseFloat(value)
   }
 
-  console.log('prev callback', widget.callback)
+  // console.log('prev callback', widget.callback)
   widget.callback = callback
   widget._value = value
 
@@ -239,7 +238,7 @@ export const MtbWidgets = {
    * @returns {VectorWidget} The vector widget.
    */
   VECTOR: (key, val, size) => {
-    shared.infoLogger('Adding VECTOR widget', { key, val, size })
+    infoLogger('Adding VECTOR widget', { key, val, size })
     /** @type {VectorWidget} */
     const widget = {
       name: key,
@@ -441,7 +440,7 @@ export const MtbWidgets = {
             this.type == 'BBOX'
           ) {
             let delta = x < 40 ? -1 : x > widget_width - 40 ? 1 : 0
-            if (event.click_time < 200 && delta == 0) {
+            if (event.click_time < 200 && delta === 0) {
               this.prompt(
                 'Value',
                 this.value,
@@ -451,7 +450,7 @@ export const MtbWidgets = {
                     try {
                       //solve the equation if possible
                       v = eval(v)
-                    } catch (e) { }
+                    } catch (e) {}
                   }
                   this.value = Number(v)
                   shared.inner_value_change(this, this.value, event)
@@ -590,171 +589,14 @@ export const MtbWidgets = {
 
     w.inputEl = document.createElement('img')
     w.inputEl.src = w.value
-    w.inputEl.onload = function () {
+    w.inputEl.onload = () => {
       w.inputRatio = w.inputEl.naturalWidth / w.inputEl.naturalHeight
     }
     document.body.appendChild(w.inputEl)
     return w
   },
-  DEBUG_GEOM: (name, val) => {
-    const w = {
-      name,
-      type: 'geometry',
-      value: val,
-      animate: false,
-      show_wireframe: false,
-      menu: null,
-      // draw: function (ctx, node, widgetWidth, widgetY, height) {
-      //   const [cw, ch] = this.computeSize(widgetWidth)
-      //   shared.offsetDOMWidget(this, ctx, node, widgetWidth, widgetY, ch)
-      // },
-      draw: function (ctx, node, widgetWidth, widgetY, height) {
-        const [cw, ch] = this.computeSize(widgetWidth)
-        shared.offsetDOMWidget(this, ctx, node, widgetWidth, widgetY, ch)
-        // write text
-        ctx.fillStyle = '#000'
-        ctx.font = '14px Arial'
-        ctx.textAlign = 'center'
-        // ctx.fillText('CLICK ME', widgetWidth * 0.5, widgetY + 14)
-      },
-      initThreeJS: function (canvas) {
-        const size = this.computeSize()
-        this.renderer = new THREE.WebGLRenderer({
-          canvas: canvas,
-          alpha: true,
-          antialias: true,
-        })
-        // this.renderer.setClearColor(0x0000ff)
-        this.scene = new THREE.Scene()
-        this.camera = new THREE.PerspectiveCamera(
-          75,
-          size[0] / size[1],
-          0.1,
-          1000,
-        )
-        this.camera.position.z = 5
-
-        // Ambient Light
-        const ambientLight = new THREE.AmbientLight(0x404040, 0.5) // Soft white ambient light
-        this.scene.add(ambientLight)
-
-        // Directional Light
-        const directionalLight = new THREE.DirectionalLight(0xffffff, 1)
-        directionalLight.position.set(2, 4, -3)
-        directionalLight.castShadow = true
-
-        // Define the visible area of the projected shadow
-        directionalLight.shadow.camera.left = -10
-        directionalLight.shadow.camera.right = 10
-        directionalLight.shadow.camera.top = 10
-        directionalLight.shadow.camera.bottom = -10
-        directionalLight.shadow.camera.near = 0.1
-        directionalLight.shadow.camera.far = 1000
-
-        directionalLight.shadow.mapSize.width = 512 // Shadow resolution
-        directionalLight.shadow.mapSize.height = 512
-
-        this.scene.add(directionalLight)
-
-        // Update function
-        const animate = () => {
-          requestAnimationFrame(animate)
-          if (this.mesh && this.animate) {
-            //this.group.rotation.x += 0.005
-            this.group.rotation.y += 0.005
-          }
-          this.renderer.render(this.scene, this.camera)
-        }
-        animate()
-        log('Scene setup done and loop running.')
-      },
-      createThreeCanvas: function (ctx) {
-        // this.canvas = LiteGraph.createCanvas(this.size[0], this.size[1])
-        // this.addWidget('canvas', '', '', this.canvas)
-        this.canvas = w.inputEl
-        this.ctx = this.canvas.getContext('2d')
-        // Initialize Three.js here
-        this.initThreeJS(this.canvas)
-      },
-
-      onResize: function (size) {
-        console.log(size)
-      },
-      computeSize: function (width) {
-        if (!width) {
-          return [128, 128]
-        }
-        return [width, width]
-      },
-      onRemoved: function () {
-        if (this.inputEl) {
-          this.inputEl.remove()
-        }
-      },
-    }
-    log('Creating canvas')
-    w.inputEl = document.createElement('canvas')
-    w.inputEl.width = 768
-    w.inputEl.height = 768
-
-    // add context menu with "animate" and "show wireframe"
-    w.inputEl.addEventListener('contextmenu', (e) => {
-      e.preventDefault()
-      if (w.menu) {
-        w.menu.remove()
-      }
-
-      w.menu = document.createElement('div')
-      Object.assign(w.menu.style, {
-        position: 'absolute',
-        top: `${e.clientY}px`,
-        left: `${e.clientX}px`,
-        background: '#333',
-        border: 'none',
-        color: '#fff',
-        padding: '5px',
-        borderRadius: '5px',
-        zIndex: 999,
-      })
-      const anim_btn = document.createElement('button')
-      anim_btn.textContent = `${w.animate ? 'stop' : 'start'} animation`
-      anim_btn.onclick = () => {
-        w.animate = !w.animate
-        if (w.menu) {
-          w.menu.remove()
-        }
-      }
-
-      w.menu.appendChild(anim_btn)
-      const wire = document.createElement('button')
-      wire.textContent = `${w.show_wireframe ? 'hide' : 'show'} wireframe`
-      wire.onclick = () => {
-        w.show_wireframe = !w.show_wireframe
-        if (w.show_wireframe) {
-          w.group.add(w.mesh_wireframe)
-        } else {
-          w.group.remove(w.mesh_wireframe)
-        }
-        if (w.menu) {
-          w.menu.remove()
-        }
-      }
-
-      w.menu.appendChild(wire)
-      document.body.appendChild(w.menu)
-    })
-
-    w.initThreeJS(w.inputEl)
-
-    w.mesh = o3d_to_three(val?.mesh ? val.mesh : val, val?.material)
-    w.mesh_wireframe = make_wireframe(w.mesh)
-    w.group = new THREE.Group()
-
-    w.group.add(w.mesh)
-    w.scene.add(w.group)
-
-    document.body.appendChild(w.inputEl)
-    return w
+  DEBUG_GEOM: async (node, name, val) => {
+    return await GeometryPreview(node, name, val)
   },
   DEBUG_STRING: (name, val) => {
     const fontSize = 16
@@ -873,7 +715,7 @@ const mtb_widgets = {
               debug: value,
             }),
           })
-          .then((_response) => { })
+          .then((_response) => {})
           .catch((error) => {
             console.error('Error:', error)
           })
@@ -1187,7 +1029,8 @@ const mtb_widgets = {
             onReset() // this could maybe be a setting or checkbox
             app.queuePrompt(0, total_frames.value * loop_count.value)
             window.MTB?.notify?.(
-              `Started a queue of ${total_frames.value} frames (for ${loop_count.value
+              `Started a queue of ${total_frames.value} frames (for ${
+                loop_count.value
               } loop, so ${total_frames.value * loop_count.value})`,
               5000,
             )
@@ -1202,14 +1045,16 @@ const mtb_widgets = {
             this.value++
             raw_loop.value = Math.floor(this.value / total_frames.value)
 
-            value_preview.value = `frame: ${raw_iteration.value % total_frames.value
-              } / ${total_frames.value - 1}`
+            value_preview.value = `frame: ${
+              raw_iteration.value % total_frames.value
+            } / ${total_frames.value - 1}`
 
             if (raw_loop.value + 1 > loop_count.value) {
               loop_preview.value = 'Done 😎!'
             } else {
-              loop_preview.value = `current loop: ${raw_loop.value + 1}/${loop_count.value
-                }`
+              loop_preview.value = `current loop: ${raw_loop.value + 1}/${
+                loop_count.value
+              }`
             }
           }
 
@@ -1230,17 +1075,17 @@ const mtb_widgets = {
               'STRING',
               '',
             )
-            console.log(input)
+            // console.log(input)
             this.addWidget('STRING', `replacement_${this.widgets.length}`, '')
           }
           //- add
           this.addWidget('button', '+', 'add', (value, widget, node) => {
-            console.log('Button clicked', value, widget, node)
+            // console.log('Button clicked', value, widget, node)
             addReplacement()
           })
           //- remove
           this.addWidget('button', '-', 'remove', (value, widget, node) => {
-            console.log(`Button clicked: ${value}`, widget, node)
+            // console.log(`Button clicked: ${value}`, widget, node)
           })
 
           return r
@@ -1364,7 +1209,6 @@ const mtb_widgets = {
       }
       case 'Batch Merge (mtb)': {
         shared.setupDynamicConnections(nodeType, 'batches', 'IMAGE')
-
         break
       }
       // TODO: remove this, recommend pythongoss's version that is much better

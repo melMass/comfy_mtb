@@ -81,7 +81,7 @@ app.registerExtension({
       }
 
       const onExecuted = nodeType.prototype.onExecuted
-      nodeType.prototype.onExecuted = function (data) {
+      nodeType.prototype.onExecuted = async function (data) {
         onExecuted?.apply(this, arguments)
 
         const prefix = 'anything_'
@@ -95,7 +95,6 @@ app.registerExtension({
           this.widgets.length = 1
         }
         let widgetI = 1
-        // console.log(message)
         if (data.text) {
           for (const txt of data.text) {
             const w = this.addCustomWidget(
@@ -113,14 +112,13 @@ app.registerExtension({
             w.parent = this
             widgetI++
           }
-
         }
 
-        if (message.geometry) {
-          for (const geom of message.geometry) {
+        if (data.geometry) {
+          for (const geom of data.geometry) {
             console.log('Adding geom', geom, typeof geom)
             const w = this.addCustomWidget(
-              MtbWidgets.DEBUG_GEOM(`${prefix}_${widgetI}`, geom)
+              await MtbWidgets.DEBUG_GEOM(this, `${prefix}_${widgetI}`, geom),
             )
             w.parent = this
             widgetI++
@@ -131,7 +129,7 @@ app.registerExtension({
 
         this.onRemoved = function () {
           // When removing this node we need to remove the input from the DOM
-          for (let y in this.widgets) {
+          for (const y in this.widgets) {
             if (this.widgets[y].canvas) {
               this.widgets[y].canvas.remove()
             }
