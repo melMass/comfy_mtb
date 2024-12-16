@@ -1,4 +1,5 @@
 from io import BytesIO
+from typing import Literal
 
 import cv2
 import numpy as np
@@ -410,7 +411,14 @@ class MTB_BatchFloat:
     RETURN_TYPES = ("FLOATS",)
     CATEGORY = "mtb/batch"
 
-    def set_floats(self, mode, count, min, max, easing):
+    def set_floats(
+        self,
+        mode: Literal["Steps"] | Literal["Single"] = "Steps",
+        count: int = 1,
+        min: float = 0.0,  # noqa: A002
+        max: float = 1.0,  # noqa: A002
+        easing: str = "Linear",
+    ):
         if mode == "Steps" and count == 1:
             raise ValueError(
                 "Steps mode requires at least a count of 2 values"
@@ -427,6 +435,210 @@ class MTB_BatchFloat:
             keyframes.append(eased_value)
 
         return (keyframes,)
+
+
+class MTB_BatchSequencePlus:
+    """Sequences multiple image batches with transition effects."""
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "transition": (
+                    [
+                        "none",
+                        "crossfade",
+                        "slide_left",
+                        "slide_right",
+                        "slide_up",
+                        "slide_down",
+                        "wipe_left",
+                        "wipe_right",
+                        "wipe_up",
+                        "wipe_down",
+                        "band_wipe_h",
+                        "band_wipe_v",
+                    ],
+                    {"default": "none"},
+                ),
+                "overlap_frames": (
+                    "INT",
+                    {"default": 0, "min": 0, "max": 120, "step": 1},
+                ),
+                "reverse": ("BOOLEAN", {"default": False}),
+            }
+        }
+
+    RETURN_TYPES = ("IMAGE",)
+    FUNCTION = "sequence_batches"
+    CATEGORY = "mtb/batch"
+
+    def apply_transition(
+        self,
+        frame1: torch.Tensor,
+        frame2: torch.Tensor,
+        transition: str,
+        progress: float,
+    ):
+        """Apply transition effect between two frames."""
+        if transition == "none":
+            return frame1 if progress < 0.5 else frame2
+
+        elif transition == "crossfade":
+            return frame1 * (1 - progress) + frame2 * progress
+
+        elif transition.startswith("slide_"):
+            h, w = frame1.shape[1:3]
+            if transition == "slide_left":
+                offset = int(w * progress)
+                frame2 = torch.roll(frame2, shifts=-offset, dims=2)
+            elif transition == "slide_right":
+                offset = int(w * progress)
+                frame2 = torch.roll(frame2, shifts=offset, dims=2)
+            elif transition == "slide_up":
+                offset = int(h * progress)
+                frame2 = torch.roll(frame2, shifts=-offset, dims=1)
+            elif transition == "slide_down":
+                offset = int(h * progress)
+                frame2 = torch.roll(frame2, shifts=offset, dims=1)
+            return frame1 * (1 - progress) + frame2 * progress
+
+        elif transition.startswith("wipe_"):
+            h, w = frame1.shape[1:3]
+            mask = torch.zeros_like(frame1)
+            if transition == "wipe_left":
+                edge = int(w * progress)
+                mask[:, :, :edge, :] = 1
+            elif transition == "wipe_right":
+                edge = int(w * (1 - progress))
+                mask[:, :, edge:, :] = 1
+            elif transition == "wipe_up":
+                edge = int(h * progress)
+                mask[:, :edge, :, :] = 1
+            elif transition == "wipe_down":
+                edge = int(h * (1 - progress))
+                mask[:, edge:, :, :] = 1
+            return frame1 * (1 - mask) + frame2 * mask
+
+        elif transition.startswith("band_wipe_"):
+            h, w = frame1.shape[1:3]
+            mask = torch.zeros_like(frame1)
+            num_bands = 10  # Number of bands
+
+            if transition == "band_wipe_h":
+                band_width = w / num_bands
+                for i in range(num_bands):
+                    edge = int((w * progress) - (i * band_width))
+                    start = int(i * band_width)
+                    end = int(min(start + edge, (i + 1) * band_width))
+                    if end > start:
+                        mask[:, :, start:end, :] = 1
+            else:  # band_wipe_v
+                band_height = h / num_bands
+                for i in range(num_bands):
+                    edge = int((h * progress) - (i * band_height))
+                    start = int(i * band_height)
+                    end = int(min(start + edge, (i + 1) * band_height))
+                    if end > start:
+                        mask[:, start:end, :, :] = 1
+
+            return frame1 * (1 - mask) + frame2 * mask
+
+        return frame1
+
+    def sequence_batches(
+        self, transition: str, overlap_frames: int, reverse: bool, **kwargs
+    ):
+        images: list[torch.Tensor] = list(kwargs.values())
+
+        if reverse:
+            images = images[::-1]
+
+        processed_images: list[torch.Tensor] = []
+        for img in images:
+            if len(img.shape) == 3:
+                img = img.unsqueeze(0)
+            processed_images.append(img)
+
+        if overlap_frames == 0 or transition == "none":
+            return (torch.cat(processed_images, dim=0),)
+
+        result_frames: list[torch.Tensor] = []
+
+        if len(processed_images) > 0:
+            result_frames.extend(
+                list(processed_images[0][: -overlap_frames // 2])
+            )
+
+        for i in range(1, len(processed_images)):
+            prev_batch = processed_images[i - 1]
+            curr_batch = processed_images[i]
+
+            prev_frames = min(overlap_frames // 2, len(prev_batch))
+            next_frames = min(overlap_frames // 2, len(curr_batch))
+            total_overlap = prev_frames + next_frames
+
+            if total_overlap < 2:
+                # when not enough frames for transition, just concatenate
+                result_frames.extend(list(prev_batch[-prev_frames:]))
+                result_frames.extend(list(curr_batch[:next_frames]))
+                continue
+
+            for t in range(total_overlap):
+                progress = t / (total_overlap - 1)
+
+                prev_idx = (
+                    len(prev_batch) - prev_frames + min(t, prev_frames - 1)
+                )
+                next_idx = max(0, t - prev_frames)
+
+                transition_frame = self.apply_transition(
+                    prev_batch[prev_idx : prev_idx + 1],
+                    curr_batch[next_idx : next_idx + 1],
+                    transition,
+                    progress,
+                )
+                result_frames.append(transition_frame[0])
+
+            if i < len(processed_images) - 1:
+                result_frames.extend(
+                    list(curr_batch[next_frames : -overlap_frames // 2])
+                )
+            else:
+                result_frames.extend(list(curr_batch[next_frames:]))
+
+        result = torch.stack(result_frames, dim=0)
+
+        return (result,)
+
+
+class MTB_BatchSequence:
+    """Sequences multiple image batches one after another"""
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "reverse": ("BOOLEAN", {"default": False}),
+            }
+        }
+
+    RETURN_TYPES = ("IMAGE",)
+    FUNCTION = "sequence_batches"
+    CATEGORY = "mtb/batch"
+
+    def sequence_batches(self, reverse: bool, **kwargs):
+        images = list(kwargs.values())
+        if reverse:
+            images = images[::-1]
+
+        processed = []
+        for img in images:
+            if len(img.shape) == 3:
+                img = img.unsqueeze(0)
+            processed.append(img)
+
+        return (torch.cat(processed, dim=0),)
 
 
 class MTB_BatchMerge:
@@ -711,7 +923,9 @@ class MTB_PlotBatchFloat:
         ax.set_xlim(1, max_length)  # Set X-axis limits
         np.random.seed(seed)
         colors = np.random.rand(len(kwargs), 3)  # Generate random RGB values
-        for color, (label, values) in zip(colors, kwargs.items()):
+        for color, (label, values) in zip(
+            colors, kwargs.items(), strict=False
+        ):
             ax.plot(x_values[: len(values)], values, label=label, color=color)
         ax.legend(
             title="Legend",
@@ -1026,17 +1240,19 @@ class MTB_BatchShake:
 
 
 __nodes__ = [
-    MTB_BatchFloat,
     MTB_Batch2dTransform,
-    MTB_BatchShape,
-    MTB_BatchMake,
+    MTB_BatchFloat,
     MTB_BatchFloatAssemble,
     MTB_BatchFloatFill,
-    MTB_BatchFloatNormalize,
-    MTB_BatchMerge,
-    MTB_BatchShake,
-    MTB_PlotBatchFloat,
-    MTB_BatchTimeWrap,
     MTB_BatchFloatFit,
     MTB_BatchFloatMath,
+    MTB_BatchFloatNormalize,
+    MTB_BatchMake,
+    MTB_BatchMerge,
+    MTB_BatchSequence,
+    MTB_BatchSequencePlus,
+    MTB_BatchShake,
+    MTB_BatchShape,
+    MTB_BatchTimeWrap,
+    MTB_PlotBatchFloat,
 ]

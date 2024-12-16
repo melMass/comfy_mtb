@@ -537,27 +537,27 @@ export const MtbWidgets = {
             picker.value = this.value
 
             Object.assign(picker.style, {
-              position: "fixed",
+              position: 'fixed',
               left: `${e.clientX}px`,
               top: `${e.clientY}px`,
-              height: "0px",
-              width: "0px",
-              padding: "0px",
+              height: '0px',
+              width: '0px',
+              padding: '0px',
               opacity: 0,
             })
 
-            picker.addEventListener("blur", () => {
+            picker.addEventListener('blur', () => {
               this.callback?.(this.value)
               node.graph._version++
               picker.remove()
             })
-            picker.addEventListener("input", () => {
+            picker.addEventListener('input', () => {
               if (!picker.value) return
-          
+
               this.value = picker.value
               app.canvas.setDirty(true)
             })
-          
+
             document.body.appendChild(picker)
 
             requestAnimationFrame(() => {
@@ -1215,6 +1215,8 @@ const mtb_widgets = {
         shared.setupDynamicConnections(nodeType, 'floats', 'FLOATS')
         break
       }
+      case 'Batch Sequence (mtb)':
+      case 'Batch Sequence Plus (mtb)':
       case 'Batch Merge (mtb)': {
         shared.setupDynamicConnections(nodeType, 'batches', 'IMAGE')
 
