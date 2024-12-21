@@ -7,6 +7,7 @@ from typing import Any, Literal
 import folder_paths
 from aiohttp import web
 
+from .install import get_node_dependencies
 from .log import mklog
 from .utils import (
     SortMode,
@@ -25,7 +26,7 @@ endlog = mklog("mtb endpoint")
 import_install("requirements")
 
 
-def ACTIONS_installDependency(dependency_names=None):
+def ACTIONS_installDependency(dependency_names: list[str] | None = None):
     if dependency_names is None:
         # return web.Response(text="No dependency name provided", status=400)
         return {"error": "No dependency name provided"}
@@ -33,6 +34,14 @@ def ACTIONS_installDependency(dependency_names=None):
     endlog.debug(f"Received Install Dependency request for {dependency_names}")
     # reqs = []
     resolved_names = [reqs_map.get(name, name) for name in dependency_names]
+    allowed_deps = list(
+        {d for dep in get_node_dependencies().values() for d in dep}
+    )
+    for dep in dependency_names:
+        if dep not in allowed_deps:
+            return {
+                "error": f"Unknown dependency: {dep}, you can only use this endpoint to install {allowed_deps}"
+            }
     try:
         run_command(
             [Path(sys.executable), "-m", "pip", "install"] + resolved_names

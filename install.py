@@ -43,9 +43,27 @@ pip_map = {
     "tb-nightly": "tensorboard",
     "protobuf": "google.protobuf",
     "qrcode[pil]": "qrcode",
-    "requirements-parser": "requirements"
+    "requirements-parser": "requirements",
     # Add more mappings as needed
 }
+
+
+def get_node_dependencies():
+    restore_deps = ["basicsr"]
+    onnx_deps = ["onnxruntime"]
+    swap_deps = ["insightface"] + onnx_deps
+    quant_deps = ["bitsandbytes"]
+    io_deps = ["av"]
+    return {
+        "QrCode": ["qrcode"],
+        "DeepBump": onnx_deps,
+        "FaceSwap": swap_deps,
+        "LoadFaceSwapModel": swap_deps,
+        "LoadFaceAnalysisModel": restore_deps,
+        "Quantize": quant_deps,
+        "SaveGif": io_deps,
+    }
+
 
 # endregion
 
@@ -124,12 +142,12 @@ def print_formatted(text, *formats, color=None, background=None, **kwargs):
     header = "[mtb install] "
 
     # Handle console encoding for Unicode characters (utf-8)
-    encoded_header = header.encode(sys.stdout.encoding, errors="replace").decode(
-        sys.stdout.encoding
-    )
-    encoded_text = formatted_text.encode(sys.stdout.encoding, errors="replace").decode(
-        sys.stdout.encoding
-    )
+    encoded_header = header.encode(
+        sys.stdout.encoding, errors="replace"
+    ).decode(sys.stdout.encoding)
+    encoded_text = formatted_text.encode(
+        sys.stdout.encoding, errors="replace"
+    ).decode(sys.stdout.encoding)
 
     print(
         " " * len(encoded_header)
@@ -163,7 +181,9 @@ def run_command(cmd, ignored_lines_start=None):
     try:
         _run_command(shell_cmd, ignored_lines_start)
     except subprocess.CalledProcessError as e:
-        print(f"Command failed with return code: {e.returncode}", file=sys.stderr)
+        print(
+            f"Command failed with return code: {e.returncode}", file=sys.stderr
+        )
         print(e.stderr.strip(), file=sys.stderr)
 
     except KeyboardInterrupt:
@@ -238,7 +258,7 @@ def suppress_std():
 def get_local_version():
     init_file = os.path.join(os.path.dirname(__file__), "__init__.py")
     if os.path.isfile(init_file):
-        with open(init_file, "r") as f:
+        with open(init_file) as f:
             tree = ast.parse(f.read())
             for node in ast.walk(tree):
                 if isinstance(node, ast.Assign):
@@ -256,13 +276,16 @@ def download_file(url, file_name):
     with requests.get(url, stream=True) as response:
         response.raise_for_status()
         total_size = int(response.headers.get("content-length", 0))
-        with open(file_name, "wb") as file, tqdm(
-            desc=file_name.stem,
-            total=total_size,
-            unit="B",
-            unit_scale=True,
-            unit_divisor=1024,
-        ) as progress_bar:
+        with (
+            open(file_name, "wb") as file,
+            tqdm(
+                desc=file_name.stem,
+                total=total_size,
+                unit="B",
+                unit_scale=True,
+                unit_divisor=1024,
+            ) as progress_bar,
+        ):
             for chunk in response.iter_content(chunk_size=8192):
                 file.write(chunk)
                 progress_bar.update(len(chunk))
@@ -302,7 +325,9 @@ def import_or_install(requirement, dry=False):
     pip_install_name = pip_name + pip_spec
 
     if not installed:
-        print_formatted(f"Installing package {pip_name}...", "italic", color="yellow")
+        print_formatted(
+            f"Installing package {pip_name}...", "italic", color="yellow"
+        )
         if dry:
             print_formatted(
                 f"Dry-run: Package {pip_install_name} would be installed (import name: '{import_name}').",
@@ -310,7 +335,9 @@ def import_or_install(requirement, dry=False):
             )
         else:
             try:
-                run_command([executable, "-m", "pip", "install", pip_install_name])
+                run_command(
+                    [executable, "-m", "pip", "install", pip_install_name]
+                )
                 print_formatted(
                     f"Package {pip_install_name} installed successfully using pip package name  (import name: '{import_name}')",
                     "bold",
@@ -326,13 +353,9 @@ def import_or_install(requirement, dry=False):
 
 def get_github_assets(tag=None):
     if tag:
-        tag_url = (
-            f"https://api.github.com/repos/{repo_owner}/{repo_name}/releases/tags/{tag}"
-        )
+        tag_url = f"https://api.github.com/repos/{repo_owner}/{repo_name}/releases/tags/{tag}"
     else:
-        tag_url = (
-            f"https://api.github.com/repos/{repo_owner}/{repo_name}/releases/latest"
-        )
+        tag_url = f"https://api.github.com/repos/{repo_owner}/{repo_name}/releases/latest"
     response = requests.get(tag_url)
     if response.status_code == 404:
         # print_formatted(
@@ -361,7 +384,9 @@ except ImportError:
 def main():
     if len(sys.argv) == 1:
         print_formatted(
-            "mtb doesn't need an install script anymore.", "italic", color="yellow"
+            "mtb doesn't need an install script anymore.",
+            "italic",
+            color="yellow",
         )
         return
     if all(arg not in ("-p", "--path") for arg in sys.argv):
@@ -397,8 +422,12 @@ def main():
         else:
             repo_dir = clone_dir / repo_name
             if not repo_dir.exists():
-                print_formatted(f"Cloning to {repo_dir}...", "italic", color="yellow")
-                run_command(["git", "clone", "--recursive", repo_url, repo_dir])
+                print_formatted(
+                    f"Cloning to {repo_dir}...", "italic", color="yellow"
+                )
+                run_command(
+                    ["git", "clone", "--recursive", repo_url, repo_dir]
+                )
             else:
                 print_formatted(
                     f"Directory {repo_dir} already exists, we will update it..."
@@ -409,7 +438,14 @@ def main():
 
     print_formatted("Checking environment...", "italic", color="yellow")
     missing_deps = []
-    install_cmd = [executable, "-m", "pip", "install", "-r", "requirements.txt"]
+    install_cmd = [
+        executable,
+        "-m",
+        "pip",
+        "install",
+        "-r",
+        "requirements.txt",
+    ]
     run_command(install_cmd)
 
     print_formatted(

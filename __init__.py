@@ -34,6 +34,7 @@ from aiohttp import web
 from server import PromptServer
 
 from .endpoint import endlog
+from .install import get_node_dependencies
 from .log import blue_text, cyan_text, get_label, get_summary, log
 from .utils import comfy_dir, here
 
@@ -240,16 +241,7 @@ if hasattr(PromptServer, "instance"):
         img_cache = TTLCache(maxsize=100, ttl=5)  # 1 min TTL
         prompt_cache = TTLCache(maxsize=100, ttl=5)  # 1 min TTL
 
-    restore_deps = ["basicsr"]
-    onnx_deps = ["onnxruntime"]
-    swap_deps = ["insightface"] + onnx_deps
-    node_dependency_mapping = {
-        "QrCode": ["qrcode"],
-        "DeepBump": onnx_deps,
-        "FaceSwap": swap_deps,
-        "LoadFaceSwapModel": swap_deps,
-        "LoadFaceAnalysisModel": restore_deps,
-    }
+    node_dependency_mapping = get_node_dependencies()
 
     PromptServer.instance.app.router.add_static(
         "/mtb-assets/", path=(here / "html").as_posix()
