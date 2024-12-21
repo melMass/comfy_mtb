@@ -77,7 +77,7 @@ const getImgsFromUrls = (urls, target) => {
 }
 
 const getUrls = async () => {
-  const count = await api.getSetting('mtb.io-sidebar.count')
+  const count = (await api.getSetting('mtb.io-sidebar.count')) || 1000
   console.log('Sidebar count', count)
   const inputs = await api.fetchApi('/mtb/actions', {
     method: 'POST',

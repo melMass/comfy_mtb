@@ -59,7 +59,7 @@ def ACTIONS_installDependency(dependency_names=None):
 
 def ACTIONS_getUserImages(
     mode: Literal["input", "output"],
-    count=200,
+    count=1000,
     offset=0,
     sort: str | None = None,
     include_subfolders: bool = False,
@@ -69,6 +69,7 @@ def ACTIONS_getUserImages(
     #     return {"error": "Session not authorized to getInputs"}
 
     imgs = {}
+    count = count or 1000
 
     input_dir = Path(folder_paths.get_input_directory())
     output_dir = Path(folder_paths.get_output_directory())
