@@ -15,11 +15,10 @@ import {
 const offset = 0
 let currentWidth = 200
 let currentMode = 'input'
-let modes = []
 let subfolder = ''
 let currentSort = 'None'
 
-const IMAGE_NODES = ['LoadImage']
+const IMAGE_NODES = ['LoadImage', 'VHS_LoadImagePath']
 
 const updateImage = (node, image) => {
   if (IMAGE_NODES.includes(node.type)) {
@@ -44,10 +43,20 @@ const getImgsFromUrls = (urls, target) => {
     if (currentMode === 'input') {
       a.onclick = (_e) => {
         const selected = app.canvas.selected_nodes
+        if (subfolder !== '') {
+          app.extensionManager.toast.add({
+            severity: 'warn',
+            summary: 'Subfolder not supported',
+            detail: "The LoadImage node doesn't support subfolders",
+            life: 5000,
+          })
+          return
+        }
+
         if (selected && Object.keys(selected).length === 0) {
           app.extensionManager.toast.add({
             severity: 'warn',
-            summary: 'No LoadImage node selected!',
+            summary: 'No node selected!',
             detail:
               'For now the only action when clicking images in the sidebar is to set the image on all selected LoadImage nodes.',
             life: 5000,
@@ -60,8 +69,18 @@ const getImgsFromUrls = (urls, target) => {
         }
       }
     } else {
-      a.onclick = (_e) =>
+      a.onclick = (_e) => {
         // window.MTB?.notify?.("Output import isn't supported yet...", 5000)
+        if (subfolder !== '') {
+          app.extensionManager.toast.add({
+            severity: 'warn',
+            summary: 'Subfolder not supported',
+            detail: "The LoadImage node doesn't support subfolders",
+            life: 5000,
+          })
+          return
+        }
+
         app.extensionManager.toast.add({
           severity: 'warn',
           summary: 'Outputs not supported',
@@ -69,6 +88,7 @@ const getImgsFromUrls = (urls, target) => {
             'For now only inputs can be clicked to load the image on the active LoadImage node.',
           life: 5000,
         })
+      }
     }
     imgs.push(a)
   }
@@ -211,7 +231,7 @@ if (window?.__COMFYUI_FRONTEND_VERSION__) {
             let newMode = e.target.value
             let changed = false
             let newSub = ''
-            if (newMode !== 'input' || newMode !== 'output') {
+            if (newMode !== 'input' && newMode !== 'output') {
               if (newMode.startsWith('input - ')) {
                 newSub = newMode.replace('input - ', '')
                 newMode = 'input'
