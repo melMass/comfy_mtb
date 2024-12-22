@@ -19,6 +19,7 @@ let subfolder = ''
 let currentSort = 'None'
 
 const IMAGE_NODES = ['LoadImage', 'VHS_LoadImagePath']
+const VIDEO_NODES = ['VHS_LoadVideo']
 
 const updateImage = (node, image) => {
   if (IMAGE_NODES.includes(node.type)) {
@@ -27,6 +28,13 @@ const updateImage = (node, image) => {
       w.value = image
       w.callback()
     }
+  } else if (VIDEO_NODES.includes(node.type)) {
+    const w = node.widgets?.find((w) => w.name === 'video')
+    if (w) {
+      node.updateParameters({ filename: image }, true)
+    }
+  } else {
+    console.warn('No method to update', node.type)
   }
 }
 
@@ -35,14 +43,14 @@ const getImgsFromUrls = (urls, target) => {
   if (urls === undefined) {
     return imgs
   }
+  const elem = currentMode === 'video' ? 'video' : 'img'
 
   for (const [key, url] of Object.entries(urls)) {
-    const a = makeElement('img')
+    const a = makeElement(elem)
     a.src = url
     a.width = currentWidth
     if (currentMode === 'input') {
       a.onclick = (_e) => {
-        const selected = app.canvas.selected_nodes
         if (subfolder !== '') {
           app.extensionManager.toast.add({
             severity: 'warn',
@@ -52,7 +60,7 @@ const getImgsFromUrls = (urls, target) => {
           })
           return
         }
-
+        const selected = app.canvas.selected_nodes
         if (selected && Object.keys(selected).length === 0) {
           app.extensionManager.toast.add({
             severity: 'warn',
@@ -68,7 +76,7 @@ const getImgsFromUrls = (urls, target) => {
           updateImage(node, key)
         }
       }
-    } else {
+    } else if (currentMode === 'output') {
       a.onclick = (_e) => {
         // window.MTB?.notify?.("Output import isn't supported yet...", 5000)
         if (subfolder !== '') {
@@ -89,6 +97,28 @@ const getImgsFromUrls = (urls, target) => {
           life: 5000,
         })
       }
+    } else {
+      a.autoplay = true
+
+      a.muted = true
+      a.loop = true
+      a.onclick = (_e) => {
+        const selected = app.canvas.selected_nodes
+        if (selected && Object.keys(selected).length === 0) {
+          app.extensionManager.toast.add({
+            severity: 'warn',
+            summary: 'No node selected!',
+            detail:
+              "For now the only action when clicking videos in the sidebar is to set the video on all selected 'Load Video (Upload)' nodes.",
+            life: 5000,
+          })
+          return
+        }
+
+        for (const [_id, node] of Object.entries(app.canvas.selected_nodes)) {
+          updateImage(node, key)
+        }
+      }
     }
     imgs.push(a)
   }
@@ -105,6 +135,16 @@ const getModes = async () => {
 const getUrls = async (subfolder) => {
   const count = (await api.getSetting('mtb.io-sidebar.count')) || 1000
   console.log('Sidebar count', count)
+  if (currentMode === 'video') {
+    const output = await shared.runAction(
+      'getUserVideos',
+      256,
+      count,
+      offset,
+      currentSort,
+    )
+    return output || {}
+  }
   const output = await shared.runAction(
     'getUserImages',
     currentMode,
@@ -223,7 +263,7 @@ if (window?.__COMFYUI_FRONTEND_VERSION__) {
 
           const imgGrid = makeElement('div.mtb_img_grid')
           const selector = makeSelect(
-            ['input', 'output', ...output_modes, ...input_modes],
+            ['input', 'output', 'video', ...output_modes, ...input_modes],
             currentMode,
           )
 
@@ -235,7 +275,7 @@ if (window?.__COMFYUI_FRONTEND_VERSION__) {
               if (newMode.startsWith('input - ')) {
                 newSub = newMode.replace('input - ', '')
                 newMode = 'input'
-              } else {
+              } else if (newMode.startsWith('output - ')) {
                 newSub = newMode.replace('output - ', '')
                 newMode = 'output'
               }

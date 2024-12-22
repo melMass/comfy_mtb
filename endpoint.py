@@ -1,6 +1,7 @@
 import csv
 import secrets
 import sys
+import urllib.parse
 from pathlib import Path
 from typing import Any, Literal
 
@@ -74,6 +75,39 @@ def ACTIONS_getUserImageFolders():
     output_subdirs = [x.name for x in output_dir.iterdir() if x.is_dir()]
 
     return {"input": input_subdirs, "output": output_subdirs}
+
+
+def ACTIONS_getUserVideos(
+    size=256, count=200, offset=0, sort: str | None = None
+):
+    count = count or 1000
+    video_extensions = ["webm", "mp4", "mkv", "mov"]
+    entries = {}
+    patterns = build_glob_patterns(video_extensions)
+    input_dir = Path(folder_paths.get_input_directory())
+    entries = glob_multiple(input_dir, patterns)
+
+    sort_mode = SortMode.from_str(sort)
+
+    if sort_mode:
+        sort_key = {
+            SortMode.MODIFIED: lambda x: x.stat().st_mtime,
+            SortMode.MODIFIED_REVERSE: lambda x: x.stat().st_mtime,
+            SortMode.NAME: lambda x: x.name,
+            SortMode.NAME_REVERSE: lambda x: x.name,
+        }.get(sort_mode)
+        if sort_key:
+            reverse = sort_mode in (SortMode.MODIFIED, SortMode.NAME_REVERSE)
+            entries = sorted(entries, key=sort_key, reverse=reverse)
+
+    videos = {
+        video.name: (
+            f"/view?force_rate=0&frame_load_cap=0&skip_first_frames=0&select_every_nth=1&filename={urllib.parse.quote_plus(video.name)}&type=input&format=video&force_size={size}x?"
+        )
+        for i, video in enumerate(entries)
+        if offset <= i < offset + count
+    }
+    return videos
 
 
 def ACTIONS_getUserImages(
