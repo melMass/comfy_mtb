@@ -42,6 +42,9 @@ class ImageH264Compression:
     DESCRIPTION = """
 **Encodes the input with h264 compression using a configurable CRF**.
 
+> [!IMPORTANT]
+> This node is not really needed with the latest version of LTXVideo.
+
 > [!NOTE]
 > This was recommended by the creators of LTX over banodoco's discord.
 
@@ -150,6 +153,7 @@ class ImageH264Compression:
 
         output_images = torch.stack(output_images).to(image.device)
         return (output_images,)
+
 
 # fmt: off
 __nodes__ = [
