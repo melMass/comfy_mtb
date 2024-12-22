@@ -18,7 +18,7 @@ import { api } from '../../scripts/api.js'
 export function makeUUID() {
   let dt = new Date().getTime()
   const uuid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-    const r = (dt + Math.random() * 16) % 16 | 0
+    const r = ((dt + Math.random() * 16) % 16) | 0
     dt = Math.floor(dt / 16)
     return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16)
   })
@@ -51,7 +51,7 @@ export class LocalStorageManager {
 
   clear() {
     for (const key of Object.keys(localStorage).filter((k) =>
-      k.startsWith(`${this.namespace}:`)
+      k.startsWith(`${this.namespace}:`),
     )) {
       localStorage.removeItem(key)
     }
@@ -66,7 +66,7 @@ function createLogger(emoji, color, consoleMethod = 'log') {
       console[consoleMethod](
         `%c${emoji} ${message}`,
         `color: ${color};`,
-        ...args
+        ...args,
       )
     }
   }
@@ -319,14 +319,14 @@ export function offsetDOMWidget(
   node,
   widgetWidth,
   widgetY,
-  height
+  height,
 ) {
   const margin = 10
   const elRect = ctx.canvas.getBoundingClientRect()
   const transform = new DOMMatrix()
     .scaleSelf(
       elRect.width / ctx.canvas.width,
-      elRect.height / ctx.canvas.height
+      elRect.height / ctx.canvas.height,
     )
     .multiplySelf(ctx.getTransform())
     .translateSelf(margin, margin + widgetY)
@@ -378,11 +378,11 @@ export const setupDynamicConnections = (
   nodeType,
   prefix,
   inputType,
-  opts = undefined
+  opts = undefined,
 ) => {
   infoLogger(
     'Setting up dynamic connections for',
-    Object.getOwnPropertyDescriptors(nodeType).title.value
+    Object.getOwnPropertyDescriptors(nodeType).title.value,
   )
 
   /** @type {{separator:string, start_index:number, link?:LLink, ioSlot?:INodeInputSlot | INodeOutputSlot}?} */
@@ -391,7 +391,7 @@ export const setupDynamicConnections = (
       separator: '_',
       start_index: 1,
     },
-    opts || {}
+    opts || {},
   )
   const onNodeCreated = nodeType.prototype.onNodeCreated
   const inputList = typeof inputType === 'object'
@@ -400,7 +400,7 @@ export const setupDynamicConnections = (
     const r = onNodeCreated ? onNodeCreated.apply(this, []) : undefined
     this.addInput(
       `${prefix}${options.separator}${options.start_index}`,
-      inputList ? '*' : inputType
+      inputList ? '*' : inputType,
     )
     return r
   }
@@ -438,7 +438,7 @@ export const setupDynamicConnections = (
       isConnected,
       `${prefix}${options.separator}`,
       inputType,
-      options
+      options,
     )
     return r
   }
@@ -460,14 +460,14 @@ export const dynamic_connection = (
   connected,
   connectionPrefix = 'input_',
   connectionType = '*',
-  opts = undefined
+  opts = undefined,
 ) => {
   /* {{start_index:number, link?:LLink, ioSlot?:INodeInputSlot | INodeOutputSlot}} [opts] - extra options*/
   const options = Object.assign(
     {
       start_index: 1,
     },
-    opts || {}
+    opts || {},
   )
 
   // function to test if input is a dynamic one
@@ -579,7 +579,7 @@ export const dynamic_connection = (
       // count only the prefixed inputs
       const nextIndex = node.inputs.reduce(
         (acc, cur) => (isDynamicInput(cur.name) ? ++acc : acc),
-        0
+        0,
       )
 
       const name =
@@ -605,7 +605,7 @@ function getBrightness(rgbObj) {
     (Number.parseInt(rgbObj[0]) * 299 +
       Number.parseInt(rgbObj[1]) * 587 +
       Number.parseInt(rgbObj[2]) * 114) /
-      1000
+      1000,
   )
 }
 // #endregion
@@ -641,7 +641,7 @@ export function calculateTotalChildrenHeight(parentElement) {
 export const loadScript = (
   FILE_URL,
   async = true,
-  type = 'text/javascript'
+  type = 'text/javascript',
 ) => {
   return new Promise((resolve, reject) => {
     try {
@@ -768,7 +768,7 @@ function loadParser(shiki) {
         : '/mtb_async/mtb_markdown.umd.js'
     )
       .then((_module) =>
-        shiki ? MTBMarkdownPlus.getParser() : MTBMarkdown.getParser()
+        shiki ? MTBMarkdownPlus.getParser() : MTBMarkdown.getParser(),
       )
       .then((instance) => {
         window.MTB.mdParser = instance
@@ -835,11 +835,11 @@ export const ensureMarkdownParser = async (callback) => {
 export const addDocumentation = (
   nodeData,
   nodeType,
-  opts = { icon_size: 14, icon_margin: 4 }
+  opts = { icon_size: 14, icon_margin: 4 },
 ) => {
   if (!nodeData.description) {
     infoLogger(
-      `Skipping ${nodeData.name} doesn't have a description, skipping...`
+      `Skipping ${nodeData.name} doesn't have a description, skipping...`,
     )
     return
   }
@@ -935,15 +935,15 @@ export const addDocumentation = (
               startY = e.clientY
               startWidth = Number.parseInt(
                 document.defaultView.getComputedStyle(docElement).width,
-                10
+                10,
               )
               startHeight = Number.parseInt(
                 document.defaultView.getComputedStyle(docElement).height,
-                10
+                10,
               )
             },
 
-            { signal: this.docCtrl.signal }
+            { signal: this.docCtrl.signal },
           )
 
           document.addEventListener(
@@ -962,7 +962,7 @@ export const addDocumentation = (
                 height: `${newHeight}px`,
               }
             },
-            { signal: this.docCtrl.signal }
+            { signal: this.docCtrl.signal },
           )
 
           document.addEventListener(
@@ -970,7 +970,7 @@ export const addDocumentation = (
             () => {
               isResizing = false
             },
-            { signal: this.docCtrl.signal }
+            { signal: this.docCtrl.signal },
           )
         })
       })
@@ -1123,7 +1123,7 @@ export const addDeprecation = (nodeType, reason) => {
   console.log(
     `%c!  ${title} is deprecated:%c ${reason}`,
     styles.title,
-    styles.reason
+    styles.reason,
   )
 }
 
