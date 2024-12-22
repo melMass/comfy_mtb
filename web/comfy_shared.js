@@ -1,10 +1,9 @@
 /**
+ * @module Shared utilities
  * File: comfy_shared.js
  * Project: comfy_mtb
  * Author: Mel Massadian
- *
  * Copyright (c) 2023-2024 Mel Massadian
- *
  */
 
 // Reference the shared typedefs file
@@ -1095,7 +1094,33 @@ export const addDeprecation = (nodeType, reason) => {
 
 // #endregion
 
-// #region API / graph utilities
+// #region Actions API
+export const runAction = async (name, ...args) => {
+  const req = await api.fetchApi('/mtb/actions', {
+    method: 'POST',
+    body: JSON.stringify({
+      name,
+      args,
+    }),
+  })
+
+  const res = await req.json()
+  return res.result
+}
+export const getServerInfo = async () => {
+  const res = await api.fetchApi('/mtb/server-info')
+  return await res.json()
+}
+export const setServerInfo = async (opts) => {
+  await api.fetchApi('/mtb/server-info', {
+    method: 'POST',
+    body: JSON.stringify(opts),
+  })
+}
+
+// #endregion
+
+// #region Authoring API / graph utilities
 export const getAPIInputs = () => {
   const inputs = {}
   let counter = 1
@@ -1148,3 +1173,4 @@ export const getNodes = (skip_unused) => {
   }
   return nodes
 }
+// #endregion

@@ -66,12 +66,23 @@ def ACTIONS_installDependency(dependency_names: list[str] | None = None):
     #             break
 
 
+def ACTIONS_getUserImageFolders():
+    input_dir = Path(folder_paths.get_input_directory())
+    output_dir = Path(folder_paths.get_output_directory())
+
+    input_subdirs = [x.name for x in input_dir.iterdir() if x.is_dir()]
+    output_subdirs = [x.name for x in output_dir.iterdir() if x.is_dir()]
+
+    return {"input": input_subdirs, "output": output_subdirs}
+
+
 def ACTIONS_getUserImages(
     mode: Literal["input", "output"],
     count=1000,
     offset=0,
     sort: str | None = None,
     include_subfolders: bool = False,
+    subfolder=None,
 ):
     # enabled = "MTB_EXPOSE" in os.environ
     # if not enabled:
@@ -84,6 +95,13 @@ def ACTIONS_getUserImages(
     output_dir = Path(folder_paths.get_output_directory())
 
     entry_dir = input_dir if mode == "input" else output_dir
+    if subfolder:
+        entry_dir = entry_dir / subfolder
+
+        if not entry_dir.exists():
+            return {
+                "error": f"Subfolder {entry_dir.name} doesn't exists in {entry_dir.parent.as_posix()}"
+            }
     supported = ["png", "jpg", "jpeg", "webp", "gif"]
 
     entries = {}
@@ -105,7 +123,7 @@ def ACTIONS_getUserImages(
 
     imgs = {
         img.name: (
-            f"/mtb/view?filename={img.name}&width=512&type={mode}&subfolder="
+            f"/mtb/view?filename={img.name}&width=512&type={mode}&subfolder={subfolder or ''}"
             f"{img.parent.relative_to(entry_dir) if include_subfolders else ''}"
             f"&preview=&rand={secrets.randbelow(424242)}"
         )

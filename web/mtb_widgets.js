@@ -672,8 +672,7 @@ const mtb_widgets = {
   init: async () => {
     infoLogger('Registering mtb.widgets')
     try {
-      const res = await api.fetchApi('/mtb/server-info')
-      const msg = await res.json()
+      const msg = await shared.getServerInfo()
       if (!window.MTB) {
         window.MTB = {}
       }
@@ -716,17 +715,11 @@ const mtb_widgets = {
           infoLogger('Enabled DEBUG mode')
         }
 
-        await api
-          .fetchApi('/mtb/server-info', {
-            method: 'POST',
-            body: JSON.stringify({
-              debug: value,
-            }),
-          })
-          .then((_response) => {})
-          .catch((error) => {
-            console.error('Error:', error)
-          })
+        try {
+          shared.setServerInfo({ debug: value })
+        } catch (err) {
+          console.error('Error:', err)
+        }
       },
     })
   },
@@ -1109,13 +1102,10 @@ const mtb_widgets = {
 
           const getStyle = async (node) => {
             try {
-              const getStyles = await api.fetchApi('/mtb/actions', {
-                method: 'POST',
-                body: JSON.stringify({
-                  name: 'getStyles',
-                  args: node.widgets?.[0].value ? node.widgets[0].value : '',
-                }),
-              })
+              const getStyles = await runAction(
+                'getStyles',
+                node.widgets?.[0].value ? node.widgets[0].value : '',
+              )
 
               const output = await getStyles.json()
               return output?.result

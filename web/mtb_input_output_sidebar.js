@@ -1,7 +1,7 @@
 import { app } from '../../scripts/app.js'
 import { api } from '../../scripts/api.js'
 
-// import * as shared from './comfy_shared.js'
+import * as shared from './comfy_shared.js'
 
 import {
   // defineCSSClass,
@@ -15,6 +15,8 @@ import {
 const offset = 0
 let currentWidth = 200
 let currentMode = 'input'
+let modes = []
+let subfolder = ''
 let currentSort = 'None'
 
 const IMAGE_NODES = ['LoadImage']
@@ -76,19 +78,23 @@ const getImgsFromUrls = (urls, target) => {
   return imgs
 }
 
-const getUrls = async () => {
+const getModes = async () => {
+  const inputs = await shared.runAction('getUserImageFolders')
+  return inputs
+}
+const getUrls = async (subfolder) => {
   const count = (await api.getSetting('mtb.io-sidebar.count')) || 1000
   console.log('Sidebar count', count)
-  const inputs = await api.fetchApi('/mtb/actions', {
-    method: 'POST',
-    body: JSON.stringify({
-      name: 'getUserImages',
-      // mode, count, offset
-      args: [currentMode, count, offset, currentSort],
-    }),
-  })
-  const output = await inputs.json()
-  return output?.result || {}
+  const output = await shared.runAction(
+    'getUserImages',
+    currentMode,
+    count,
+    offset,
+    currentSort,
+    false,
+    subfolder,
+  )
+  return output || {}
 }
 
 //NOTE: do not load if using the old ui
@@ -187,21 +193,39 @@ if (window?.__COMFYUI_FRONTEND_VERSION__) {
             el.parentNode.style.overflowY = 'clip'
           }
 
-          const urls = await getUrls(currentMode)
+          const allModes = await getModes()
+          const input_modes = allModes.input.map((m) => `input - ${m}`)
+          const output_modes = allModes.output.map((m) => `output - ${m}`)
+          const urls = await getUrls()
           let imgs = {}
 
           const cont = makeElement('div.mtb_sidebar')
 
           const imgGrid = makeElement('div.mtb_img_grid')
-          const selector = makeSelect(['input', 'output'], currentMode)
+          const selector = makeSelect(
+            ['input', 'output', ...output_modes, ...input_modes],
+            currentMode,
+          )
 
           selector.addEventListener('change', async (e) => {
-            const newMode = e.target.value
-            const changed = newMode !== currentMode
+            let newMode = e.target.value
+            let changed = false
+            let newSub = ''
+            if (newMode !== 'input' || newMode !== 'output') {
+              if (newMode.startsWith('input - ')) {
+                newSub = newMode.replace('input - ', '')
+                newMode = 'input'
+              } else {
+                newSub = newMode.replace('output - ', '')
+                newMode = 'output'
+              }
+            }
+            changed = newMode !== currentMode || newSub !== subfolder
             currentMode = newMode
+            subfolder = newSub
             if (changed) {
               imgGrid.innerHTML = ''
-              const urls = await getUrls()
+              const urls = await getUrls(subfolder)
               if (urls) {
                 imgs = getImgsFromUrls(urls, imgGrid)
               }
@@ -220,7 +244,7 @@ if (window?.__COMFYUI_FRONTEND_VERSION__) {
             currentSort = newSort
             if (changed) {
               imgGrid.innerHTML = ''
-              const urls = await getUrls()
+              const urls = await getUrls(subfolder)
               if (urls) {
                 imgs = getImgsFromUrls(urls, imgGrid)
               }
@@ -229,7 +253,6 @@ if (window?.__COMFYUI_FRONTEND_VERSION__) {
 
           const sizeSlider = makeSlider(64, 1024, currentWidth, 1)
           imgTools.appendChild(orderSelect)
-
           imgTools.appendChild(sizeSlider)
 
           imgs = getImgsFromUrls(urls, imgGrid)
