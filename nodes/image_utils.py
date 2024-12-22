@@ -8,13 +8,21 @@ class MTB_StackImages:
 
     @classmethod
     def INPUT_TYPES(cls):
-        return {"required": {"vertical": ("BOOLEAN", {"default": False})}}
+        return {
+            "required": {"vertical": ("BOOLEAN", {"default": False})},
+            "optional": {
+                "match_method": (
+                    ["error", "smallest", "largest"],
+                    {"default": "error"},
+                )
+            },
+        }
 
     RETURN_TYPES = ("IMAGE",)
     FUNCTION = "stack"
     CATEGORY = "mtb/image utils"
 
-    def stack(self, vertical, **kwargs):
+    def stack(self, vertical, match_method="error", **kwargs):
         if not kwargs:
             raise ValueError("At least one tensor must be provided.")
 
@@ -32,23 +40,50 @@ class MTB_StackImages:
             self.duplicate_frames(tensor, max_batch_size)
             for tensor in normalized_tensors
         ]
-
-        if vertical:
-            width = normalized_tensors[0].shape[2]
-            if any(tensor.shape[2] != width for tensor in normalized_tensors):
-                raise ValueError(
-                    "All tensors must have the same width "
-                    "for vertical stacking."
+        if match_method != "error":
+            if vertical:
+                # match widths
+                widths = [tensor.shape[2] for tensor in normalized_tensors]
+                target_width = (
+                    min(widths) if match_method == "smallest" else max(widths)
                 )
-            dim = 1
+                normalized_tensors = [
+                    self.resize_tensor(tensor, width=target_width)
+                    for tensor in normalized_tensors
+                ]
+            else:
+                # match heights
+                heights = [tensor.shape[1] for tensor in normalized_tensors]
+                target_height = (
+                    min(heights)
+                    if match_method == "smallest"
+                    else max(heights)
+                )
+                normalized_tensors = [
+                    self.resize_tensor(tensor, height=target_height)
+                    for tensor in normalized_tensors
+                ]
         else:
-            height = normalized_tensors[0].shape[1]
-            if any(tensor.shape[1] != height for tensor in normalized_tensors):
-                raise ValueError(
-                    "All tensors must have the same height "
-                    "for horizontal stacking."
-                )
-            dim = 2
+            if vertical:
+                width = normalized_tensors[0].shape[2]
+                if any(
+                    tensor.shape[2] != width for tensor in normalized_tensors
+                ):
+                    raise ValueError(
+                        "All tensors must have the same width "
+                        "for vertical stacking."
+                    )
+            else:
+                height = normalized_tensors[0].shape[1]
+                if any(
+                    tensor.shape[1] != height for tensor in normalized_tensors
+                ):
+                    raise ValueError(
+                        "All tensors must have the same height "
+                        "for horizontal stacking."
+                    )
+
+        dim = 1 if vertical else 2
 
         stacked_tensor = torch.cat(normalized_tensors, dim=dim)
 
@@ -64,7 +99,7 @@ class MTB_StackImages:
         elif channels == 3:
             alpha_channel = torch.ones(
                 tensor.shape[:-1] + (1,), device=tensor.device
-            )  # Add an alpha channel
+            )
             return torch.cat((tensor, alpha_channel), dim=-1)
         else:
             raise ValueError(
@@ -86,6 +121,30 @@ class MTB_StackImages:
             return duplicated_tensor
         else:
             return tensor
+
+    def resize_tensor(self, tensor, width=None, height=None):
+        """Resize tensor to specified width or height while maintaining aspect ratio."""
+        current_height, current_width = tensor.shape[1:3]
+
+        if width is not None and width != current_width:
+            scale_factor = width / current_width
+            new_height = int(current_height * scale_factor)
+            new_width = width
+        elif height is not None and height != current_height:
+            scale_factor = height / current_height
+            new_width = int(current_width * scale_factor)
+            new_height = height
+        else:
+            return tensor
+
+        resized = torch.nn.functional.interpolate(
+            tensor.permute(0, 3, 1, 2),
+            size=(new_height, new_width),
+            mode="bilinear",
+            align_corners=False,
+        )
+
+        return resized.permute(0, 2, 3, 1)
 
 
 class MTB_PickFromBatch:
