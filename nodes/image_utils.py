@@ -172,11 +172,6 @@ class MTB_PickFromBatch:
 
         # Limit count to the available number of images in the batch
         count = min(count, batch_size)
-        if count < batch_size:
-            log.warning(
-                f"Requested {count} images, "
-                f"but only {batch_size} are available."
-            )
 
         if from_direction == "end":
             selected_tensors = image[-count:]
