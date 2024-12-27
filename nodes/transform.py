@@ -45,6 +45,19 @@ class MTB_TransformImage:
                 ),
                 "constant_color": ("COLOR", {"default": "#000000"}),
             },
+            "optional": {
+                "filter_type": (
+                    [
+                        "nearest",
+                        "box",
+                        "bilinear",
+                        "hamming",
+                        "bicubic",
+                        "lanczos",
+                    ],
+                    {"default": "bilinear"},
+                ),
+            },
         }
 
     FUNCTION = "transform"
@@ -61,7 +74,18 @@ class MTB_TransformImage:
         shear: float,
         border_handling="edge",
         constant_color=None,
+        filter_type="nearest",
     ):
+        filter_map = {
+            "nearest": Image.NEAREST,
+            "box": Image.BOX,
+            "bilinear": Image.BILINEAR,
+            "hamming": Image.HAMMING,
+            "bicubic": Image.BICUBIC,
+            "lanczos": Image.LANCZOS,
+        }
+        resampling_filter = filter_map[filter_type]
+
         x = int(x)
         y = int(y)
         angle = int(angle)
@@ -115,7 +139,12 @@ class MTB_TransformImage:
             img = cast(
                 Image.Image,
                 TF.affine(
-                    img, angle=angle, scale=zoom, translate=[x, y], shear=shear
+                    img,
+                    angle=angle,
+                    scale=zoom,
+                    translate=[x, y],
+                    shear=shear,
+                    interpolation=resampling_filter,
                 ),
             )
 

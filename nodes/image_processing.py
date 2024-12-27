@@ -702,7 +702,6 @@ class MTB_Blur:
                 )
                 blurred_images.append(blurred)
 
-            image_np = np.array(blurred_images)
         else:
             for i in range(image.size(0)):
                 blurred = gaussian(
@@ -710,8 +709,7 @@ class MTB_Blur:
                 )
                 blurred_images.append(blurred)
 
-            image_np = np.array(blurred_images)
-        return (np2tensor(image_np).squeeze(0),)
+        return (np2tensor(blurred_images),)
 
 
 class MTB_Sharpen:
