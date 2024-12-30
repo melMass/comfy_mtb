@@ -38,6 +38,7 @@ optional-dependencies = { mel = [
 ], dev = [
   "black[jupyter]",
   "codespell",
+  "marimo",
   "mypy",
   "pre-commit",
   "pytest",
