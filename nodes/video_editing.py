@@ -51,7 +51,7 @@ class MTB_SceneCutDetector:
                 ),
                 "histogram_bins": (
                     "INT",
-                    {"default": 128, "min": 2, "max": 256},
+                    {"default": 32, "min": 2, "max": 256},
                 ),
                 # hash
                 "hash_threshold": (
