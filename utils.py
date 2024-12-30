@@ -513,9 +513,10 @@ font_path = here / "data" / "font.ttf"
 extern_root = here / "extern"
 add_path(extern_root)
 
-for pth in extern_root.iterdir():
-    if pth.is_dir():
-        add_path(pth)
+if extern_root.exists():
+    for pth in extern_root.iterdir():
+        if pth.is_dir():
+            add_path(pth)
 
 # - Add the ComfyUI directory and custom nodes path to the sys.path list
 add_path(comfy_dir)
