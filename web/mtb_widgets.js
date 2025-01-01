@@ -1283,23 +1283,141 @@ const mtb_widgets = {
         })
         break
       }
-      case 'Save Tensors (mtb)': {
+      case 'Scene Detect (mtb)': {
+        break
+      }
+      case 'Loop Start (mtb)': {
         const onDrawBackground = nodeType.prototype.onDrawBackground
-        nodeType.prototype.onDrawBackground = function (ctx, canvas) {
+        nodeType.prototype.onDrawBackground = function (...args) {
           const r = onDrawBackground
-            ? onDrawBackground.apply(this, arguments)
+            ? onDrawBackground.apply(this, args)
             : undefined
-          // // draw a circle on the top right of the node, with text inside
-          // ctx.fillStyle = "#fff";
-          // ctx.beginPath();
-          // ctx.arc(this.size[0] - this.node_width * 0.5, this.size[1] - this.node_height * 0.5, this.node_width * 0.5, 0, Math.PI * 2);
-          // ctx.fill();
+          const [ctx, /*canvas,*/ ..._rest] = args
+          if (this.flags.collapsed) return r
+          if (!this.computed_flow) {
+            const related = new Set([this.id])
+            const visited = new Set()
+            if (this.outputs[0].links) {
+              const initLink = this.outputs[0].links[0]
+              const { to: loopEnd } = shared.nodesFromLink(this, initLink)
+              const canReachEnd = (node, visited = new Set()) => {
+                if (node === loopEnd) return true
+                if (visited.has(node.id)) return false
+                visited.add(node.id)
+                for (const output of node.outputs || []) {
+                  if (!output.links) continue
+                  for (const linkId of output.links) {
+                    const { to: nextNode } = shared.nodesFromLink(node, linkId)
+                    if (!nextNode) continue
+                    if (canReachEnd(nextNode, visited)) {
+                      return true
+                    }
+                  }
+                }
+                return false
+              }
+              const traverseNodes = (node) => {
+                if (visited.has(node.id)) return
+                visited.add(node.id)
 
-          // ctx.fillStyle = "#000";
-          // ctx.textAlign = "center";
-          // ctx.font = "bold 12px Arial";
-          // ctx.fillText("Save Tensors", this.size[0] - this.node_width * 0.5, this.size[1] - this.node_height * 0.5);
+                // can reach the end
+                if (node !== this && node !== loopEnd && !canReachEnd(node)) {
+                  return
+                }
 
+                related.add(node.id)
+                for (const output of node.outputs || []) {
+                  if (!output.links) continue
+
+                  for (const linkId of output.links) {
+                    const { to: nextNode } = shared.nodesFromLink(node, linkId)
+                    if (!nextNode) continue
+
+                    traverseNodes(nextNode)
+                  }
+                }
+              }
+
+              traverseNodes(this)
+            }
+            this.related_to_flow = Array.from(related)
+            this.computed_flow = true
+          }
+          if (this.related_to_flow) {
+            ctx.save()
+            const points = []
+            const padding = 20
+
+            const graph = this.graph
+            const offset = this._pos
+
+            for (const nodeId of this.related_to_flow) {
+              const node = graph.getNodeById(nodeId)
+              if (!node) continue
+
+              const scale = 1.0
+              const x = node._pos[0] * scale - offset[0]
+              const y = node._pos[1] * scale - offset[1]
+              const width = node.size[0] * scale
+              const height = node.size[1] * scale
+              const scaledPadding = padding * scale
+              // console.log({ main: this, x, y, width, height })
+
+              points.push(
+                [x - scaledPadding, y - scaledPadding],
+                [x + width + scaledPadding, y - scaledPadding],
+                [x + width + scaledPadding, y + height + scaledPadding],
+                [x - scaledPadding, y + height + scaledPadding],
+              )
+            }
+            // console.log({ points })
+            const hull = shared.getConvexHull(points)
+
+            ctx.beginPath()
+
+            ctx.moveTo(hull[0][0], hull[0][1])
+            for (let i = 1; i < hull.length; i++) {
+              ctx.lineTo(hull[i][0], hull[i][1])
+            }
+
+            ctx.closePath()
+
+            ctx.fillStyle = 'rgba(255, 0, 0, 0.1)'
+            ctx.strokeStyle = 'rgba(255, 0, 0, 0.5)'
+            ctx.lineWidth = 2
+            ctx.fill()
+            ctx.stroke()
+
+            ctx.restore()
+          } else {
+            ctx.save()
+            ctx.fillStyle = 'red'
+            ctx.fillRect(-50, -50, this.size[0] + 100, this.size[1] + 100)
+            ctx.fillStyle = 'white'
+            ctx.font = 'bold 12px Arial'
+            ctx.fillText(
+              `pos: ${this.x}x${this.y}`,
+              this.size[0] / 2,
+              this.size[1],
+            )
+            ctx.fillText(
+              `size:${this._posSize}`,
+              this.size[0] / 2,
+              this.size[1] - 30,
+            )
+            ctx.fillText(
+              `dpi: ${window.devicePixelRatio}`,
+              this.size[0] / 2,
+              this.size[1] - 60,
+            )
+            ctx.fillText(
+              `next: ${graph.getNodeById(this.related_to_flow[1])._posSize}`,
+              this.size[0] / 2,
+              this.size[1] - 90,
+            )
+
+            ctx.restore()
+          }
           return r
         }
         break
