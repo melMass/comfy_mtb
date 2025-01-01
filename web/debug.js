@@ -14,6 +14,7 @@ import { app } from '../../scripts/app.js'
 
 import * as shared from './comfy_shared.js'
 import { MtbWidgets } from './mtb_widgets.js'
+import * as mtb_ui from './mtb_ui.js'
 
 // TODO: respect inputs order...
 
@@ -36,12 +37,10 @@ app.registerExtension({
   async beforeRegisterNodeDef(nodeType, nodeData, app) {
     if (nodeData.name === 'Debug (mtb)') {
       const onNodeCreated = nodeType.prototype.onNodeCreated
-      nodeType.prototype.onNodeCreated = function () {
+      nodeType.prototype.onNodeCreated = function (...args) {
         this.options = {}
-        const r = onNodeCreated
-          ? onNodeCreated.apply(this, arguments)
-          : undefined
-        this.addInput(`anything_1`, '*')
+        const r = onNodeCreated ? onNodeCreated.apply(this, args) : undefined
+        this.addInput('anything_1', '*')
         return r
       }
 
@@ -81,14 +80,16 @@ app.registerExtension({
       }
 
       const onExecuted = nodeType.prototype.onExecuted
-      nodeType.prototype.onExecuted = function (data) {
-        onExecuted?.apply(this, arguments)
+      nodeType.prototype.onExecuted = function (...args) {
+        onExecuted?.apply(this, args)
+        const [data, ..._rest] = args
 
         const prefix = 'anything_'
 
         if (this.widgets) {
           for (let i = 0; i < this.widgets.length; i++) {
             if (this.widgets[i].name !== 'output_to_console') {
+              this.widgets[i].onRemove?.()
               this.widgets[i].onRemoved?.()
             }
           }
@@ -98,19 +99,32 @@ app.registerExtension({
         // console.log(message)
         if (data.text) {
           for (const txt of data.text) {
-            const w = this.addCustomWidget(
-              MtbWidgets.DEBUG_STRING(`${prefix}_${widgetI}`, escapeHtml(txt)),
+            const textDom = mtb_ui.makeElement('p', { fontFamily: 'monospace' })
+            textDom.innerHTML = txt
+
+            this.addDOMWidget(
+              `${prefix}_${widgetI}`,
+              'CUSTOM_TEXT',
+              textDom,
+              {},
             )
-            w.parent = this
             widgetI++
           }
         }
         if (data.b64_images) {
           for (const img of data.b64_images) {
-            const w = this.addCustomWidget(
-              MtbWidgets.DEBUG_IMG(`${prefix}_${widgetI}`, img),
+            const imgDom = mtb_ui.makeElement('img', { width: '100%' })
+            imgDom.src = img
+
+            this.addDOMWidget(
+              `${prefix}_${widgetI}`,
+              'CUSTOM_IMG_B64',
+              mtb_ui.wrapElement(imgDom, {
+                overflow: 'hidden',
+              }),
+              {},
             )
-            w.parent = this
+
             widgetI++
           }
         }
@@ -119,12 +133,13 @@ app.registerExtension({
 
         this.onRemoved = function () {
           // When removing this node we need to remove the input from the DOM
-          for (let y in this.widgets) {
+          for (const y in this.widgets) {
             if (this.widgets[y].canvas) {
               this.widgets[y].canvas.remove()
             }
             shared.cleanupNode(this)
             this.widgets[y].onRemoved?.()
+            this.widgets[y].onRemove?.()
           }
         }
       }

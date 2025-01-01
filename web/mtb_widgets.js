@@ -21,7 +21,7 @@ import { infoLogger } from './comfy_shared.js'
 import { NumberInputWidget } from './numberInput.js'
 
 // NOTE: new widget types registered by MTB Widgets
-const newTypes = [/*'BOOL'*/ , 'COLOR', 'BBOX']
+const newTypes = [/*'BOOL'*/ 'COLOR', 'BBOX']
 
 const deprecated_nodes = {
   //  'Animation Builder':

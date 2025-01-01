@@ -185,6 +185,18 @@ ${inputs}
 }
 
 /**
+ *  Wrap an element with a div
+ *
+ * @param {Object} [style] - CSS styles to apply to the element.
+ * @returns {HTMLElement} - The created DOM element.
+ */
+export const wrapElement = (element, style = {}) => {
+  const container = makeElement('div', style)
+  container.appendChild(element)
+  return container
+}
+
+/**
  * Creates a DOM element with optional styles, class, and id.
  *
  * @param {string} kind - The tag name of the element. Supports class and id syntax (e.g. 'div.class#id').
