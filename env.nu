@@ -160,6 +160,12 @@ export-env {
   $env.COMFY_CLEAN_ROOT =  ($env.COMFY_ROOT | path dirname | path join ComfyClean)
 
   path-add 'C:/Portable/TensorRT-8.6.0.12/lib'
+
+  if $nu.os-info.family == 'windows' {
+    path-add 'G:\BIN\TensorRT-10.7.0.23\lib'
+    path-add 'G:\BIN\cudnn-windows-x86_64-9.6.0.74_cuda12-archive\bin'
+  }
+
   path-add ($env.CUDA_ROOT | path join bin)
   overlay use ../../.venv/Scripts/activate.nu
 }

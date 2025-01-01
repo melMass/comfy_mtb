@@ -44,14 +44,22 @@ class MTB_ToDevice:
         if torch.backends.mps.is_available():
             devices.append("mps")
         if torch.cuda.is_available():
+            devices.append("cuda:0")
+            for i in range(1, torch.cuda.device_count()):
+                devices.append(f"cuda:{i}")
             devices.append("cuda")
-            for i in range(torch.cuda.device_count()):
-                devices.append(f"cuda{i}")
 
         return {
             "required": {
                 "ignore_errors": ("BOOLEAN", {"default": False}),
-                "device": (devices, {"default": "cpu"}),
+                "device": (
+                    devices,
+                    {
+                        "default": "cuda"
+                        if torch.cuda.is_available()
+                        else "cpu"
+                    },
+                ),
             },
             "optional": {
                 "image": ("IMAGE",),
@@ -67,20 +75,36 @@ class MTB_ToDevice:
     def to_device(
         self,
         *,
-        ignore_errors=False,
-        device="cuda",
+        ignore_errors: bool = False,
+        device: str = "cuda",
         image: torch.Tensor | None = None,
         mask: torch.Tensor | None = None,
     ):
         if not ignore_errors and image is None and mask is None:
             raise ValueError(
                 "You must either provide an image or a mask,"
-                " use ignore_error to passthrough"
+                + " use ignore_error to passthrough"
             )
-        if image is not None:
-            image = image.to(device)
-        if mask is not None:
-            mask = mask.to(device)
+        if (
+            device.startswith("cuda")
+            and ":" not in device
+            and device != "cuda"
+        ):
+            device = f"cuda:{device[4:]}"
+
+        try:
+            if image is not None:
+                image = image.to(device)
+            if mask is not None:
+                mask = mask.to(device)
+        except RuntimeError as e:
+            if not ignore_errors:
+                raise RuntimeError(
+                    f"Failed to move tensor to device {device}: {str(e)}"
+                ) from e
+            log.warning(
+                f"Failed to move tensor to device {device}, ignoring: {str(e)}"
+            )
         return (image, mask)
 
 
