@@ -1,3 +1,5 @@
+/// <reference path="../types/typedefs.js" />
+
 import { app } from '../../scripts/app.js'
 import { api } from '../../scripts/api.js'
 
@@ -20,6 +22,7 @@ let currentSort = 'None'
 
 const IMAGE_NODES = ['LoadImage', 'VHS_LoadImagePath']
 const VIDEO_NODES = ['VHS_LoadVideo']
+const PROCESSED_PROMPT_IDS = new Set()
 
 const updateImage = (node, image) => {
   if (IMAGE_NODES.includes(node.type)) {
@@ -38,7 +41,74 @@ const updateImage = (node, image) => {
   }
 }
 
-const getImgsFromUrls = (urls, target) => {
+/**
+ * Converts a result item to a request url.
+ * @param {ResultItem} resultItem
+ * @returns {string} - The request URL.
+ */
+const resultItemToQuery = (resultItem) =>
+  [
+    `/mtb/view?filename=${resultItem.filename}`,
+    `width=512`,
+    `type=${resultItem.type}`,
+    `subfolder=${resultItem.subfolder}`,
+    `preview=`,
+  ].join('&')
+
+/**
+ * Retrieves the unique prompt ID from a history task item.
+ * @param {HistoryTaskItem} historyTaskItem
+ * @returns {string} - The prompt ID.
+ */
+const getPromptId = (historyTaskItem) => `${historyTaskItem.prompt[1]}`
+
+/**
+ * Process and return any new/unseen outputs from the most recent history item.
+ * @param {HistoryTaskItem} mostRecentTask - The most recent history task item.
+ * @returns {Object<string, string>} - A map of task outputs URLs.
+ */
+const getNewOutputUrls = (mostRecentTask) => {
+  if (!mostRecentTask) return
+
+  const promptId = getPromptId(mostRecentTask)
+  if (PROCESSED_PROMPT_IDS.has(promptId)) return
+
+  const urls = {}
+  for (const nodeOutputs of Object.values(mostRecentTask.outputs)) {
+    const { images, audio, animated } = nodeOutputs
+    if (images) {
+      const imageOutputs = Object.values(nodeOutputs.images)
+      imageOutputs.forEach(
+        (resultItem) =>
+          (urls[resultItem.filename] = resultItemToQuery(resultItem))
+      )
+    }
+    // Can process `animated` and `audio` outputs here.
+  }
+
+  const foundNewOutputs = Object.keys(urls).length > 0
+  if (!foundNewOutputs) return null
+
+  PROCESSED_PROMPT_IDS.add(promptId)
+  return urls
+}
+
+/** Fetch history and update the grid with any new ouput images. */
+const updateOutputsGrid = async () => {
+  try {
+    const history = await api.getHistory(/** maxSize: */ 1)
+    const mostRcentTask = history.History[0]
+    const newUrls = getNewOutputUrls(mostRcentTask)
+    if (newUrls) {
+      const imgGrid = document.querySelector('.mtb_img_grid')
+      getImgsFromUrls(newUrls, imgGrid, { prepend: true })
+    }
+  } catch (error) {
+    console.error('Error fetching history:', error)
+  }
+}
+
+const getImgsFromUrls = (urls, target, options = { prepend: false }) => {
   const imgs = []
   if (urls === undefined) {
     return imgs
@@ -123,7 +193,8 @@ const getImgsFromUrls = (urls, target) => {
     imgs.push(a)
   }
   if (target !== undefined) {
-    target.append(...imgs)
+    if (options.prepend) target.prepend(...imgs)
+    else target.append(...imgs)
   }
   return imgs
 }
@@ -324,11 +395,16 @@ if (window?.__COMFYUI_FRONTEND_VERSION__) {
             }
           })
           handle = renderSidebar(el, cont, [selector, imgGrid, imgTools])
+          app.api.addEventListener('status', async () => {
+            if (currentMode !== 'output') return
+            updateOutputsGrid()
+          })
         },
         destroy: () => {
           if (handle) {
             handle.unregister()
             handle = undefined
+            app.api.removeEventListener('status')
           }
         },
       })
