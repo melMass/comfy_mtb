@@ -1,5 +1,7 @@
 # NOTE: This file is only use for development you can ignore it
 
+use private/log.nu
+
 def get_root [--clean] {
     if $clean {
         $env.COMFY_CLEAN_ROOT
@@ -21,12 +23,56 @@ export def "comfy dev-web" [] {
     npm run dev
 }
 
+export def "daily run"  [] {
+  let res = (comfy update --rebase)
+  comfy update --clean
+  comfy update_extensions
+
+  daily commit $res.from $res.to
+}
+
+def short-date [] {
+  format date "%Y-%m-%d"
+}
+
+# was daily run today?
+export def "daily was-run" [] {
+
+  let daily = ($env.COMFY_MTB | path join daily.nuon)
+
+  if ($daily | path exists) {
+    let last = (open $daily | sort-by date | get date  | last | short-date)
+    let today = (date now | short-date)
+    return ($last == $today)
+  }
+  return false
+}
+
+export def "daily commit"  [from:string, to:string] {
+  let daily = ($env.COMFY_MTB | path join daily.nuon)
+  let commit = [{date: (date now) from:$from to:$to}]
+
+  let dailies = (if ($daily | path exists) {
+    open $daily | append $commit
+  } else {
+      $commit
+  })
+
+  $dailies | save -f $daily
+  log success "Commited daily check"
+}
 
 # start the comfy server
-export def "comfy start" [--clean,--old-ui, --listen] {
-
+export def "comfy start" [--clean,--old-ui, --listen, --skip-daily(-s)] {
+  if (not (daily was-run)) and not $skip_daily {
+      log info "Running daily checks"
+      daily run
+    }
     let root = get_root --clean=($clean)
     cd $root
+
+    log info "Running Server"
+
     MTB_DEBUG=true python main.py --port 3000 ...(if $old_ui { ["--front-end-version", "Comfy-Org/ComfyUI_legacy_frontend@latest"]} else {[ --front-end-version Comfy-Org/ComfyUI_frontend@latest]}) --preview-method auto ...(if $listen {["--listen"]} else {[]})
 }
 
@@ -35,75 +81,89 @@ export def "comfy update" [
     --clean # ??
     --rebase # Rebase instead of merge
 ] {
-    let root = get_root --clean=($clean)
-    let models = $"($root)/models"
-    let inputs = $"($root)/input"
-    cd $root
-    let branch_name = (git rev-parse --abbrev-ref HEAD | str trim)
-    print $"(ansi yellow_italic)Backing up and removing models symlinks(ansi reset)"
+  let root = get_root --clean=$clean
 
-    if not $clean {
-        cd $models
-        # find all symlinks
-        let links = (ls -la |
-            where not ($it.target | is-empty) |
-            select name target |
-            sort-by name)
+  let models = $"($root)/models"
+  let inputs = $"($root)/input"
+
+  cd $root
+
+  let branch_name = (git rev-parse --abbrev-ref HEAD | str trim)
+  let current_commit = (git rev-parse HEAD | str trim)
+
+  log info "Backing up and removing models symlinks"
+
+  # preparing root for pull
+  if not $clean {
+    cd $models
+    # find and store all symlinks
+    let links = (ls -la |
+      where not ($it.target | is-empty) |
+      select name target |
+      sort-by name)
 
 
-            if not ($links | is-empty) {
-              $links | save -f links.nuon
-              # remove them
-              open links.nuon | each {|p| rm $p.name }
-            }
-    } else {
-        rm $models
-        rm $inputs
+    if not ($links | is-empty) {
+      $links | save -f links.nuon
+      # remove them
+      open links.nuon | each {|p| rm $p.name }
     }
+  } else {
+    # just remove symlinks
+    rm $models
+    rm $inputs
+  }
 
-    cd $root
+  cd $root
 
-    print $"(ansi yellow_italic)Checking out to master(ansi reset)"
-    git checkout master
+  log info $"Checking out to master"
+  git checkout master
 
-    print $"(ansi yellow_italic)Fetching and pulling remote updates(ansi reset)"
-    if ($clean) {
-        git fetch local master
-        git pull local master
-    } else {
-        git fetch
-        git pull
-    }
+  log info "Fetching and pulling remote updates"
+  if ($clean) {
+    # from the local base repo master
+    git fetch local master # $branch_name # master
+    git pull local master # $branch_name # master
+  } else {
+    git fetch
+    git pull
+  }
 
+  let new_commit = (git rev-parse HEAD | str trim)
 
-    print $"(ansi yellow_italic)Back to our branch \(($branch_name)\)(ansi reset)"
-    git checkout -
+  log info $"Back to our branch \(($branch_name)\)"
+  git checkout -
 
+  if $current_commit == $new_commit {
+    log warn "No changes upstream"
+  } else {
     if $rebase {
-        print $"(ansi yellow_italic)Rebasing changes(ansi reset)"
-        git rebase master
+      log info "Rebasing changes"
+      git rebase master
 
     } else {
-        print $"(ansi yellow_italic)Merging changes(ansi reset)"
-        git merge master
+      log info "Merging changes"
+      git merge master
     }
+  }
 
-    print $"(ansi yellow_italic)Linking back the models(ansi reset)"
+  log info "Linking back the models"
 
-    if not $clean {
-        cd $models
-        # resymlink them
-        open links.nuon | each {|p| link -a $p.target $p.name }
-    } else {
-        let master = (get_root)
-        link ($master | path join models) $models
-        link ($master | path join input) $inputs
-    }
+  if not $clean {
+    cd $models
+    # resymlink them
+    open links.nuon | each {|p| link -a $p.target $p.name }
+  } else {
+    let master = (get_root)
+    link ($master | path join models) $models
+    link ($master | path join input) $inputs
+  }
 
-    let commit_count = (git rev-list --count $branch_name $"^origin/($branch_name)")
+  let commit_count = (git rev-list --count $branch_name $"^origin/($branch_name)")
 
+  log success $"Update successful \(($commit_count) new commits\)"
 
-    print $"(ansi green_bold)Update successful \(($commit_count) new commits\)(ansi reset)"
+  return {from:$current_commit to:$new_commit}
 
 
 }
@@ -118,11 +178,11 @@ export def "comfy toggle_extensions" [--clean] {
         return
     }
 
-    print $choices
+    log info "Choices" $choices
 
     let filtered = $choices | wrap name | upsert enabled {|p| not ($p.name | str ends-with ".disabled")}
 
-    print $filtered
+    log info "Filtered" $filtered
     $filtered | each {|f|
         let new_name = ($f.name | str replace ".disabled" "")
 
@@ -131,7 +191,7 @@ export def "comfy toggle_extensions" [--clean] {
         } else {
             $new_name
         }
-        print $"Moving ($f.name) to ($new_name)"
+        log info $"Moving ($f.name) to ($new_name)"
         mv $f.name $new_name
     }
 }
