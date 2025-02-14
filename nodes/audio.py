@@ -4,14 +4,15 @@ import torch
 import torchaudio
 
 
-class AudioDict(TypedDict):
+
+class AudioTensor(TypedDict):
     """Comfy's representation of AUDIO data."""
 
     sample_rate: int
     waveform: torch.Tensor
 
 
-AudioData = AudioDict | list[AudioDict]
+AudioData = AudioTensor | list[AudioTensor]
 
 
 class MtbAudio:
@@ -28,7 +29,7 @@ class MtbAudio:
             return audios["waveform"].shape[1] == 2
 
     @staticmethod
-    def resample(audio: AudioDict, common_sample_rate: int) -> AudioDict:
+    def resample(audio: AudioTensor, common_sample_rate: int) -> AudioTensor:
         if audio["sample_rate"] != common_sample_rate:
             resampler = torchaudio.transforms.Resample(
                 orig_freq=audio["sample_rate"], new_freq=common_sample_rate
@@ -41,7 +42,7 @@ class MtbAudio:
             return audio
 
     @staticmethod
-    def to_stereo(audio: AudioDict) -> AudioDict:
+    def to_stereo(audio: AudioTensor) -> AudioTensor:
         if audio["waveform"].shape[1] == 1:
             return {
                 "sample_rate": audio["sample_rate"],
@@ -54,8 +55,8 @@ class MtbAudio:
 
     @classmethod
     def preprocess_audios(
-        cls, audios: list[AudioDict]
-    ) -> tuple[list[AudioDict], bool, int]:
+        cls, audios: list[AudioTensor]
+    ) -> tuple[list[AudioTensor], bool, int]:
         max_sample_rate = max([audio["sample_rate"] for audio in audios])
 
         resampled_audios = [
@@ -98,7 +99,7 @@ class MTB_AudioCut(MtbAudio):
     CATEGORY = "mtb/audio"
     FUNCTION = "cut"
 
-    def cut(self, audio: AudioDict, length: float, offset: float):
+    def cut(self, audio: AudioTensor, length: float, offset: float):
         sample_rate = audio["sample_rate"]
         start_idx = int(offset * sample_rate / 1000)
         end_idx = min(
@@ -132,7 +133,7 @@ class MTB_AudioStack(MtbAudio):
     CATEGORY = "mtb/audio"
     FUNCTION = "stack"
 
-    def stack(self, **kwargs: AudioDict) -> tuple[AudioDict]:
+    def stack(self, **kwargs: AudioTensor) -> tuple[AudioTensor]:
         audios, is_stereo, max_rate = self.preprocess_audios(
             list(kwargs.values())
         )
@@ -187,7 +188,7 @@ class MTB_AudioSequence(MtbAudio):
     CATEGORY = "mtb/audio"
     FUNCTION = "sequence"
 
-    def sequence(self, silence_duration: float, **kwargs: AudioDict):
+    def sequence(self, silence_duration: float, **kwargs: AudioTensor):
         audios, is_stereo, max_rate = self.preprocess_audios(
             list(kwargs.values())
         )
