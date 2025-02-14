@@ -167,25 +167,34 @@ class MTB_PickFromBatch:
                 "image": ("IMAGE",),
                 "from_direction": (["end", "start"], {"default": "start"}),
                 "count": ("INT", {"default": 1}),
-            }
+            },
+            "optional": {
+                "mask": ("MASK",),
+            },
         }
 
-    RETURN_TYPES = ("IMAGE",)
+    RETURN_TYPES = ("IMAGE", "MASK")
     FUNCTION = "pick_from_batch"
     CATEGORY = "mtb/image utils"
 
-    def pick_from_batch(self, image, from_direction, count):
+    def pick_from_batch(self, image, from_direction, count, mask=None):
         batch_size = image.size(0)
 
         # Limit count to the available number of images in the batch
         count = min(count, batch_size)
 
+        selected_masks = None
+
         if from_direction == "end":
             selected_tensors = image[-count:]
+            if mask is not None:
+                selected_masks = mask[-count:]
         else:
             selected_tensors = image[:count]
+            if mask is not None:
+                selected_masks = mask[:count]
 
-        return (selected_tensors,)
+        return (selected_tensors, selected_masks)
 
 
 import folder_paths
