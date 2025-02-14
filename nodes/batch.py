@@ -1,6 +1,7 @@
 from io import BytesIO
 from typing import Literal
 
+import comfy.utils
 import cv2
 import numpy as np
 import torch
@@ -170,6 +171,87 @@ class MTB_BatchTimeWrap:
         return (warped_tensor, interpolated_curve)
 
 
+class MTB_ImageBatchToSublist:
+    """
+    # Image Batch To Sublist 🔄
+
+    Splits a large batched tensor into smaller sub-batches for memory-efficient processing.
+    """
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "tensor": ("IMAGE",),
+                "sub_batch_size": (
+                    "INT",
+                    {"default": 1, "min": 1, "max": 1000, "step": 1},
+                ),
+            }
+        }
+
+    RETURN_TYPES = ("IMAGE",)
+    OUTPUT_IS_LIST = (True,)
+    FUNCTION = "split_batch"
+    CATEGORY = "batch_processing"
+
+    def split_batch(self, tensor: torch.Tensor, sub_batch_size: int):
+        batch_size = tensor.shape[0]
+        num_full_batches = batch_size // sub_batch_size
+        sub_batches = []
+
+        for i in range(num_full_batches):
+            start_idx = i * sub_batch_size
+            end_idx = start_idx + sub_batch_size
+            sub_batches.append(tensor[start_idx:end_idx, ...])
+
+        # remains
+        if batch_size % sub_batch_size != 0:
+            remaining_start = num_full_batches * sub_batch_size
+            sub_batches.append(tensor[remaining_start:, ...])
+
+        return (sub_batches,)
+
+
+class MTB_SublistToImageBatch:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "tensors": ("IMAGE",),
+            }
+        }
+
+    INPUT_IS_LIST = True
+    RETURN_TYPES = ("IMAGE",)
+    FUNCTION = "merge_batches"
+    CATEGORY = "batch_processing"
+    DOCUMENTATION = """# Sublist to Image Batch 🔄
+
+Merges a list of sub-batched tensors back into a single large batch.
+"""
+
+    def merge_batches(self, tensors: list[torch.Tensor]):
+        if len(tensors) <= 1:
+            return (tensors[0],)
+
+        result = tensors[0]
+
+        for next_tensor in tensors[1:]:
+            if result.shape[1:] != next_tensor.shape[1:]:
+                next_tensor = comfy.utils.common_upscale(
+                    next_tensor.movedim(-1, 1),
+                    result.shape[2],
+                    result.shape[1],
+                    "lanczos",
+                    "center",
+                ).movedim(1, -1)
+
+            result = torch.cat((result, next_tensor), dim=0)
+
+        return (result,)
+
+
 class MTB_BatchMake:
     """Simply duplicates the input frame as a batch"""
 
@@ -179,18 +261,22 @@ class MTB_BatchMake:
             "required": {
                 "image": ("IMAGE",),
                 "count": ("INT", {"default": 1}),
-            }
+            },
+            "optional": {"mask": ("MASK",)},
         }
 
     RETURN_TYPES = ("IMAGE",)
     FUNCTION = "generate_batch"
     CATEGORY = "mtb/batch"
 
-    def generate_batch(self, image: torch.Tensor, count):
+    def generate_batch(self, image: torch.Tensor, count, mask=None):
         if len(image.shape) == 3:
             image = image.unsqueeze(0)
 
-        return (image.repeat(count, 1, 1, 1),)
+        return (
+            image.repeat(count, 1, 1, 1),
+            mask.repeat(count, 1, 1) if mask else mask,
+        )
 
 
 class MTB_BatchShape:
@@ -1255,4 +1341,6 @@ __nodes__ = [
     MTB_BatchShape,
     MTB_BatchTimeWrap,
     MTB_PlotBatchFloat,
+    MTB_SublistToImageBatch,
+    MTB_ImageBatchToSublist,
 ]
