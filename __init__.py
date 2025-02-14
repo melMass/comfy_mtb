@@ -31,7 +31,16 @@ from importlib import reload
 from pathlib import Path
 
 from aiohttp import web
-from server import PromptServer
+
+IN_COMFY = False
+
+try:
+    from server import PromptServer
+
+    IN_COMFY = True
+except ModuleNotFoundError:
+    IN_COMFY = False
+
 
 from .endpoint import endlog
 from .install import get_node_dependencies
@@ -231,7 +240,7 @@ if failed:
 # - ENDPOINT
 
 
-if hasattr(PromptServer, "instance"):
+if IN_COMFY and hasattr(PromptServer, "instance"):
     img_cache = None
     prompt_cache = None
 
