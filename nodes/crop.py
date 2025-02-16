@@ -78,14 +78,17 @@ class MTB_UpscaleBboxBy:
         self, bbox: tuple[int, int, int, int], scale: float
     ) -> tuple[tuple[int, int, int, int]]:
         x, y, width, height = bbox
-        # scaled = (x * scale, y * scale, width * scale, height * scale)
-        scaled = (
-            int(x * scale),
-            int(y * scale),
-            int(width * scale),
-            int(height * scale),
-        )
 
+        center_x = x + width // 2
+        center_y = y + height // 2
+
+        new_width = int(width * scale)
+        new_height = int(height * scale)
+
+        new_x = center_x - new_width // 2
+        new_y = center_y - new_height // 2
+
+        scaled = (new_x, new_y, new_width, new_height)
         return (scaled,)
 
 
