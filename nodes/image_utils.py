@@ -39,9 +39,13 @@ class MTB_StackImages:
             f"{'vertically' if vertical else 'horizontally'}"
         )
 
+        target_device = tensors[0].device
+
         normalized_tensors = [
-            self.normalize_to_rgba(tensor) for tensor in tensors
+            self.normalize_to_rgba(tensor.to(target_device))
+            for tensor in tensors
         ]
+
         max_batch_size = max(tensor.shape[0] for tensor in normalized_tensors)
         normalized_tensors = [
             self.duplicate_frames(tensor, max_batch_size)
