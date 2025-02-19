@@ -882,6 +882,34 @@ class MTB_ProcessWhisperDiarization:
         return (whisper_chunks,)
 
 
+class MTB_AudioDuration:
+    """Get audio duration in milliseconds."""
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "audio": ("AUDIO",),
+            },
+        }
+
+    RETURN_TYPES = ("INT",)
+    RETURN_NAMES = ("duration_ms",)
+    FUNCTION = "get_duration"
+    CATEGORY = "mtb/audio"
+
+    def get_duration(self, audio):
+        waveform = audio["waveform"]
+        sample_rate = audio["sample_rate"]
+
+        duration_ms = int((waveform.shape[-1] / sample_rate) * 1000)
+        log.debug(
+            f"Audio duration: {duration_ms}ms ({duration_ms / 1000:.2f}s)"
+        )
+
+        return (duration_ms,)
+
+
 __nodes__ = [
     MTB_AudioSequence,
     MTB_AudioStack,
@@ -892,4 +920,5 @@ __nodes__ = [
     MTB_AudioToText,
     MTB_ProcessWhisperOutput,
     MTB_ProcessWhisperDiarization,
+    MTB_AudioDuration,
 ]
