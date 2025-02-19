@@ -9,3 +9,4 @@ rich_argparse
 matplotlib
 pillow
 cachetools
+transformers
