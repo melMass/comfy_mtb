@@ -4,6 +4,10 @@ import torch
 import torchaudio
 from comfy.model_management import get_torch_device
 from huggingface_hub import snapshot_download
+from transformers import (
+    WhisperForConditionalGeneration,
+    WhisperProcessor,
+)
 
 # from transformers import (
 #     AutoFeatureExtractor,
@@ -50,9 +54,13 @@ class MtbAudio:
 
     @staticmethod
     def resample(audio: AudioTensor, common_sample_rate: int) -> AudioTensor:
-        if audio["sample_rate"] != common_sample_rate:
+        current_rate = audio["sample_rate"]
+        if current_rate != common_sample_rate:
+            log.debug(
+                f"Resampling audio from {current_rate} to {common_sample_rate}"
+            )
             resampler = torchaudio.transforms.Resample(
-                orig_freq=audio["sample_rate"], new_freq=common_sample_rate
+                orig_freq=current_rate, new_freq=common_sample_rate
             )
             return {
                 "sample_rate": common_sample_rate,
@@ -93,8 +101,8 @@ class MtbAudio:
 class WhisperPipeline(TypedDict):
     """Whisper model pipeline."""
 
-    processor: Any  # WhisperProcessor
-    model: Any  # WhisperForConditionalGeneration
+    processor: WhisperProcessor
+    model: WhisperForConditionalGeneration
 
 
 class MTB_LoadWhisper:
@@ -140,11 +148,6 @@ class MTB_LoadWhisper:
 
     def load(self, model_size="tiny", download_missing=False):
         """Load Whisper model and processor."""
-        from transformers import (
-            WhisperForConditionalGeneration,
-            WhisperProcessor,
-        )
-
         whisper_dir = get_model_path("whisper")
         tag = f"whisper-{model_size}"
         model_dir = whisper_dir / tag
@@ -182,7 +185,7 @@ class MTB_LoadWhisper:
         return ({"processor": processor, "model": model},)
 
 
-class MTB_AudioToText:
+class MTB_AudioToText(MtbAudio):
     """Transcribe audio to text using Whisper."""
 
     @classmethod
@@ -219,12 +222,18 @@ class MTB_AudioToText:
     CATEGORY = "mtb/audio"
 
     def transcribe(
-        self, pipeline, audio, language="auto", return_timestamps=True
+        self,
+        pipeline: WhisperPipeline,
+        audio: AudioTensor,
+        language="auto",
+        return_timestamps=True,
     ):
         """Transcribe audio to text using Whisper."""
         processor = pipeline["processor"]
         model = pipeline["model"]
         device = model.device
+
+        audio = self.resample(audio, WHISPER_SAMPLE_RATE)
 
         waveform = audio["waveform"]
         log.debug(f"Processed waveform shape: {waveform.shape}")
@@ -253,6 +262,9 @@ class MTB_AudioToText:
         all_tokens = []
         all_text = []
         chunk_offsets = []
+
+        last_time = 0.0
+        accumulated_offset = 0.0
 
         for chunk_start in range(0, total_samples, chunk_samples):
             chunk_end = min(chunk_start + chunk_samples, total_samples)
@@ -298,25 +310,13 @@ class MTB_AudioToText:
                         if time_str.replace(".", "").isdigit():
                             time_val = float(time_str)
 
-                            if len(chunk_offsets) > 1:
-                                if time_val >= 30.0:
-                                    current_chunk = (
-                                        chunk_offsets.index(chunk_offset) + 1
-                                    )
-                                    current_offset = chunk_offsets[
-                                        current_chunk
-                                    ]
-                                    time_val = time_val - 30.0
+                            # If this timestamp is less than the last one, we've started a new sequence
+                            if time_val < last_time:
+                                accumulated_offset += last_time
 
-                            adjusted_time = chunk_offset + time_val
-
-                            if 0 <= adjusted_time <= total_duration:
-                                adjusted_tokens.append(
-                                    f"<|{adjusted_time:.2f}|>"
-                                )
-                                log.debug(
-                                    f"Token {len(all_tokens)}: {time_val} -> {adjusted_time}"
-                                )
+                            adjusted_time = time_val + accumulated_offset
+                            adjusted_tokens.append(f"<|{adjusted_time:.2f}|>")
+                            last_time = time_val
                         else:
                             adjusted_tokens.append(token)
                     except ValueError:
@@ -325,7 +325,6 @@ class MTB_AudioToText:
                     adjusted_tokens.append(token)
 
             all_tokens.extend(adjusted_tokens)
-
             chunk_text = processor.batch_decode(
                 predicted_ids, skip_special_tokens=True
             )[0]
@@ -334,6 +333,7 @@ class MTB_AudioToText:
         detected_language = "en"
         if language == "auto":
             try:
+                log.debug("Detecting language")
                 with torch.no_grad():
                     first_chunk_features = processor(
                         waveform[:chunk_samples],
@@ -341,21 +341,13 @@ class MTB_AudioToText:
                         return_tensors="pt",
                     ).input_features.to(device)
 
-                    predicted_language = model.detect_language(
-                        first_chunk_features
-                    )[0]
-                    detected_language = predicted_language.argmax(-1).item()
-                    lang_tokens = [
-                        t[2:-2]  # Remove <| and |>
-                        for t in processor.tokenizer.vocab.keys()
-                        if t.startswith("<|")
-                        and t.endswith("|>")
-                        and len(t) == 6
-                    ]
-                    if detected_language < len(lang_tokens):
-                        detected_language = lang_tokens[detected_language]
-                    else:
-                        detected_language = "en"
+                    predicted_probs = model.detect_language(first_chunk_features)[0]
+                    language_token = processor.tokenizer.convert_ids_to_tokens(
+                        predicted_probs.argmax(-1).item()
+                    )
+                    detected_language = language_token[2:-2] if language_token.startswith("<|") else "en"
+                    log.debug(f"Detected language: {detected_language}")
+
             except Exception as e:
                 log.warning(f"Language detection failed: {e}")
 
@@ -721,6 +713,7 @@ class MTB_AudioIsolateSpeaker(MtbAudio):
         for chunk in whisper_data["chunks"]:
             if not chunk.get("speakers"):
                 continue
+
             speaker_present = target_speaker in chunk["speakers"]
             if (mode == "isolate" and speaker_present) or (
                 mode == "mute" and not speaker_present
