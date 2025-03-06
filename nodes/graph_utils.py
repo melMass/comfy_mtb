@@ -758,7 +758,7 @@ class MTB_TensorOps:
 
     RETURN_TYPES = ("IMAGE",)
     FUNCTION = "apply"
-    CATEGORY = "tensor_ops"
+    CATEGORY = "mtb/tensor_ops"
 
     def apply(
         self,
