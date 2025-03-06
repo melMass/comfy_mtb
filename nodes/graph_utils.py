@@ -3,6 +3,7 @@ import json
 import urllib.parse
 import urllib.request
 from math import pi
+import re
 
 import comfy.model_management as model_management
 import comfy.utils
