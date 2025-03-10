@@ -543,7 +543,7 @@ class MTB_ColorCorrect:
         adjusted = self.hsv_adjustment(adjusted, hue, saturation, value)
 
         if clamp:
-            adjusted = torch.clamp(image, 0.0, 1.0)
+            adjusted = torch.clamp(adjusted, 0.0, 1.0)
 
         result = (
             adjusted
