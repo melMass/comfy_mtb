@@ -3,6 +3,7 @@ import json
 import urllib.parse
 import urllib.request
 from math import pi
+import re
 
 import comfy.model_management as model_management
 import comfy.utils
@@ -469,9 +470,9 @@ class MTB_AnyToString:
             log.debug(f"Falling back to string conversion of {input}")
             return (str(input),)
 
-
+"""Basic string replacement with regex support."""
 class MTB_StringReplace:
-    """Basic string replacement."""
+    """Basic string replacement with regex support."""
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -480,6 +481,7 @@ class MTB_StringReplace:
                 "string": ("STRING", {"forceInput": True}),
                 "old": ("STRING", {"default": ""}),
                 "new": ("STRING", {"default": ""}),
+                "use_regex": ("BOOLEAN", {"default": False})
             }
         }
 
@@ -487,12 +489,19 @@ class MTB_StringReplace:
     RETURN_TYPES = ("STRING",)
     CATEGORY = "mtb/string"
 
-    def replace_str(self, string: str, old: str, new: str):
+    def replace_str(self, string: str, old: str, new: str, use_regex: bool):
         log.debug(f"Current string: {string}")
         log.debug(f"Find string: {old}")
         log.debug(f"Replace string: {new}")
+        log.debug(f"Use regex: {use_regex}")
 
-        string = string.replace(old, new)
+        if use_regex:
+            try:
+                string = re.sub(old, new, string)
+            except re.error as e:
+                log.error(f"Regex error: {e}")
+        else:
+            string = string.replace(old, new)
 
         log.debug(f"New string: {string}")
 
