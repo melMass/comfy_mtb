@@ -5,16 +5,20 @@ on:
     tags:
       - '*'
 
+permissions:
+  issues: write
+
 jobs:
   publish-node:
     name: Publish Custom Node to registry
     runs-on: ubuntu-latest
+    if: ${{ github.repository_owner == 'melMass' }}
     steps:
       - name: ♻️ Check out code
         uses: actions/checkout@v4
         with:
           submodules: true
       - name: 📦 Publish Custom Node
-        uses: Comfy-Org/publish-node-action@main
+        uses: Comfy-Org/publish-node-action@v1
         with:
           personal_access_token: ${{ secrets.COMFY_REGISTRY_TOKEN }}
