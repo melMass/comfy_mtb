@@ -473,6 +473,26 @@ if IN_COMFY and hasattr(PromptServer, "instance"):
         if not os.path.isfile(file):
             return web.Response(status=404)
 
+        ret_workflow = request.rel_url.query.get("workflow")
+
+        if ret_workflow:
+            image = Image.open(file)
+            prompt = image.info.get("prompt", "")
+            workflow = image.info.get("workflow", "")
+
+            if workflow:
+                workflow = json.loads(workflow)
+
+            if prompt:
+                prompt = json.loads(prompt)
+
+            return web.json_response(
+                {
+                    "prompt": prompt,
+                    "workflow": workflow,
+                }
+            )
+
         preview_info = None
         if "preview" in request.rel_url.query:
             preview_params = request.rel_url.query["preview"].split(";")
