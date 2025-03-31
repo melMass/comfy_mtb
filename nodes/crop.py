@@ -78,14 +78,17 @@ class MTB_UpscaleBboxBy:
         self, bbox: tuple[int, int, int, int], scale: float
     ) -> tuple[tuple[int, int, int, int]]:
         x, y, width, height = bbox
-        # scaled = (x * scale, y * scale, width * scale, height * scale)
-        scaled = (
-            int(x * scale),
-            int(y * scale),
-            int(width * scale),
-            int(height * scale),
-        )
 
+        center_x = x + width // 2
+        center_y = y + height // 2
+
+        new_width = int(width * scale)
+        new_height = int(height * scale)
+
+        new_x = center_x - new_width // 2
+        new_y = center_y - new_height // 2
+
+        scaled = (new_x, new_y, new_width, new_height)
         return (scaled,)
 
 
@@ -372,6 +375,62 @@ class MTB_Uncrop:
         return (pil2tensor(out_images),)
 
 
+class MTB_BBoxForceDimensions:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "bbox": ("BBOX",),
+                "width": ("INT", {"default": 512, "min": 1, "max": 8192}),
+                "height": ("INT", {"default": 512, "min": 1, "max": 8192}),
+            },
+            "optional": {
+                "image": ("IMAGE",),
+            },
+        }
+
+    CATEGORY = "mtb/crop"
+    RETURN_TYPES = ("BBOX",)
+    FUNCTION = "force_dimensions"
+
+    def force_dimensions(
+        self,
+        bbox: tuple[int, int, int, int],
+        width: int,
+        height: int,
+        image: torch.Tensor = None,
+    ) -> tuple[tuple[int, int, int, int]]:
+        x, y, curr_width, curr_height = bbox
+
+        center_x = x + curr_width // 2
+        center_y = y + curr_height // 2
+
+        new_x = center_x - width // 2
+        new_y = center_y - height // 2
+
+        if image is not None:
+            img_height, img_width = image.shape[1:3]
+            x_overflow = max(0, new_x + width - img_width) + min(0, new_x)
+            y_overflow = max(0, new_y + height - img_height) + min(0, new_y)
+            if width > img_width or height > img_height:
+                x_exceed = width - img_width if width > img_width else 0
+                y_exceed = height - img_height if height > img_height else 0
+                raise ValueError(
+                    f"Target bbox dimensions ({width}x{height}) exceed image bounds ({img_width}x{img_height}) "
+                    f"by {x_exceed}px horizontally and {y_exceed}px vertically"
+                )
+
+            if x_overflow > 0 or x_overflow < 0:
+                new_x -= x_overflow
+
+            if y_overflow > 0:
+                new_y -= y_overflow
+            elif y_overflow < 0:
+                new_y -= y_overflow  # Add the negative overflow
+
+        return ((int(new_x), int(new_y), width, height),)
+
+
 __nodes__ = [
     MTB_BboxFromMask,
     MTB_Bbox,
@@ -379,4 +438,5 @@ __nodes__ = [
     MTB_Uncrop,
     MTB_SplitBbox,
     MTB_UpscaleBboxBy,
+    MTB_BBoxForceDimensions,
 ]

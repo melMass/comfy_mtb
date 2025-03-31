@@ -39,9 +39,13 @@ class MTB_StackImages:
             f"{'vertically' if vertical else 'horizontally'}"
         )
 
+        target_device = tensors[0].device
+
         normalized_tensors = [
-            self.normalize_to_rgba(tensor) for tensor in tensors
+            self.normalize_to_rgba(tensor.to(target_device))
+            for tensor in tensors
         ]
+
         max_batch_size = max(tensor.shape[0] for tensor in normalized_tensors)
         normalized_tensors = [
             self.duplicate_frames(tensor, max_batch_size)
@@ -167,25 +171,34 @@ class MTB_PickFromBatch:
                 "image": ("IMAGE",),
                 "from_direction": (["end", "start"], {"default": "start"}),
                 "count": ("INT", {"default": 1}),
-            }
+            },
+            "optional": {
+                "mask": ("MASK",),
+            },
         }
 
-    RETURN_TYPES = ("IMAGE",)
+    RETURN_TYPES = ("IMAGE", "MASK")
     FUNCTION = "pick_from_batch"
     CATEGORY = "mtb/image utils"
 
-    def pick_from_batch(self, image, from_direction, count):
+    def pick_from_batch(self, image, from_direction, count, mask=None):
         batch_size = image.size(0)
 
         # Limit count to the available number of images in the batch
         count = min(count, batch_size)
 
+        selected_masks = None
+
         if from_direction == "end":
             selected_tensors = image[-count:]
+            if mask is not None:
+                selected_masks = mask[-count:]
         else:
             selected_tensors = image[:count]
+            if mask is not None:
+                selected_masks = mask[:count]
 
-        return (selected_tensors,)
+        return (selected_tensors, selected_masks)
 
 
 import folder_paths

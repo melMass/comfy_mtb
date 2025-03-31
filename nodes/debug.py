@@ -2,7 +2,6 @@ import base64
 import io
 import json
 from pathlib import Path
-from typing import Optional
 
 import folder_paths
 import torch
@@ -11,13 +10,66 @@ from ..log import log
 from ..utils import tensor2pil
 
 
+def get_detailed_type_info(obj):
+    type_info = []
+
+    type_name = type(obj).__name__
+    type_info.append(f"Type: {type_name}")
+
+    if isinstance(obj, torch.Tensor):
+        type_info.extend(
+            [
+                f"Shape: {obj.shape}",
+                f"Dtype: {obj.dtype}",
+                f"Device: {obj.device}",
+                f"Requires grad: {obj.requires_grad}",
+                f"Stride: {obj.stride()}",
+                f"Contiguous: {obj.is_contiguous()}",
+            ]
+        )
+    elif isinstance(obj, (list, tuple)):
+        type_info.extend(
+            [
+                f"Length: {len(obj)}",
+                f"Container type: {type_name}",
+            ]
+        )
+        if obj:
+            type_info.append(f"Element type: {type(obj[0]).__name__}")
+    elif isinstance(obj, dict):
+        type_info.extend(
+            [
+                f"Length: {len(obj)}",
+                f"Keys: {list(obj.keys())}",
+            ]
+        )
+    elif hasattr(obj, "__dict__"):
+        attributes = [attr for attr in dir(obj) if not attr.startswith("_")]
+        type_info.append(f"Attributes: {attributes}")
+
+    return type_info
+
+
 # region processors
-def process_tensor(tensor):
+def process_tensor(tensor: torch.Tensor, as_type=False):
     log.debug(f"Tensor: {tensor.shape}")
+
+    if as_type:
+        return {
+            "text": [f"Tensor of shape {tensor.shape} of type {tensor.dtype}"]
+        }
+
+    is_mask = len(tensor.shape) == 3
+
+    if is_mask:
+        tensor = tensor.unsqueeze(-1).repeat(1, 1, 1, 3)
 
     image = tensor2pil(tensor)
     b64_imgs = []
     for im in image:
+        if is_mask:
+            im = im.convert("L")
+
         buffered = io.BytesIO()
         im.save(buffered, format="PNG")
         b64_imgs.append(
@@ -28,10 +80,15 @@ def process_tensor(tensor):
     return {"b64_images": b64_imgs}
 
 
-def process_list(anything):
+def process_list(anything, as_type=False):
     text = []
     if not anything:
         return {"text": []}
+
+    if as_type:
+        type_info = get_detailed_type_info(anything)
+        type_info.extend(get_detailed_type_info(anything[0]))
+        return {"text": type_info}
 
     first_element = anything[0]
     if (
@@ -54,25 +111,41 @@ def process_list(anything):
     return {"text": text}
 
 
-def process_dict(anything):
+def process_dict(anything, as_type=False):
     text = []
+    if as_type:
+        return {"text": get_detailed_type_info(anything)}
+
     if "samples" in anything:
         is_empty = (
             "(empty)" if torch.count_nonzero(anything["samples"]) == 0 else ""
         )
         text.append(f"Latent Samples: {anything['samples'].shape} {is_empty}")
 
+    elif "waveform" in anything:
+        is_empty = (
+            "(empty) " if torch.count_nonzero(anything["samples"]) == 0 else ""
+        )
+
+        text.append(
+            f"Audio Samples: {anything['waveform'].shape}{is_empty} | sample rate {anything['sample_rate']}"
+        )
+
     else:
+        log.debug(f"Unhandled dict: {anything.keys()}")
         text.append(json.dumps(anything, indent=2))
 
     return {"text": text}
 
 
-def process_bool(anything):
+def process_bool(anything, as_type=False):
     return {"text": ["True" if anything else "False"]}
 
 
-def process_text(anything):
+def process_text(anything, as_type=False):
+    if as_type:
+        return {"text": get_detailed_type_info(anything)}
+
     return {"text": [str(anything)]}
 
 
@@ -89,6 +162,7 @@ class MTB_Debug:
     def INPUT_TYPES(cls):
         return {
             "required": {"output_to_console": ("BOOLEAN", {"default": False})},
+            "optional": {"as_detailed_types": ("BOOLEAN", {"default": False})},
         }
 
     RETURN_TYPES = ()
@@ -96,29 +170,25 @@ class MTB_Debug:
     CATEGORY = "mtb/debug"
     OUTPUT_NODE = True
 
-    def do_debug(self, output_to_console: bool, **kwargs):
-        output = {
-            "ui": {"b64_images": [], "text": []},
-            # "result": ("A"),
-        }
+    def do_debug(
+        self, output_to_console: bool, as_detailed_types: bool, **kwargs
+    ):
+        output = {"ui": {"items": []}}
 
-        processors = {
-            torch.Tensor: process_tensor,
-            list: process_list,
-            dict: process_dict,
-            bool: process_bool,
-        }
         if output_to_console:
             for k, v in kwargs.items():
                 log.info(f"{k}: {v}")
 
-        for anything in kwargs.values():
+        for input_name, anything in kwargs.items():
             processor = processors.get(type(anything), process_text)
 
-            processed_data = processor(anything)
+            processed = processor(anything, as_detailed_types)
 
-            for ui_key, ui_value in processed_data.items():
-                output["ui"][ui_key].extend(ui_value)
+            item = {
+                "input": input_name,
+                **processed,
+            }
+            output["ui"]["items"].append(item)
 
         return output
 
@@ -154,9 +224,9 @@ class MTB_SaveTensors:
     def save(
         self,
         filename_prefix,
-        image: Optional[torch.Tensor] = None,
-        mask: Optional[torch.Tensor] = None,
-        latent: Optional[torch.Tensor] = None,
+        image: torch.Tensor | None = None,
+        mask: torch.Tensor | None = None,
+        latent: torch.Tensor | None = None,
     ):
         (
             full_output_folder,
@@ -187,5 +257,12 @@ class MTB_SaveTensors:
 
         return f"{filename_prefix}_{counter:05}"
 
+
+processors = {
+    torch.Tensor: process_tensor,
+    list: process_list,
+    dict: process_dict,
+    bool: process_bool,
+}
 
 __nodes__ = [MTB_Debug, MTB_SaveTensors]
