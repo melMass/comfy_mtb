@@ -600,9 +600,9 @@ class NotePlus extends LiteGraph.LGraphNode {
     // this.updateHTML(this.html_widget.value) // widget is populated here since we called super
     // this.updateCSS(this.css_widget.value)
   }
-  onRemoved() {
-    infoLogger('Node removed', this.uuid)
-  }
+  // onRemoved() {
+  //   infoLogger('Node removed', this?.uuid)
+  // }
   getExtraMenuOptions() {
     const currentMode = this.edit_mode_widget.value
     const newMode = currentMode === 'html' ? 'markdown' : 'html'

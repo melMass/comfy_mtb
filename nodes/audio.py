@@ -341,11 +341,17 @@ class MTB_AudioToText(MtbAudio):
                         return_tensors="pt",
                     ).input_features.to(device)
 
-                    predicted_probs = model.detect_language(first_chunk_features)[0]
+                    predicted_probs = model.detect_language(
+                        first_chunk_features
+                    )[0]
                     language_token = processor.tokenizer.convert_ids_to_tokens(
                         predicted_probs.argmax(-1).item()
                     )
-                    detected_language = language_token[2:-2] if language_token.startswith("<|") else "en"
+                    detected_language = (
+                        language_token[2:-2]
+                        if language_token.startswith("<|")
+                        else "en"
+                    )
                     log.debug(f"Detected language: {detected_language}")
 
             except Exception as e:
@@ -517,7 +523,6 @@ class MTB_AudioCut(MtbAudio):
 
 class MTB_AudioStack(MtbAudio):
     """Stack/Overlay audio inputs (dynamic inputs).
-
     - pad audios to the longest inputs.
     - resample audios to the highest sample rate in the inputs.
     - convert them all to stereo if one of the inputs is.
@@ -563,7 +568,6 @@ class MTB_AudioStack(MtbAudio):
 
 class MTB_AudioSequence(MtbAudio):
     """Sequence audio inputs (dynamic inputs).
-
     - adding silence_duration between each segment
       can now also be negative to overlap the clips, safely bound
       to the the input length.
@@ -711,10 +715,10 @@ class MTB_AudioIsolateSpeaker(MtbAudio):
         )
 
         for chunk in whisper_data["chunks"]:
-            if not chunk.get("speakers"):
+            if not chunk.get("speaker"):
                 continue
 
-            speaker_present = target_speaker in chunk["speakers"]
+            speaker_present = target_speaker in chunk["speaker"]
             if (mode == "isolate" and speaker_present) or (
                 mode == "mute" and not speaker_present
             ):
@@ -787,12 +791,13 @@ class MTB_ProcessWhisperDiarization:
             )
 
         pipeline = Pipeline.from_pretrained(
-            "pyannote/speaker-diarization@2.1", use_auth_token=True
-        ).to(device)
+            "pyannote/speaker-diarization-3.1", use_auth_token=None
+        )
+        pipeline.to(torch.device(device))
         with ProgressHook() as hook:
             diarization = pipeline(
                 {
-                    "waveform": audio["waveform"],
+                    "waveform": audio["waveform"][0],
                     "sample_rate": audio["sample_rate"],
                 },
                 num_speakers=num_speakers,
@@ -825,7 +830,7 @@ class MTB_ProcessWhisperDiarization:
         ).to(device)
 
         diarization = model.diarize(
-            audio=audio["waveform"],
+            audio=audio["waveform"][0],
             sample_rate=audio["sample_rate"],
             num_speakers=num_speakers,
         )

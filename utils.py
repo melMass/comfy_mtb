@@ -15,7 +15,9 @@ from enum import Enum
 from functools import reduce
 from pathlib import Path
 from typing import TypeVar
+from urllib.parse import urlparse
 
+import comfy.utils
 import folder_paths
 import numpy as np
 import numpy.typing as npt
@@ -858,6 +860,62 @@ def tiles_split(img, tile_size, stride_size):
 
 
 # region MODEL Utilities
+
+
+def download_model(model_url: str, destination: str):
+    if isinstance(model_url, list):
+        for url in model_url:
+            download_model(url, destination)
+        return
+
+    filename = Path(urlparse(model_url).path).name
+
+    if "drive.google.com" in model_url:
+        try:
+            import gdown
+        except ImportError:
+            log.info("Installing gdown")
+            subprocess.check_call(
+                [
+                    sys.executable,
+                    "-m",
+                    "pip",
+                    "install",
+                    "gdown",
+                ]
+            )
+            import gdown
+
+        if "/folders/" in model_url:
+            # download folder
+            try:
+                gdown.download_folder(
+                    model_url, output=destination, resume=True
+                )
+            except TypeError:
+                gdown.download_folder(model_url, output=destination)
+
+            return
+        # download from google drive
+        gdown.download(model_url, destination, quiet=False, resume=True)
+        return True
+    response = requests.get(model_url, stream=True)
+    total_size = int(response.headers.get("content-length", 0))
+
+    destination_path = get_model_path(destination, filename)
+    destination_path.parent.mkdir(exist_ok=True)
+
+    pbar = comfy.utils.ProgressBar(total_size)
+    with open(destination_path, "wb") as file:
+        for data in response.iter_content(chunk_size=4096):
+            file.write(data)
+            pbar.update(len(data))
+
+    log.info(
+        f"Downloaded model from {model_url} to {destination_path}",
+    )
+
+
 def download_antelopev2():
     antelopev2_url = (
         "https://drive.google.com/uc?id=18wEUfMNohBJ4K3Ly5wpTejPfDzp-8fI8"

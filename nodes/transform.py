@@ -57,6 +57,14 @@ class MTB_TransformImage:
                     ],
                     {"default": "bilinear"},
                 ),
+                "stretch_x": (
+                    "FLOAT",
+                    {"default": 1.0, "min": 0.001, "max": 10.0, "step": 0.01},
+                ),
+                "stretch_y": (
+                    "FLOAT",
+                    {"default": 1.0, "min": 0.001, "max": 10.0, "step": 0.01},
+                ),
             },
         }
 
@@ -75,6 +83,8 @@ class MTB_TransformImage:
         border_handling="edge",
         constant_color=None,
         filter_type="nearest",
+        stretch_x=1.0,
+        stretch_y=1.0,
     ):
         filter_map = {
             "nearest": Image.NEAREST,
@@ -91,7 +101,7 @@ class MTB_TransformImage:
         angle = int(angle)
 
         log.debug(
-            f"Zoom: {zoom} | x: {x}, y: {y}, angle: {angle}, shear: {shear}"
+            f"Zoom: {zoom} | x: {x}, y: {y}, angle: {angle}, shear: {shear} | stretch_x: {stretch_x}, stretch_y: {stretch_y}"
         )
 
         if image.size(0) == 0:
@@ -130,23 +140,54 @@ class MTB_TransformImage:
 
         for img in tensor2pil(image):
             img = TF.pad(
-                img,  # transformed_frame,
+                img,
                 padding=padding,
                 padding_mode=border_handling,
                 fill=constant_color or 0,
             )
 
-            img = cast(
-                Image.Image,
-                TF.affine(
-                    img,
-                    angle=angle,
-                    scale=zoom,
-                    translate=[x, y],
-                    shear=shear,
-                    interpolation=resampling_filter,
-                ),
-            )
+            if stretch_x != 1.0 or stretch_y != 1.0:
+                img = cast(
+                    Image.Image,
+                    TF.affine(
+                        img,
+                        angle=angle,
+                        scale=zoom,
+                        translate=[x, y],
+                        shear=shear,
+                        interpolation=resampling_filter,
+                    ),
+                )
+
+                width, height = img.size
+                center = (width // 2, height // 2)
+
+                stretch_x_factor = 1.0 / stretch_x
+                stretch_y_factor = 1.0 / stretch_y
+
+                matrix = [
+                    stretch_x_factor, 0, center[0] - center[0] * stretch_x_factor,
+                    0, stretch_y_factor, center[1] - center[1] * stretch_y_factor
+                ]
+
+                img = img.transform(
+                    img.size,
+                    Image.AFFINE,
+                    matrix,
+                    resampling_filter
+                )
+            else:
+                img = cast(
+                    Image.Image,
+                    TF.affine(
+                        img,
+                        angle=angle,
+                        scale=zoom,
+                        translate=[x, y],
+                        shear=shear,
+                        interpolation=resampling_filter,
+                    ),
+                )
 
             left = abs(padding[0])
             upper = abs(padding[1])
