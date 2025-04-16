@@ -48,7 +48,7 @@ class MTB_BatchFloatMath:
         for v in vals:
             if len(v) != ref_count:
                 raise ValueError(
-                    f"All values must have the same length (current: {len(v)}, ref: {ref_count}"
+                    f"All values must have the same length (current: {len(v)}, ref: {ref_count})"
                 )
 
         match operation:
@@ -182,35 +182,72 @@ class MTB_ImageBatchToSublist:
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "tensor": ("IMAGE",),
                 "sub_batch_size": (
                     "INT",
                     {"default": 1, "min": 1, "max": 1000, "step": 1},
                 ),
-            }
+            },
+            "optional": {
+                "image": ("IMAGE",),
+                "mask": ("MASK",),
+            },
         }
 
-    RETURN_TYPES = ("IMAGE",)
-    OUTPUT_IS_LIST = (True,)
+    RETURN_TYPES = ("IMAGE", "MASK", "INT")
+    RETURN_NAMES = ("image_list", "mask_list", "item_count")
+
+    OUTPUT_IS_LIST = (True, True)
     FUNCTION = "split_batch"
     CATEGORY = "batch_processing"
 
-    def split_batch(self, tensor: torch.Tensor, sub_batch_size: int):
-        batch_size = tensor.shape[0]
+    def split_batch(
+        self,
+        sub_batch_size: int,
+        image: torch.Tensor | None = None,
+        mask: torch.Tensor | None = None,
+    ):
+        if image is None and mask is None:
+            raise ValueError(
+                "You must either pass mask or image, none received"
+            )
+
+        image_count = 0
+        if image is not None:
+            image_count = image.size(0)
+
+        mask_count = 0
+        if mask is not None:
+            mask_count = mask.size(0)
+
+        if image_count > 0 and mask_count > 0 and mask_count != image_count:
+            raise ValueError(
+                f"When providing image and mask, batch size must match (got {mask.size(0)} mask and {image.size(0)} images)"
+            )
+
+        batch_size = max(image_count, mask_count)
+
         num_full_batches = batch_size // sub_batch_size
-        sub_batches = []
+        im_batches = []
+        mask_batches = []
 
         for i in range(num_full_batches):
             start_idx = i * sub_batch_size
             end_idx = start_idx + sub_batch_size
-            sub_batches.append(tensor[start_idx:end_idx, ...])
+            if image_count > 0:
+                im_batches.append(image[start_idx:end_idx, ...])
 
-        # remains
+            if mask_count > 0:
+                mask_batches.append(mask[start_idx:end_idx, ...])
+
         if batch_size % sub_batch_size != 0:
             remaining_start = num_full_batches * sub_batch_size
-            sub_batches.append(tensor[remaining_start:, ...])
+            if image_count > 0:
+                im_batches.append(image[remaining_start:, ...])
 
-        return (sub_batches,)
+            if mask_count > 0:
+                mask_batches.append(mask[remaining_start:, ...])
+
+        return (im_batches, mask_batches, len(im_batches))
 
 
 class MTB_SublistToImageBatch:
