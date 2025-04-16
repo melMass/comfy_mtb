@@ -403,7 +403,7 @@ def render_table(table_dict: dict[str, Any], sort=True, title=None):
             if "dependencies" in item:
                 table_rows += f"<tr><td>{name}</td><td>"
                 table_rows += (
-                    f"{dependencies_button(name,item['dependencies'])}"
+                    f"{dependencies_button(name, item['dependencies'])}"
                 )
 
                 table_rows += "</td></tr>"

@@ -95,6 +95,7 @@ export def "comfy update" [
 
   # preparing root for pull
   if not $clean {
+    git checkout pyproject.toml
     cd $models
     # find and store all symlinks
     let links = (ls -la |
@@ -150,7 +151,10 @@ export def "comfy update" [
   log info "Linking back the models"
 
   if not $clean {
+    rm pyproject.toml
+    cp pyproject-mel.toml pyproject.toml
     cd $models
+
     # resymlink them
     open links.nuon | each {|p| link -a $p.target $p.name }
   } else {
@@ -211,6 +215,7 @@ def --env path-add [pth] {
 
 
 export-env {
+  $env.PYTHONUTF8 = 1
   $env.COMFY_MTB = ("." | path expand)
   # $env.CUDA_ROOT =  'C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.1\'
 

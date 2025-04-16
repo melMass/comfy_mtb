@@ -409,7 +409,7 @@ def main():
 
     args = parser.parse_args()
 
-    print_formatted(f"Detected environment: {apply_color(mode,'cyan')}")
+    print_formatted(f"Detected environment: {apply_color(mode, 'cyan')}")
 
     if args.path:
         clone_dir = Path(args.path)
