@@ -1,14 +1,18 @@
+import os
+import random
 from io import BytesIO
+from pathlib import Path
 from typing import Literal
 
 import comfy.utils
 import cv2
+import folder_paths
 import numpy as np
 import torch
 from PIL import Image
 
 from ..log import log
-from ..utils import EASINGS, apply_easing, pil2tensor
+from ..utils import EASINGS, apply_easing, glob_multiple, pil2tensor
 from .transform import MTB_TransformImage
 
 
@@ -1377,6 +1381,146 @@ class MTB_BatchShake:
         return (shaken_images, x_translations, y_translations, rotations)
 
 
+class MTB_BatchFromFolder:
+    """Load images from a folder with options for latest, oldest, or random selection."""
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "enable": (
+                    "BOOLEAN",
+                    {
+                        "default": True,
+                        "tooltip": "Enable or disable the node. If disabled, returns passthrough_image or an empty tensor.",
+                    },
+                ),
+                "folder_path": (
+                    "STRING",
+                    {
+                        "default": "",
+                        "tooltip": "Path to the folder containing images. Relative paths are resolved to the ComfyUI output directory.",
+                    },
+                ),
+                "mode": (
+                    ["latest", "oldest", "random"],
+                    {
+                        "default": "latest",
+                        "tooltip": "How to select images: latest, oldest, or random.",
+                    },
+                ),
+                "count": (
+                    "INT",
+                    {
+                        "default": 10,
+                        "min": 1,
+                        "max": 1000,
+                        "tooltip": "Number of images to load from the folder.",
+                    },
+                ),
+                "filter": (
+                    "STRING",
+                    {
+                        "default": "*",
+                        "tooltip": "Glob filter for image filenames (e.g. *.png).",
+                    },
+                ),
+            },
+            "optional": {
+                "passthrough_image": (
+                    "IMAGE",
+                    {
+                        "tooltip": "If provided and node is disabled, this image is passed through instead of returning an empty tensor."
+                    },
+                ),
+            },
+        }
+
+    RETURN_TYPES = ("IMAGE",)
+    RETURN_NAMES = ("images",)
+    CATEGORY = "mtb/batch"
+    FUNCTION = "load_from_folder"
+
+    def load_from_folder(
+        self,
+        enable: bool,
+        folder_path: str,
+        mode: str,
+        count: int,
+        filter: str,
+        passthrough_image=None,
+    ):
+        """Load images from a folder with the specified selection mode."""
+        if not enable:
+            if passthrough_image is not None:
+                log.debug(
+                    "MTB_BatchFromFolder: Using passthrough image (disabled)"
+                )
+                return (passthrough_image,)
+            log.debug(
+                "MTB_BatchFromFolder: Disabled and no passthrough_image provided, returning empty tensor"
+            )
+            return (torch.zeros(0, 0, 0, 3),)
+
+        path_obj = Path(folder_path)
+        if not path_obj.is_absolute():
+            output_dir = Path(folder_paths.get_output_directory())
+            path_obj = output_dir / folder_path
+            path_obj = path_obj.resolve()
+
+        if not path_obj.exists():
+            log.error(f"Folder path does not exist: {path_obj}")
+            return (torch.zeros(0, 0, 0, 3),)
+
+        if not path_obj.is_dir():
+            log.error(f"Path is not a directory: {path_obj}")
+            return (torch.zeros(0, 0, 0, 3),)
+
+        patterns = [filter] if filter else ["*"]
+        files = glob_multiple(path_obj, patterns)
+
+        image_extensions = [".png", ".jpg", ".jpeg", ".bmp", ".webp", ".tiff"]
+        image_files = [
+            f for f in files if f.suffix.lower() in image_extensions
+        ]
+
+        if not image_files:
+            log.warning(
+                f"No image files found in {path_obj} with filter {filter}"
+            )
+            return (torch.zeros(0, 0, 0, 3),)
+
+        if mode == "latest":
+            image_files.sort(key=lambda x: os.path.getmtime(x), reverse=True)
+        elif mode == "oldest":
+            image_files.sort(key=lambda x: os.path.getmtime(x))
+        elif mode == "random":
+            random.shuffle(image_files)
+
+        selected_files = image_files[:count]
+
+        if len(selected_files) < count:
+            log.warning(
+                f"Requested {count} images but only found {len(selected_files)}"
+            )
+
+        loaded_images = []
+        for file_path in selected_files:
+            try:
+                img = Image.open(file_path)
+                if img.mode != "RGB":
+                    img = img.convert("RGB")
+                loaded_images.append(img)
+            except Exception as e:
+                log.error(f"Error loading image {file_path}: {e}")
+
+        if not loaded_images:
+            log.error("Failed to load any images")
+            return (torch.zeros(0, 0, 0, 3),)
+
+        return (pil2tensor(loaded_images),)
+
+
 __nodes__ = [
     MTB_Batch2dTransform,
     MTB_BatchFloat,
@@ -1385,6 +1529,7 @@ __nodes__ = [
     MTB_BatchFloatFit,
     MTB_BatchFloatMath,
     MTB_BatchFloatNormalize,
+    MTB_BatchFromFolder,
     MTB_BatchMake,
     MTB_BatchMerge,
     MTB_BatchSequence,
