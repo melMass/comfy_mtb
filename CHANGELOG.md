@@ -3,10 +3,193 @@
 This is an automated changelog based on the commits in this repository.
 
 Check the notes in the [releases](https://github.com/melMass/comfy_mtb/releases) for more information.
-## [main] - 2024-03-07
+## [main] - 2025-04-16
 
 ### Bug Fixes
 
+- 🐛 note+ breaking wfs ([af42134](https://github.com/melMass/comfy_mtb/commit/af421340286b234e4c0cfcd4143a9d8726ebf3d1))
+- 🐛 ColorCorrect clamp issue ([a85e57b](https://github.com/melMass/comfy_mtb/commit/a85e57b18c7d3c765131873ffff523244ca9be73))
+- 🐛 Whisper chunks processing ([8bf3545](https://github.com/melMass/comfy_mtb/commit/8bf3545fec5b2a180607d40394b025a1e09c14b6))
+- 🐛 stackImages move to device ([d87e52e](https://github.com/melMass/comfy_mtb/commit/d87e52ea2c112fd95f257dcd6a54a5db77a34fc3))
+- 🐛 bbox upscale from center ([55261bd](https://github.com/melMass/comfy_mtb/commit/55261bda7c33d088b62c5483e4483201e5a9ce77))
+- 🐛 add MASK support for PickFromBatch ([0d264b9](https://github.com/melMass/comfy_mtb/commit/0d264b90a78d5a6719fb3ce71f4e9a642db4c950))
+- 🐛 use addDOMWidget for Debug node ([46af602](https://github.com/melMass/comfy_mtb/commit/46af6027d6c87d0c29b8bb0fd1cc1dbdae993629))
+- 🐛 use "modern" notation in toDevice ([b7ca8ed](https://github.com/melMass/comfy_mtb/commit/b7ca8ed1c6e117b71afd7696f55dcc3dbd5bad08))
+- 🐛 handle missing submodules ([d61da30](https://github.com/melMass/comfy_mtb/commit/d61da304099ff5e4528e4beb1ecc2eb83cabaaa1))
+- 🐛 add warnings about what each IO mode can do ([6608c0b](https://github.com/melMass/comfy_mtb/commit/6608c0b6d1cf8f7a9901214096f8c78bfe17056f))
+- 🐛 soft deprecate compression h264 ([a757e1c](https://github.com/melMass/comfy_mtb/commit/a757e1c98b2abbd2221a15b77e89d772e02d1d82))
+- 🐛 limit packages allowed to be installed from API ([d6e004c](https://github.com/melMass/comfy_mtb/commit/d6e004cce2c32f8e48b868e66b89f82da4887dc3))
+- 🐛 ensure default settings (io sidebar) ([ed17fa2](https://github.com/melMass/comfy_mtb/commit/ed17fa2ef4688aadf305a6d51b32c13a0efd22d6))
+- 🐛 spawn colour picker at pointer location ([e5482ae](https://github.com/melMass/comfy_mtb/commit/e5482aee5e3de07e8f055b3edc0fccc0e0f75c14)) by [@webfiltered](https://github.com/webfiltered) in [#223](https://github.com/melMass/comfy_mtb/pull/223)
+- 🐛 i/o sidebar for custom paths ([62469a4](https://github.com/melMass/comfy_mtb/commit/62469a4dd96e32509171aad74fcae8d2bb0ec593))
+
+### Features
+
+- ⚡ add BatchFromFolder ([9618513](https://github.com/melMass/comfy_mtb/commit/96185132b83c182032e9f6e822561eb5699af517))
+- ⚡ add use_normalized to TransformBatch2D ([d4a31bf](https://github.com/melMass/comfy_mtb/commit/d4a31bf19c2863df8dfc4cb9a3cd6683304949e4))
+- [**breaking**] ⚡ add support for masks in BatchFLoatMath ([fc7ba08](https://github.com/melMass/comfy_mtb/commit/fc7ba084f6ed7880e88e28eb448ab0bd7d796824))
+- ✨ add use_normalized to TransformImage ([4516aa9](https://github.com/melMass/comfy_mtb/commit/4516aa9cb4fcb12c946999d6dcc1501cc09011a3))
+- ✨ add regex support for String Replace ([78946b0](https://github.com/melMass/comfy_mtb/commit/78946b0fa3c3cf5dfcee8c7c4c0921b722d09d1e)) by [@poetryiii](https://github.com/poetryiii) in [#233](https://github.com/melMass/comfy_mtb/pull/233)
+- ✨ update diarization to 3.1 ([c30408f](https://github.com/melMass/comfy_mtb/commit/c30408f96d4df9c7d35545654401162090a74305)) by [@numz](https://github.com/numz)
+- ✨ add "workflow" query to /mtb/view endpoint ([eb7cf89](https://github.com/melMass/comfy_mtb/commit/eb7cf89f173b2342b04e7b61dca3d12cfaf65bdb))
+- ✨ add stretch_x and stretch_y to TransformImage ([22fce6f](https://github.com/melMass/comfy_mtb/commit/22fce6fdda135cbb1f1aad42c86aae166cba81b5))
+- ✨ add AudioDuration node ([f471497](https://github.com/melMass/comfy_mtb/commit/f47149746ac1e418cda2007c38aafbb03946ce22))
+- ✨ basic whisper nodes ([83cfc5c](https://github.com/melMass/comfy_mtb/commit/83cfc5c723d1a572af67ad14b52be4f8371a3c5f))
+- ✨ add BboxForDimensions ([9405784](https://github.com/melMass/comfy_mtb/commit/940578476438eaa6a42e0056f1b7b319ee585334))
+- ✨ improve the debug node ([cf7a9c4](https://github.com/melMass/comfy_mtb/commit/cf7a9c41e81e8dd461ab9dfa3c05bb8e2cdf2a67))
+- ✨ add BatchImageToSublist and counterpart ([00173fa](https://github.com/melMass/comfy_mtb/commit/00173fa3fbca4c5b1ff3016cc5139705ce61ec20))
+- ✨ add TensorOps ([a8cf465](https://github.com/melMass/comfy_mtb/commit/a8cf4650ff5cbd4975ef954b5829c772ee53250c))
+- ✨ live update outputs grid ([7f7a62f](https://github.com/melMass/comfy_mtb/commit/7f7a62f832c865a13b9181daee79d3cfc21581e2)) by [@christian-byrne](https://github.com/christian-byrne) in [#229](https://github.com/melMass/comfy_mtb/pull/229)
+- ✨ add SaveImage passthrough ([0eeb707](https://github.com/melMass/comfy_mtb/commit/0eeb707f34f51142def8e0ef7d351ee5028cb5e0))
+- ✨ add filtering to TransformImage ([bae26a0](https://github.com/melMass/comfy_mtb/commit/bae26a07fb02dd518c621eba28986a51c5d086bc))
+- ✨ add support for video in I/O sidebar ([c92d99a](https://github.com/melMass/comfy_mtb/commit/c92d99a8a37a64cfc285296f21452c4927a22774))
+- ✨ add an extra static input to Stack Images ([3f6d082](https://github.com/melMass/comfy_mtb/commit/3f6d08294096918d50101a19083f9134305cc8c9)) in [#222](https://github.com/melMass/comfy_mtb/pull/222)
+- ✨ add support for subdirs (i/o sidebar) ([52bd76e](https://github.com/melMass/comfy_mtb/commit/52bd76e19c8bd7e72986900e5dbfade0457ef7e0))
+- ✨ add Batch Sequence Nodes ([827c64c](https://github.com/melMass/comfy_mtb/commit/827c64c43d52ebfb8acd2e5c4491c4b66e6b8f40))
+- ✨ add support for more formats (I/O sidebar) ([8c629be](https://github.com/melMass/comfy_mtb/commit/8c629bee186b5ac991058018a788e4a836eef630))
+
+### Miscellaneous Tasks
+
+- 🧹 bump version ([d093d76](https://github.com/melMass/comfy_mtb/commit/d093d76efd87474a3ca82858147255038060ab17))
+- 🧹 small adjustments ([01107c4](https://github.com/melMass/comfy_mtb/commit/01107c45f8539ff7c579e08e2a9075d93781b9a2))
+- 🤖 update publish action workflow with permissions and version constraints ([0e48aaa](https://github.com/melMass/comfy_mtb/commit/0e48aaa3e4f1e440a5d7ab42df56b728ced03aca)) by [@robinjhuang](https://github.com/robinjhuang) in [#237](https://github.com/melMass/comfy_mtb/pull/237)
+- 🧹 basic standalone detection ([3a25526](https://github.com/melMass/comfy_mtb/commit/3a25526e818a1af8f886d2ad5c27101c4a0caa8b))
+- 🧹 rename type ([edcb3da](https://github.com/melMass/comfy_mtb/commit/edcb3da08bff66f9adcef8dcd37c3925e64d0135))
+- 🧹 update env file ([fc908ba](https://github.com/melMass/comfy_mtb/commit/fc908ba0a528523b7c1e37e34fb32f430746de0d))
+- 🧹 dev ([9a94371](https://github.com/melMass/comfy_mtb/commit/9a943714aada107bfd236e00fa1063872db7a834))
+- 🧹 apply formatting ([58ae89f](https://github.com/melMass/comfy_mtb/commit/58ae89f8e0f0f8b42825722a6aebc04da39847b1))
+
+### Refactor
+
+- 📦 add model autodownload ([147edcf](https://github.com/melMass/comfy_mtb/commit/147edcfcbc09dd27a0c787f9da568fb850c3308a))
+
+### Wip
+
+- 🚧 loop drawing ([ead4b34](https://github.com/melMass/comfy_mtb/commit/ead4b34e6dd03ea4ed309b246ef31c995325aa08))
+
+## New Contributors
+* [@poetryiii](https://github.com/poetryiii) made their first contribution in [#233](https://github.com/melMass/comfy_mtb/pull/233)
+* [@numz](https://github.com/numz) made their first contribution in [#](https://github.com/melMass/comfy_mtb/pull/)
+* [@webfiltered](https://github.com/webfiltered) made their first contribution in [#223](https://github.com/melMass/comfy_mtb/pull/223)
+## [0.2.0] - 2024-12-08
+
+### Bug Fixes
+
+- 🐛 remove mtb sidebar ([b0d52f7](https://github.com/melMass/comfy_mtb/commit/b0d52f73051368df6de2d1e10ad28ca56df72803))
+- 🐛 always enable the I/O sidebar ([ec1cb1a](https://github.com/melMass/comfy_mtb/commit/ec1cb1ac17d14670aa756dfb1ae7542397b12559))
+- 🐛 ui shifts on animation builder ([ecbb220](https://github.com/melMass/comfy_mtb/commit/ecbb220de6a05f2e506ec43f2b786be983166157))
+- 🐛 category for settings ([b6fa571](https://github.com/melMass/comfy_mtb/commit/b6fa571fd2096ace60d03cab42dba9ca37d0cb27)) in [#211](https://github.com/melMass/comfy_mtb/pull/211)
+- 🐛 new UI issues ([f272526](https://github.com/melMass/comfy_mtb/commit/f272526bfc5da95e95d42cb4c613a0b9585b2577))
+- 🐛 disable old BOOL widget (legacy) ([8596b81](https://github.com/melMass/comfy_mtb/commit/8596b8184edb484c907475a77ac1dc9e4a5c92af))
+- 🐛 pass ONNX providers explicitely ([43092e4](https://github.com/melMass/comfy_mtb/commit/43092e44a4ea17f90fcfb12372da634fe4b79557))
+- 🐛 typo in mtb_widgets error catch ([80b5a0c](https://github.com/melMass/comfy_mtb/commit/80b5a0ca7459763e7662421bccd8636976eefddd)) by [@christian-byrne](https://github.com/christian-byrne) in [#197](https://github.com/melMass/comfy_mtb/pull/197)
+- 🐛 doc widget sidebar offset in the new ui ([81b3bc1](https://github.com/melMass/comfy_mtb/commit/81b3bc1651f06ad2fa7938f810d3f406f5e7c41c))
+- 🐛 don't fallback to eval ([997d2fb](https://github.com/melMass/comfy_mtb/commit/997d2fb13af6aadf36873ea2ea3317e56f405aef))
+- 🐛 rework main utils ([c99b081](https://github.com/melMass/comfy_mtb/commit/c99b0812ab4a4183ef9298fb8a7c954bc7c858b2))
+- 🐛 MaskToImage ([821a0ef](https://github.com/melMass/comfy_mtb/commit/821a0ef42735a0a97ab82be22a4fdc67c9cfc80e))
+
+### Documentation
+
+- 📚 update wiki ([e17c6e2](https://github.com/melMass/comfy_mtb/commit/e17c6e29f5111bf5085b1fe6f764cfd1aae709f2))
+- 📚 remove link ([5bc125d](https://github.com/melMass/comfy_mtb/commit/5bc125d2f08470c8900dfd89deca721835848917))
+- 📚 clean readme ([333f646](https://github.com/melMass/comfy_mtb/commit/333f646ab1959d2c944fb046275cc93a545d557c))
+
+### Features
+
+- ✨ add h264 compression node ([e32d1e0](https://github.com/melMass/comfy_mtb/commit/e32d1e02df5e3a9351f829513f7ee3ffb2934be4))
+- ✨ add postshot nodes ([27e03fa](https://github.com/melMass/comfy_mtb/commit/27e03fa23efffda461c6975b15fe3964de476cb3))
+- ✨ improve the I/O sidebar ([cd9e614](https://github.com/melMass/comfy_mtb/commit/cd9e614b1a385d6b06eacfaad62def1d69f09808)) in [#193](https://github.com/melMass/comfy_mtb/pull/193)
+- ✨ add UpscaleBBoxBy ([74af5c6](https://github.com/melMass/comfy_mtb/commit/74af5c6499ef5dd73ce66c4c21b8c3507d69b037))
+- ✨ simplified sidebar and backend ([22f7c30](https://github.com/melMass/comfy_mtb/commit/22f7c3037345a866c9ff0b06f6689748021cee63))
+- ✨ add Interpolate Condition ([0133fb9](https://github.com/melMass/comfy_mtb/commit/0133fb93bc944d0dd7593b89b36e5b2676d9397a))
+- ✨ dump of wip things... ([cf7d305](https://github.com/melMass/comfy_mtb/commit/cf7d30507e7e449c4489e6a1ca159d3d0486bc55))
+- ✨ use the new parser for documentations ([4e593bb](https://github.com/melMass/comfy_mtb/commit/4e593bb30be561e39f1790e3514f60bb39e5a261))
+- ✨ add @mtb/markdown-parser bundles ([097ca33](https://github.com/melMass/comfy_mtb/commit/097ca33b8e7b27148e183e91712dc34d98d1a69b))
+- ✨ add VitMatte nodes ([896a025](https://github.com/melMass/comfy_mtb/commit/896a025006f9c7809c5e0776393a28f908be8950))
+- ✨ add ColorCorrectGPU ([9651a70](https://github.com/melMass/comfy_mtb/commit/9651a7034120589b059329b21688708e42772453))
+- ✨ add Swap FG/BG colors to MaskToImage ([57683c3](https://github.com/melMass/comfy_mtb/commit/57683c3c7d299a117a26526d52de4c26f2ec0f69))
+- ✨ add Extract coordinates ([f99f92e](https://github.com/melMass/comfy_mtb/commit/f99f92e8f7b2d6fac56f7f40049715910e15cfee))
+- ✨ add AudioCut ([5681b46](https://github.com/melMass/comfy_mtb/commit/5681b464adce395086712b61159b2694150b8027))
+- ✨ add AudioStack ([8d0fcee](https://github.com/melMass/comfy_mtb/commit/8d0fcee2f3decc1cbbf3b850332e6b2a022e1377))
+- ✨ add AudioSequence node ([1078fc6](https://github.com/melMass/comfy_mtb/commit/1078fc6f0fb225b52536f25ec6a9fa0456a90595))
+- ✨ add Split Bbox node ([9007a70](https://github.com/melMass/comfy_mtb/commit/9007a70aa0d6b2ead0f68f7aff8ae8e3c4f3624f))
+- ✨ update lerp example ([1a0ebd5](https://github.com/melMass/comfy_mtb/commit/1a0ebd5173687784f279a9c2184c89fb3be01dc5))
+
+### Miscellaneous Tasks
+
+- 🧹 bump minor ([50cb6f5](https://github.com/melMass/comfy_mtb/commit/50cb6f5ed6e5d9fecb9733ef3f7852b8500005e9))
+- 🧹 add worktree to gitignores ([9ccf572](https://github.com/melMass/comfy_mtb/commit/9ccf572a158caeab9bff53853e8f6fb85b76776d))
+- 🧹 remove dupe code ([e099d58](https://github.com/melMass/comfy_mtb/commit/e099d581a7627c3a66d2e3e6df3a701b0e5f31b7))
+- 🧹 update externs ([784fb01](https://github.com/melMass/comfy_mtb/commit/784fb0145b7421e2730b52237ce6a8b63b189191))
+- 🧹 add pathlibed inputs to utils ([a825504](https://github.com/melMass/comfy_mtb/commit/a825504bdd67e3461be8118119e0becc35f8af40))
+- 🧹 disable Constant ([22190cd](https://github.com/melMass/comfy_mtb/commit/22190cd25ee590595f8f19e75a9a6c539699622b))
+- 🧹 new ui is default, flag for old ui ([a976adb](https://github.com/melMass/comfy_mtb/commit/a976adbb39a13b4cd76f224ebba40c604900c862))
+- 🧹 add methods to shared ([f8829fc](https://github.com/melMass/comfy_mtb/commit/f8829fcb373e0f9bc4f0ad36c939f372349943bf))
+- 🧹 add an old_ui flag to my launcher ([dbdf276](https://github.com/melMass/comfy_mtb/commit/dbdf27664cd207dbbc69b8d635adcd59ed8d269a))
+- 🧹 move qrcode to his own file ([7d5569e](https://github.com/melMass/comfy_mtb/commit/7d5569e5c1e0f0b6ccb505a02f74640139d6aaf9))
+
+## [0.1.6] - 2024-07-03
+
+### Bug Fixes
+
+- 🐛 menu callback issue ([d64fac4](https://github.com/melMass/comfy_mtb/commit/d64fac4b74e0590acde5e3b8edd4a2f715448cf5))
+
+### Documentation
+
+- 📚 Update requirements file in INSTALL.md ([f25f6bd](https://github.com/melMass/comfy_mtb/commit/f25f6bdcd13d50f9d383065321320b0ce6a03214)) by [@elthariel](https://github.com/elthariel) in [#186](https://github.com/melMass/comfy_mtb/pull/186)
+
+### Features
+
+- ✨ add alpha channel support for faceswap/restore ([d6343e1](https://github.com/melMass/comfy_mtb/commit/d6343e1860f46947e93758f8bba03857c9326b38))
+
+### Miscellaneous Tasks
+
+- 🧹 better classname extraction ([d687497](https://github.com/melMass/comfy_mtb/commit/d687497d8041ab5d77bd31909592def6e4d0e7f6))
+- 🤖 limit release only to tags ([4eebdd8](https://github.com/melMass/comfy_mtb/commit/4eebdd8b8bff73c3db4f0248da8dac7d67cb310b))
+- 🧹 runner ([fb34671](https://github.com/melMass/comfy_mtb/commit/fb34671ee6fe80b965fe576c279ed1ff77a358f2))
+- 🤖 only publish on tag ([f1b4846](https://github.com/melMass/comfy_mtb/commit/f1b484617a917d38d9b3658d8920aa7dec672a79))
+- 🧹 small fixes ([4507842](https://github.com/melMass/comfy_mtb/commit/4507842a706141977a6a68945c36e977c358d91a))
+
+## New Contributors
+* [@elthariel](https://github.com/elthariel) made their first contribution in [#186](https://github.com/melMass/comfy_mtb/pull/186)
+## [0.1.5] - 2024-06-21
+
+### Bug Fixes
+
+- 🐛 keep the last model match instead of first ([1edc2cd](https://github.com/melMass/comfy_mtb/commit/1edc2cd10de81297e7a895009d358813e79b70ba))
+- 🐛 properly initialize the curve value ([35622e3](https://github.com/melMass/comfy_mtb/commit/35622e3a5e58103a8f5b150556b85e97e31555e1))
+- 🐛 ImageCompare improvements ([acc2d68](https://github.com/melMass/comfy_mtb/commit/acc2d687d596bf82c2075f9a24003eacf18adfe7)) by [@christian-byrne](https://github.com/christian-byrne) in [#176](https://github.com/melMass/comfy_mtb/pull/176)
+- 🐛 repetitive warning ([780c52f](https://github.com/melMass/comfy_mtb/commit/780c52f03aca3079a1b695510341486720004bec)) by [@vxkj1211](https://github.com/vxkj1211) in [#177](https://github.com/melMass/comfy_mtb/pull/177)
+- 🐛 add back was conversion node ([349a852](https://github.com/melMass/comfy_mtb/commit/349a8524c6f7fcab4a124cacb60bfbef1463cf1b))
+- 🐛 drag lag on documentation resize handle ([15330ea](https://github.com/melMass/comfy_mtb/commit/15330eab655f66214d3c25fd237679f090175c32))
+- 🐛 kwarg typo ([1571782](https://github.com/melMass/comfy_mtb/commit/1571782d012b83bce32a065e700f9a587db234d2))
+- 🐛 seed of PlotBatchFloat ([5b40302](https://github.com/melMass/comfy_mtb/commit/5b4030288d43c79859c9706a12aa0f8b7dea190f))
+- 🐛 forceInput for FLOAT <-> FLOATS converters ([5a0ef0d](https://github.com/melMass/comfy_mtb/commit/5a0ef0dadd01fd5937ed0715d829d6a456f96318))
+- 🐛 FLOAT always need options to be set ([967e72f](https://github.com/melMass/comfy_mtb/commit/967e72fc66780685f8192cb8fe13ba66b9326f63))
+- 🐛 remove doc if opened on node delete ([bee3f47](https://github.com/melMass/comfy_mtb/commit/bee3f47a14ddb92b3760098666bf75dc7d37f1e4))
+- 🐛 for documentation on HiDPI ([b11346a](https://github.com/melMass/comfy_mtb/commit/b11346aba88d9f1dac3b6b42c691979cc0978b6f))
+- 🐛 never remove input 0 of dynamic inputs ([30982fa](https://github.com/melMass/comfy_mtb/commit/30982fa48829c3fc2a6745ce5a07537a3d94b2f9))
+- 🐛 use the same fix as dynamicInputs for debug ([92b7990](https://github.com/melMass/comfy_mtb/commit/92b79906cd2ee1b4ca3ff25378d7786b5a47cb75))
+- 🐛 missing numberInput ([76f365b](https://github.com/melMass/comfy_mtb/commit/76f365b5eee165c76f3da7d2e3950786685bc08b))
+- 🐛 better curve ([da67e76](https://github.com/melMass/comfy_mtb/commit/da67e766c2f700dd9e2f51a5bafe07c612904f5d))
+- 🐛 prepend MTB_ to all classes ([b1d74ad](https://github.com/melMass/comfy_mtb/commit/b1d74adb15166e3e5eb9cf92d6148e4644bed346))
+- 🐛 dynamic connections ([652ac3f](https://github.com/melMass/comfy_mtb/commit/652ac3f3b971582b02115177fd6f7a9d3d7295df))
+- 🐛 remaining issue before merge ([100067a](https://github.com/melMass/comfy_mtb/commit/100067a645194366426f29b085bf25d0623f4fac))
+- 🐛 debug issues ([7807449](https://github.com/melMass/comfy_mtb/commit/7807449e6dcc01cfdb7f0eb818569184c8b41af2))
+- 🐛 errors when insightface's folder missing ([e838c04](https://github.com/melMass/comfy_mtb/commit/e838c04758402250fd3464d6cd6a6f872e8cef29))
+- 🐛 typo ([e40ad7a](https://github.com/melMass/comfy_mtb/commit/e40ad7a574f961ebe1f338b97214da5cbadcc529))
+- 🐛 better defaults (cont) ([1da483a](https://github.com/melMass/comfy_mtb/commit/1da483a8baa6a893f1adb05ef79b90c4412c3834))
+- 🐛 better defaults for Autopan ([5eff38b](https://github.com/melMass/comfy_mtb/commit/5eff38b387d22206d39c08e435806f9d03992feb))
+- 🐛 dynamic inputs ([9ab20a0](https://github.com/melMass/comfy_mtb/commit/9ab20a0ab50b1656ded9a84c13769fd2d547f2d2))
+- 🐛 bundle ace editor ([7c35582](https://github.com/melMass/comfy_mtb/commit/7c3558273bebc0754c802720e705232f220a0da4))
+- 🐛 image to mask ([f16d576](https://github.com/melMass/comfy_mtb/commit/f16d576f6f0e83fc2fafd2d1f29b2edeb00d3197))
+- 🐛 prepend MTB to classnames ([e56508c](https://github.com/melMass/comfy_mtb/commit/e56508c2078155f053e7f11d538a048df6a5b18b))
+- 🐛 allow smaller values in BatchTransform ([9a4b27d](https://github.com/melMass/comfy_mtb/commit/9a4b27d2e05e8ebe31f58a21db94bd3a54ed23d9))
+- 🐛 add category for virtual note+ ([eeac8c0](https://github.com/melMass/comfy_mtb/commit/eeac8c002ad1f9e461418fb66b9338e969259e58))
+- 🐛 make image feed of by default ([df0a98b](https://github.com/melMass/comfy_mtb/commit/df0a98b94a4a9388811bc8786e820ec892919c1a))
+- 🐛 support batch masks (colored image node) ([2465ffb](https://github.com/melMass/comfy_mtb/commit/2465ffb0d3b052fb78559394dbb550bba59b97a3))
+- 🐛 support pillow < 10 ([48f91b7](https://github.com/melMass/comfy_mtb/commit/48f91b74e2c7ef6d31c094eafa5332784a275a8b))
+- 🐛 image rotation bug ([54ff658](https://github.com/melMass/comfy_mtb/commit/54ff6583ded0ed4054f8e5d7fadf0b2350259dce)) by [@hongminpark](https://github.com/hongminpark) in [#154](https://github.com/melMass/comfy_mtb/pull/154)
 - 🐛 font fallback ([9fccdee](https://github.com/melMass/comfy_mtb/commit/9fccdee82d721e88c64d2292c209fec869524dd2))
 - ✨ optional inputs of colored image ([cd32f26](https://github.com/melMass/comfy_mtb/commit/cd32f26b167088d6b489e43b260c187ea5e4d223)) by [@ScottNealon](https://github.com/ScottNealon) in [#147](https://github.com/melMass/comfy_mtb/pull/147)
 - 📝 adds a way to not load the imagefeed ([501c330](https://github.com/melMass/comfy_mtb/commit/501c3301056b2851555cccd75ab3ff15b1ab8e0c))
@@ -47,6 +230,13 @@ Check the notes in the [releases](https://github.com/melMass/comfy_mtb/releases)
 
 ### Documentation
 
+- 📚 update the wiki ([fa3199b](https://github.com/melMass/comfy_mtb/commit/fa3199be2b87bf3cb7484a0fee32a8ac099adc65))
+- 📚 update wiki submodule ([49cea8d](https://github.com/melMass/comfy_mtb/commit/49cea8d94508b27781506e3b5509c65e1d84e80f))
+- 📚 add the wiki as a submodule ([5998924](https://github.com/melMass/comfy_mtb/commit/59989249260a9c579ec851c50534b58f3f02cd61))
+- 📚 missing doc ([c9836a8](https://github.com/melMass/comfy_mtb/commit/c9836a87f6823db1d53e56997417f3cbe8cc4727))
+- 📚 use flat icon ([991af4f](https://github.com/melMass/comfy_mtb/commit/991af4f45ff8c660b2c45466bb219186699170ed))
+- 📚 add banodoco channel link ([9ce34b4](https://github.com/melMass/comfy_mtb/commit/9ce34b47fd99b18db7997ccce44e6063f00b6801))
+- 📚 udpate changelog ([8221c49](https://github.com/melMass/comfy_mtb/commit/8221c49942bd87c14d5063066315a449a1fee86e))
 - 📝 add changelog ([0d817bf](https://github.com/melMass/comfy_mtb/commit/0d817bf326b4a22e2221264a414af50c3b7048b9))
 - 📄 add note+ screenshot ([90d9636](https://github.com/melMass/comfy_mtb/commit/90d96366c8b7637b55d1b4f88cb9aca217c1414b))
 - 📝 add cover image ([6b993b8](https://github.com/melMass/comfy_mtb/commit/6b993b84071bbb80ba1b8bd63576f31e35d05590))
@@ -60,6 +250,28 @@ Check the notes in the [releases](https://github.com/melMass/comfy_mtb/releases)
 
 ### Features
 
+- ✨ add ModelPruner (wip) ([43d65ae](https://github.com/melMass/comfy_mtb/commit/43d65ae68c97e077117b17b7c9d1936583f965eb))
+- ✨ Use dynamic contrast in Color Correct ([6abac2e](https://github.com/melMass/comfy_mtb/commit/6abac2e4706a3d937420213e01468bae10cc2017)) by [@christian-byrne](https://github.com/christian-byrne) in [#180](https://github.com/melMass/comfy_mtb/pull/180)
+- ✨ StackImages add support for batch mismatch ([5060c56](https://github.com/melMass/comfy_mtb/commit/5060c561353e43624ec164cb73fce7d1d422f765))
+- ✨ add BatchFloatMath ([f9d2ebf](https://github.com/melMass/comfy_mtb/commit/f9d2ebf91d09fc214fecf7501a5490b33c30aca2))
+- ✨ add FLOATS to INTS ([1b7ae27](https://github.com/melMass/comfy_mtb/commit/1b7ae27cc1907bfba3c5166ec2c61547babd2e0a))
+- ✨ debug dict ([63ee25d](https://github.com/melMass/comfy_mtb/commit/63ee25d001d4c94aa95dc8b39008f5d943f2ab45))
+- ✨ add Swap BG/FG color menu item ([1caf7c1](https://github.com/melMass/comfy_mtb/commit/1caf7c18c372651b2be7227eb77e2251d963693d))
+- ✨ BatchFloatFit the batch version of FitNumber ([ab58c36](https://github.com/melMass/comfy_mtb/commit/ab58c362124f0f4b3178534ca78cb924fb881534))
+- ✨ add FloatToFloats (the counterpart) ([78a86da](https://github.com/melMass/comfy_mtb/commit/78a86daaf71dab5be34b90b13491460854718485))
+- ✨ add some FLOATS batch nodes ([2159395](https://github.com/melMass/comfy_mtb/commit/2159395389429c5f7012e660b41fad48d376b39f))
+- ✨ poc of the doc widget idea ([fac7529](https://github.com/melMass/comfy_mtb/commit/fac7529d1f7b6fc4b3b2e7f6022ebb23ec71169d))
+- ✨ add the backend node for Constant ([dff5b22](https://github.com/melMass/comfy_mtb/commit/dff5b2201d73c1a91d4b5864e3b974e68846a011))
+- ✨ add Constant node ([cbb5dd2](https://github.com/melMass/comfy_mtb/commit/cbb5dd2cf810d5648a64eae370dba610336b99d5))
+- ✨ add FloatsToFloat ([6ebecfd](https://github.com/melMass/comfy_mtb/commit/6ebecfd8cf1dc3779384e565a65baa9dceb43660))
+- ✨ add AutoPanEquilateral ([3513937](https://github.com/melMass/comfy_mtb/commit/35139371e84d715423015e05d1b4a6c1d88b0eb5))
+- ✨ add MatchDimensions ([5db3ebe](https://github.com/melMass/comfy_mtb/commit/5db3ebedb9d38470c82544e45970775193add05c))
+- ✨ add equilateral example ([8d65556](https://github.com/melMass/comfy_mtb/commit/8d65556c37f33d1c496504db92574805916dd613))
+- ✨ enhance tiling tools ([ba73fc6](https://github.com/melMass/comfy_mtb/commit/ba73fc6af7039a4629a73cdc36a8c8736dc27c9d))
+- ✨ add FLOATS support to blur ([92c810c](https://github.com/melMass/comfy_mtb/commit/92c810c5036f7a2b3f84a3fde8c81e6a2b046b07))
+- ✨ add "tube" to Batch Shape ([f658fc3](https://github.com/melMass/comfy_mtb/commit/f658fc31e040141209384d98dfe84b766fe4ae11))
+- ✨ note+ editor themes ([133da70](https://github.com/melMass/comfy_mtb/commit/133da705c94af2dfb3d2f38c0d9c2723c72cacf7))
+- ✨ add ffmpeg gif export ([1b29aad](https://github.com/melMass/comfy_mtb/commit/1b29aad360116e631b7b4d34e98a5a631f134977)) by [@huanggou666](https://github.com/huanggou666) in [#159](https://github.com/melMass/comfy_mtb/pull/159)
 - ✨ add "To Device" ([c28181f](https://github.com/melMass/comfy_mtb/commit/c28181f1615d2e183767aa76cc2350934330e546))
 - ✨ add note+ example ([90f3bc2](https://github.com/melMass/comfy_mtb/commit/90f3bc2d953b299ea34e9e3a925f1a824b488855))
 - 💄 node+ improvements ([4b29395](https://github.com/melMass/comfy_mtb/commit/4b29395000254382882c0d1be115b2ed80cd7c99))
@@ -82,6 +294,19 @@ Check the notes in the [releases](https://github.com/melMass/comfy_mtb/releases)
 
 ### Miscellaneous Tasks
 
+- 🧹 add fields for the registry ([bb5682a](https://github.com/melMass/comfy_mtb/commit/bb5682aa6da923859db33830c2e46f24b19199a1))
+- 🧹 add pre-commit ([59612fd](https://github.com/melMass/comfy_mtb/commit/59612fd8110a888f0081433242a2b5a5f7e46da6))
+- 🧹 migrate from poetry to setuptools ([dfd17f6](https://github.com/melMass/comfy_mtb/commit/dfd17f6d783e784df7dab38d185c747b4c04d1d0))
+- 🧹 remove logs ([1070edd](https://github.com/melMass/comfy_mtb/commit/1070edd0245fb235183d5f38cd1bebf6e0405f97))
+- 🧹 add more pyproject meta ([644371e](https://github.com/melMass/comfy_mtb/commit/644371e5b5a2b8260fc5c6f699465b0bc1c81d57))
+- 🤖 move at the proper location ([f3d468c](https://github.com/melMass/comfy_mtb/commit/f3d468cfc238f13905a13a7b2225e3711129c64d))
+- 🤖 add CI to publish to ComfyUI Registry ([6cd448b](https://github.com/melMass/comfy_mtb/commit/6cd448b026956cdf3f1b81e93724b295316fbf09)) by [@haohaocreates](https://github.com/haohaocreates) in [#182](https://github.com/melMass/comfy_mtb/pull/182)
+- 🧹 add ComfyUI registry to pyproject.toml ([5951c90](https://github.com/melMass/comfy_mtb/commit/5951c90b10f9b77b2b617e83efe0112f43c8daef)) by [@haohaocreates](https://github.com/haohaocreates) in [#181](https://github.com/melMass/comfy_mtb/pull/181)
+- 🧹 update types ([96a0da9](https://github.com/melMass/comfy_mtb/commit/96a0da9dbd051d1fcf8b332c54ed2d307d8ae0dd))
+- 🧹 use a gettattr fallback ([a344cdc](https://github.com/melMass/comfy_mtb/commit/a344cdcba9823ca1fb0762795068039b1e1cf0ab))
+- 🧹 cleanup js ([64cc4e9](https://github.com/melMass/comfy_mtb/commit/64cc4e9649853023d645245bea1e1ceb11073f01))
+- 🧹 add savedatabundle js part ([edd7c3f](https://github.com/melMass/comfy_mtb/commit/edd7c3f5d075b640e9cdb067ebfe51c42ff61791))
+- 🧹 wip dynamic multitype ([71bfdd6](https://github.com/melMass/comfy_mtb/commit/71bfdd61d731ce15f9bd0bb19d65b5af208d5dcf))
 - 🧹 applied some linting ([fe49312](https://github.com/melMass/comfy_mtb/commit/fe49312cbef03c6540304448fa88aa7a88391efa))
 - 📝 header links not parsed ([514c0d2](https://github.com/melMass/comfy_mtb/commit/514c0d2eda9990435eb18258d4bbd1aa137feb3d))
 - 📝 hardcode links in changelog ([915b744](https://github.com/melMass/comfy_mtb/commit/915b7444a9db83f349d83b636304af0d276f529f))
@@ -104,9 +329,17 @@ Check the notes in the [releases](https://github.com/melMass/comfy_mtb/releases)
 
 ### Wip
 
+- 🚧 curve widget logic fixed ([e312b02](https://github.com/melMass/comfy_mtb/commit/e312b02ad2f8334e87654a20b0114837df229371))
+- 🚧 dump3 ([eedbb4b](https://github.com/melMass/comfy_mtb/commit/eedbb4bc6581bef85c746307fe9d53360ea45bcf))
+- 🚧 dump ([fa23975](https://github.com/melMass/comfy_mtb/commit/fa2397585fff4f54bcf17f0b0e0083c427b34fa8))
+- 🚧 dump ([0d0fb8e](https://github.com/melMass/comfy_mtb/commit/0d0fb8e13a5da54a44a96a04607f7a349f8fdb03))
 - 🚧 add text template node ([af2175a](https://github.com/melMass/comfy_mtb/commit/af2175a1fc0c2fb29ef3493f242fe45ec6fcabac))
 
 ## New Contributors
+* [@haohaocreates](https://github.com/haohaocreates) made their first contribution in [#182](https://github.com/melMass/comfy_mtb/pull/182)
+* [@vxkj1211](https://github.com/vxkj1211) made their first contribution in [#177](https://github.com/melMass/comfy_mtb/pull/177)
+* [@huanggou666](https://github.com/huanggou666) made their first contribution in [#159](https://github.com/melMass/comfy_mtb/pull/159)
+* [@hongminpark](https://github.com/hongminpark) made their first contribution in [#154](https://github.com/melMass/comfy_mtb/pull/154)
 * [@ScottNealon](https://github.com/ScottNealon) made their first contribution in [#147](https://github.com/melMass/comfy_mtb/pull/147)
 * [@Yurchikian](https://github.com/Yurchikian) made their first contribution in [#124](https://github.com/melMass/comfy_mtb/pull/124)
 * [@M1kep](https://github.com/M1kep) made their first contribution in [#91](https://github.com/melMass/comfy_mtb/pull/91)
@@ -393,7 +626,10 @@ Check the notes in the [releases](https://github.com/melMass/comfy_mtb/releases)
 
 - 🚀 add gh action ([572b4d5](https://github.com/melMass/comfy_mtb/commit/572b4d52bce1398660d4d7ca0c5c48c11e0128e3)) in [#4](https://github.com/melMass/comfy_mtb/pull/4)
 
-[main]: https://github.com/melMass/comfy_mtb/compare/v0.1.4..main
+[main]: https://github.com/melMass/comfy_mtb/compare/v0.2.0..main
+[0.2.0]: https://github.com/melMass/comfy_mtb/compare/v0.1.6..v0.2.0
+[0.1.6]: https://github.com/melMass/comfy_mtb/compare/v0.1.5..v0.1.6
+[0.1.5]: https://github.com/melMass/comfy_mtb/compare/v0.1.4..v0.1.5
 [0.1.4]: https://github.com/melMass/comfy_mtb/compare/v0.1.3..v0.1.4
 [0.1.3]: https://github.com/melMass/comfy_mtb/compare/v0.1.2..v0.1.3
 [0.1.2]: https://github.com/melMass/comfy_mtb/compare/v0.1.1..v0.1.2
