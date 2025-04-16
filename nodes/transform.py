@@ -65,6 +65,13 @@ class MTB_TransformImage:
                     "FLOAT",
                     {"default": 1.0, "min": 0.001, "max": 10.0, "step": 0.01},
                 ),
+                "use_normalized": (
+                    "BOOLEAN",
+                    {
+                        "default": False,
+                        "tooltip": "If true, transform values are scaled to image dimensions.",
+                    },
+                ),
             },
         }
 
@@ -85,6 +92,7 @@ class MTB_TransformImage:
         filter_type="nearest",
         stretch_x=1.0,
         stretch_y=1.0,
+        use_normalized: bool = False,
     ):
         filter_map = {
             "nearest": Image.NEAREST,
@@ -96,6 +104,10 @@ class MTB_TransformImage:
         }
         resampling_filter = filter_map[filter_type]
 
+        _, frame_height, frame_width, _ = image.size()
+        if use_normalized:
+            x = float(x) * frame_width
+            y = float(y) * frame_height
         x = int(x)
         y = int(y)
         angle = int(angle)
@@ -107,9 +119,6 @@ class MTB_TransformImage:
         if image.size(0) == 0:
             return (torch.zeros(0),)
         transformed_images = []
-        frames_count, frame_height, frame_width, frame_channel_count = (
-            image.size()
-        )
 
         new_height, new_width = (
             int(frame_height * zoom),
@@ -166,15 +175,16 @@ class MTB_TransformImage:
                 stretch_y_factor = 1.0 / stretch_y
 
                 matrix = [
-                    stretch_x_factor, 0, center[0] - center[0] * stretch_x_factor,
-                    0, stretch_y_factor, center[1] - center[1] * stretch_y_factor
+                    stretch_x_factor,
+                    0,
+                    center[0] - center[0] * stretch_x_factor,
+                    0,
+                    stretch_y_factor,
+                    center[1] - center[1] * stretch_y_factor,
                 ]
 
                 img = img.transform(
-                    img.size,
-                    Image.AFFINE,
-                    matrix,
-                    resampling_filter
+                    img.size, Image.AFFINE, matrix, resampling_filter
                 )
             else:
                 img = cast(
