@@ -498,8 +498,14 @@ class MTB_BatchFloat:
                     {"default": "Steps"},
                 ),
                 "count": ("INT", {"default": 2}),
-                "min": ("FLOAT", {"default": 0.0, "step": 0.001}),
-                "max": ("FLOAT", {"default": 1.0, "step": 0.001}),
+                "min": (
+                    "FLOAT",
+                    {"default": 0.0, "min": -1e4, "max": 1e4, "step": 0.001},
+                ),
+                "max": (
+                    "FLOAT",
+                    {"default": 1.0, "min": -1e4, "max": 1e4, "step": 0.001},
+                ),
                 "easing": (
                     [
                         "Linear",
@@ -840,6 +846,13 @@ class MTB_Batch2dTransform:
                 "zoom": ("FLOATS",),
                 "angle": ("FLOATS",),
                 "shear": ("FLOATS",),
+                "use_normalized": (
+                    "BOOLEAN",
+                    {
+                        "default": False,
+                        "tooltip": "If true, transform values will be scaled to image dimensions.",
+                    },
+                ),
             },
         }
 
@@ -868,6 +881,7 @@ class MTB_Batch2dTransform:
         zoom: list[float] | None = None,
         angle: list[float] | None = None,
         shear: list[float] | None = None,
+        use_normalized: bool = False,
     ):
         if all(
             self.get_num_elements(param) <= 0
@@ -919,6 +933,7 @@ class MTB_Batch2dTransform:
                 keyframes["shear"][i],
                 border_handling,
                 constant_color,
+                use_normalized=use_normalized,
             )[0]
             for i in range(image.shape[0])
         ]
