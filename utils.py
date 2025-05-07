@@ -546,9 +546,7 @@ PIL_FILTER_MAP = {
 # region TENSOR Utilities
 def to_numpy(image: torch.Tensor) -> npt.NDArray[np.uint8]:
     """Converts a tensor to a ndarray with proper scaling and type conversion."""
-    log.debug(f"Converting tensor to numpy array with shape {image.shape}")
     np_array = np.clip(255.0 * image.cpu().numpy(), 0, 255).astype(np.uint8)
-    log.debug(f"Numpy array shape after conversion: {np_array.shape}")
     return np_array
 
 
