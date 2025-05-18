@@ -3,11 +3,12 @@ import json
 import math
 import os
 
-import comfy.model_management as model_management
+import comfy.utils
 import folder_paths
 import numpy as np
 import torch
 import torch.nn.functional as F
+from comfy import model_management
 from PIL import Image, ImageOps
 from PIL.PngImagePlugin import PngInfo
 from skimage.filters import gaussian
@@ -74,7 +75,10 @@ class MTB_ExtractCoordinatesFromImage:
     def INPUT_TYPES(cls):
         return {
             "required": {
-                "threshold": ("FLOAT",),
+                "threshold": (
+                    "FLOAT",
+                    {"default": 0.5, "min": 0.0, "max": 1.0, "step": 0.01},
+                ),
                 "max_points": ("INT", {"default": 50, "min": 0}),
             },
             "optional": {"image": ("IMAGE",), "mask": ("MASK",)},
@@ -87,72 +91,124 @@ class MTB_ExtractCoordinatesFromImage:
         image: torch.Tensor | None = None,
         mask: torch.Tensor | None = None,
     ) -> tuple[list[list[tuple[int, int]]], torch.Tensor]:
-        if image is not None:
-            batch_count, height, width, channel_count = image.shape
-            imgs = image
-        else:
-            if mask is None:
-                raise ValueError("Must provide either image or mask")
-            batch_count, height, width = mask.shape
-            channel_count = 1
-            imgs = mask
+        if image is None and mask is None:
+            raise ValueError("Must provide either image or mask")
 
-        if channel_count not in [1, 2, 3, 4]:
-            raise ValueError(f"Incorrect channel count: {channel_count}")
+        if image is not None:
+            batch_count, height, width, _channel_count = image.shape
+            input_device = image.device
+            if mask is not None:
+                if mask.ndim == 2:
+                    mask = mask.unsqueeze(0)
+                if mask.ndim != 3:
+                    raise ValueError(
+                        f"Mask has unexpected ndim: {mask.ndim}. Expected 2 or 3."
+                    )
+
+                b_mask, h_mask, w_mask = mask.shape
+                if not (h_mask == height and w_mask == width):
+                    raise ValueError(
+                        f"Image dimensions ({height}x{width}) and mask dimensions ({h_mask}x{w_mask}) are spatially incompatible."
+                    )
+                if b_mask == 1 and batch_count > 1:
+                    mask = mask.expand(batch_count, height, width)
+
+                elif b_mask != batch_count:
+                    raise ValueError(
+                        f"Image batch size ({batch_count}) and mask batch size ({b_mask}) are incompatible and mask cannot be broadcast."
+                    )
+        else:
+            if mask.ndim == 2:
+                mask = mask.unsqueeze(0)
+
+            if mask.ndim != 3:
+                raise ValueError(
+                    f"Mask has unexpected ndim: {mask.ndim} when image is not provided. Expected 2 or 3."
+                )
+
+            batch_count, height, width = mask.shape
+            input_device = mask.device
 
         all_points: list[list[tuple[int, int]]] = []
         debug_images = torch.zeros(
             (batch_count, height, width, 3),
             dtype=torch.uint8,
-            device=imgs.device,
+            device=input_device,
         )
 
-        for i, img in enumerate(imgs):
-            if channel_count == 1:
-                alpha_channel = img if len(img.shape) == 2 else img[:, :, 0]
-            elif channel_count == 2:
-                alpha_channel = img[:, :, 1]
-            elif channel_count == 4:
-                alpha_channel = img[:, :, 3]
+        points_tensor = torch.tensor(
+            [255, 255, 255], dtype=torch.uint8, device=input_device
+        )
+
+        for i in range(batch_count):
+            value_threshold: torch.Tensor
+            if image is not None:
+                img_slice = image[i]
+                img_channels = img_slice.shape[2]
+                if img_channels == 1 or img_channels == 2:
+                    value_threshold = img_slice[:, :, 0]
+                elif img_channels == 3 or img_channels == 4:
+                    value_threshold = img_slice[:, :, :3].max(dim=2)[0]
+                else:
+                    raise ValueError(
+                        f"Unsupported image channel count: {img_channels} for image at batch index {i}"
+                    )
             else:
-                # get intensity
-                alpha_channel = img[:, :, :3].max(dim=2)[0]
+                mask_slice = mask[i]
+                value_threshold = mask_slice
 
-            points = (alpha_channel > threshold).nonzero(as_tuple=False)
+            condition = value_threshold > threshold
+            if image is not None and mask is not None:
+                mask_slice = mask[i]
+                mask_active_condition = mask_slice > 0.0
+                condition = condition & mask_active_condition
 
-            if len(points) > max_points:
-                indices = torch.randperm(points.size(0), device=img.device)[
-                    :max_points
-                ]
-                points = points[indices]
+            points_yx = condition.nonzero(as_tuple=False)
 
-            points = [(int(y.item()), int(x.item())) for x, y in points]
-            all_points.append(points)
+            if points_yx.size(0) > max_points:
+                # shuffle and pick max_points randomly
+                indices = torch.randperm(
+                    points_yx.size(0), device=input_device
+                )[:max_points]
+                points_yx = points_yx[indices]
+            elif max_points == 0:
+                points_yx = torch.empty(
+                    (0, 2), dtype=torch.long, device=input_device
+                )
 
-            for x, y in points:
-                self._draw_circle(debug_images[i], (x, y), 5)
+            current_points = [
+                (int(p[1].item()), int(p[0].item())) for p in points_yx
+            ]
+            all_points.append(current_points)
+            for x_coord, y_coord in current_points:
+                self._draw_circle(
+                    debug_images[i],
+                    (x_coord, y_coord),
+                    radius=5,
+                    color_tensor=points_tensor,
+                )
 
         return (all_points, debug_images)
 
     @staticmethod
     def _draw_circle(
-        image: torch.Tensor, center: tuple[int, int], radius: int
+        image: torch.Tensor,
+        center: tuple[int, int],
+        radius: int,
+        color_tensor: torch.Tensor,
     ):
         """Draw a 5px circle on the image."""
         x0, y0 = center
-        for x in range(-radius, radius + 1):
-            for y in range(-radius, radius + 1):
-                in_radius = x**2 + y**2 <= radius**2
-                in_bounds = (
-                    0 <= x0 + x < image.shape[1]
-                    and 0 <= y0 + y < image.shape[0]
-                )
-                if in_radius and in_bounds:
-                    image[y0 + y, x0 + x] = torch.tensor(
-                        [255, 255, 255],
-                        dtype=torch.uint8,
-                        device=image.device,
-                    )
+        h, w, _ = image.shape
+        min_x_bbox = max(0, x0 - radius)
+        max_x_bbox = min(w - 1, x0 + radius)
+        min_y_bbox = max(0, y0 - radius)
+        max_y_bbox = min(h - 1, y0 + radius)
+
+        for py in range(min_y_bbox, max_y_bbox + 1):
+            for px in range(min_x_bbox, max_x_bbox + 1):
+                if (px - x0) ** 2 + (py - y0) ** 2 <= radius**2:
+                    image[py, px] = color_tensor
 
 
 class MTB_ColorCorrectGPU:
