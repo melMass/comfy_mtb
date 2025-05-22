@@ -3,11 +3,11 @@
 # File: __init__.py
 # Project: comfy_mtb
 # Author: Mel Massadian
-# Copyright (c) 2023 Mel Massadian
+# Copyright (c) 2023-2025 Mel Massadian
 #
 ###
 
-__version__ = "0.3.0"
+__version__ = "0.5.0"
 
 import os
 
