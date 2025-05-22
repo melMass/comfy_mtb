@@ -74,7 +74,12 @@ def ACTIONS_getUserImageFolders():
     input_subdirs = [x.name for x in input_dir.iterdir() if x.is_dir()]
     output_subdirs = [x.name for x in output_dir.iterdir() if x.is_dir()]
 
-    return {"input": input_subdirs, "output": output_subdirs}
+    return {
+        "input_root": input_dir.as_posix(),
+        "input": input_subdirs,
+        "output": output_subdirs,
+        "output_root": output_dir.as_posix(),
+    }
 
 
 def ACTIONS_getUserVideos(

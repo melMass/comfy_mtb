@@ -175,13 +175,98 @@ export const ensureMTBStyles = () => {
   background-color: ${S.accent};
 }
 `
+  const contextMenus = `
+.mtb_context_menu {
+    position: fixed;
+    background: var(--comfy-input-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    padding: 4px 0;
+    min-width: 150px;
+    z-index: 1000;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+.mtb-context-menu-item {
+    padding: 6px 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.mtb-context-menu-item:hover {
+    background: var(--comfy-input-hover);
+}
+
+.mtb-loading-indicator {
+    position: sticky;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--comfy-input-bg);
+    padding: 8px;
+    text-align: center;
+    border-top: 1px solid var(--border-color);
+    z-index: 100;
+}
+`
   addNamedStyleSheet(
     'mtb_ui',
     `
 ${common}
 ${inputs}
+${contextMenus}
 `,
   )
+}
+
+export class ContextMenu {
+  constructor(parent) {
+    this.menu = makeElement('div.mtb_context_menu', { display: 'none' })
+
+    const body = parent || document.body
+
+    body.appendChild(this.menu)
+
+    document.addEventListener('click', (e) => {
+      if (!this.menu.contains(e.target)) {
+        this.hide()
+      }
+    })
+  }
+
+  show(x, y, items, context) {
+    this.menu.innerHTML = ''
+    for (const item of items) {
+      const menuItem = makeElement('div.mtb-context-menu-item')
+      if (item.icon) {
+        const icon = makeElement(`i.${item.icon}`)
+        menuItem.appendChild(icon)
+      }
+      menuItem.appendChild(document.createTextNode(item.label))
+      menuItem.onclick = () => {
+        item.action(context)
+        this.hide()
+      }
+      this.menu.appendChild(menuItem)
+    }
+
+    this.menu.style.display = 'block'
+    const rect = this.menu.getBoundingClientRect()
+    const viewportWidth = window.innerWidth
+    const viewportHeight = window.innerHeight
+
+    x = Math.min(x, viewportWidth - rect.width)
+    y = Math.min(y, viewportHeight - rect.height)
+
+    this.menu.style.left = `${x}px`
+    this.menu.style.top = `${y}px`
+  }
+
+  hide() {
+    this.menu.style.display = 'none'
+  }
 }
 
 /**
