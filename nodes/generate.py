@@ -343,9 +343,7 @@ by default it fallsback to a default font.
 
         def render_text(text_to_render, alpha=None):
             if trim:
-                text_to_render = (
-                    text_to_render.encode("ascii", "ignore").decode().strip()
-                )
+                text_to_render = text_to_render.strip()
             if wrap:
                 wrap_width = (((width / 100) * h_coverage) / font_size) * 2
                 lines = textwrap.wrap(text_to_render, width=wrap_width)
@@ -418,7 +416,9 @@ by default it fallsback to a default font.
                         active_chunks.append((chunk["text"], alpha))
 
                 for chunk_text, alpha in active_chunks:
-                    chunk_img = render_text(chunk_text, alpha)
+                    chunk_img = render_text(
+                        chunk_text.encode("ascii", "ignore").decode(), alpha
+                    )
                     frame = Image.alpha_composite(frame, chunk_img)
 
                 frames.append(frame)
