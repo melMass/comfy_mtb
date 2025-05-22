@@ -1,0 +1,7 @@
+**/GFPGAN/inputs/**
+**/GFPGAN/tests/**
+**/frame_interpolation/photos/*
+moment.gif
+node.zip
+.DS_Store
+

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "comfy-mtb"
-version = "0.5.1"
+version = "0.5.4"
 description = "Animation oriented nodes pack for ComfyUI."
 license = { text = "MIT" }
 readme = "README.md"

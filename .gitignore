@@ -1,11 +1,15 @@
 __pycache__
 *.py[cod]
 *.onnx
+
 wheels/
 node_modules/
 compose.yaml
 comfy_mtb.wsb
 Dockerfile
+
+.DS_Store
+node.zip
 
 # I store the gh-pages worktrees (src & build) there
 .worktrees
