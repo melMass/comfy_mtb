@@ -1,9 +1,6 @@
 name: 📦 Publish to Comfy registry
 on:
   workflow_dispatch:
-  push:
-    tags:
-      - '*'
 
 permissions:
   issues: write
@@ -21,5 +18,5 @@ jobs:
       - name: 📦 Publish Custom Node
         uses: Comfy-Org/publish-node-action@v1
         with:
-          skip_checkout: "true"
+          skip_checkout: 'true'
           personal_access_token: ${{ secrets.COMFY_REGISTRY_TOKEN }}
