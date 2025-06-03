@@ -195,6 +195,7 @@ export function hideWidgetForGood(node, widget, suffix = '') {
   widget.origComputeSize = widget.computeSize
   widget.origSerializeValue = widget.serializeValue
   widget.computeSize = () => [0, -4] // -4 is due to the gap litegraph adds between widgets automatically
+  widget.hidden = true
   widget.type = CONVERTED_TYPE + suffix
   // widget.serializeValue = () => {
   //     // Prevent serializing the widget if we have no input linked

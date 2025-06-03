@@ -15,7 +15,6 @@ from .utils import (
     backup_file,
     build_glob_patterns,
     glob_multiple,
-    import_install,
     reqs_map,
     run_command,
     styles_dir,
@@ -24,7 +23,6 @@ from .utils import (
 endlog = mklog("mtb endpoint")
 
 # - ACTIONS
-import_install("requirements")
 
 
 def ACTIONS_installDependency(dependency_names: list[str] | None = None):

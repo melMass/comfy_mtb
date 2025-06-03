@@ -43,7 +43,6 @@ pip_map = {
     "tb-nightly": "tensorboard",
     "protobuf": "google.protobuf",
     "qrcode[pil]": "qrcode",
-    "requirements-parser": "requirements",
     # Add more mappings as needed
 }
 

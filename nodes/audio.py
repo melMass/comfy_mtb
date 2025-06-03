@@ -1,20 +1,16 @@
-from typing import Any, TypedDict
+from typing import TYPE_CHECKING, Any, TypedDict
 
 import torch
 import torchaudio
 from comfy.model_management import get_torch_device
 from huggingface_hub import snapshot_download
-from transformers import (
-    WhisperForConditionalGeneration,
-    WhisperProcessor,
-)
 
-# from transformers import (
-#     AutoFeatureExtractor,
-#     WhisperForConditionalGeneration,
-#     WhisperModel,
-#     WhisperProcessor,
-# )
+if TYPE_CHECKING:
+    from transformers import (
+        WhisperForConditionalGeneration,
+        WhisperProcessor,
+    )
+
 from ..log import log
 from ..utils import get_model_path
 
@@ -101,8 +97,8 @@ class MtbAudio:
 class WhisperPipeline(TypedDict):
     """Whisper model pipeline."""
 
-    processor: WhisperProcessor
-    model: WhisperForConditionalGeneration
+    processor: "WhisperProcessor"
+    model: "WhisperForConditionalGeneration"
 
 
 class MTB_LoadWhisper:
@@ -148,6 +144,11 @@ class MTB_LoadWhisper:
 
     def load(self, model_size="tiny", download_missing=False):
         """Load Whisper model and processor."""
+        from transformers import (
+            WhisperForConditionalGeneration,
+            WhisperProcessor,
+        )
+
         whisper_dir = get_model_path("whisper")
         tag = f"whisper-{model_size}"
         model_dir = whisper_dir / tag

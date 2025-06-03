@@ -1,6 +1,5 @@
 import contextlib
 import functools
-import importlib
 import math
 import operator
 import os
@@ -462,23 +461,6 @@ def _run_command(shell_cmd, ignored_lines_start):
     print("Command executed successfully!")
 
 
-def import_install(package_name):
-    package_spec = reqs_map.get(package_name, package_name)
-
-    try:
-        importlib.import_module(package_name)
-
-    except Exception:  # (ImportError, ModuleNotFoundError):
-        run_command(
-            [
-                Path(sys.executable).as_posix(),
-                "-m",
-                "pip",
-                "install",
-                package_spec,
-            ]
-        )
-        importlib.import_module(package_name)
 
 
 # endregion

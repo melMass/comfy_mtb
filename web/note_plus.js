@@ -257,13 +257,28 @@ class NotePlus extends LiteGraph.LGraphNode {
     }
   }
   get iconRect() {
-    const iconSize = 32
-    const iconMargin = 16
+    let icon = {
+      size: 24,
+      margin: 5,
+      yoffset: -25,
+    }
+
+    if (window.inspector) {
+      if (window.inspector.get('note_icon') !== null) {
+        icon = window.inspector.get('note_icon')
+      } else {
+        window.inspector.set('note_icon', icon)
+        window.inspector.subscribe('note_icon', (k, v) => {
+          console.log(v)
+        })
+      }
+    }
+
     return {
-      x: this.size[0] - iconSize - iconMargin,
-      y: iconMargin * 1.5,
-      width: iconSize,
-      height: iconSize,
+      x: this.size[0] - icon.size - icon.margin,
+      y: icon.yoffset, //iconMargin * 1.5,
+      width: icon.size,
+      height: icon.size,
     }
   }
   onMouseDown(_e, localPos, _graphcanvas) {
@@ -797,8 +812,8 @@ class NotePlus extends LiteGraph.LGraphNode {
 
 app.registerExtension({
   name: 'mtb.noteplus',
-  setup: () => {
-    app.ui.settings.addSetting({
+  settings: [
+    {
       id: 'mtb.noteplus.use-shiki',
       category: ['mtb', 'Note+', 'use-shiki'],
       name: 'Use shiki to highlight code',
@@ -816,8 +831,8 @@ app.registerExtension({
         storage.set('np-use-shiki', value)
         useShiki = value
       },
-    })
-  },
+    },
+  ],
 
   registerCustomNodes() {
     LiteGraph.registerNodeType('Note Plus (mtb)', NotePlus)

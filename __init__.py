@@ -75,7 +75,7 @@ def extract_nodes_from_source(filename: Path):
                             )
                         break
     except SyntaxError:
-        log.error("Failed to parse")
+        log.error(f"Failed to parse ast from: {filename}")
     return nodes
 
 

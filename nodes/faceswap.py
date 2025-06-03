@@ -4,12 +4,8 @@ import sys
 from pathlib import Path
 
 import comfy.model_management as model_management
-import cv2
-import insightface
 import numpy as np
-import onnxruntime
 import torch
-from insightface.model_zoo.inswapper import INSwapper
 from PIL import Image
 
 from ..errors import ModelNotFound
@@ -43,6 +39,8 @@ class MTB_LoadFaceAnalysisModel:
     DEPRECATED = True
 
     def load_model(self, faceswap_model: str):
+        import insightface
+
         if faceswap_model == "antelopev2":
             download_antelopev2()
 
@@ -81,6 +79,9 @@ class MTB_LoadFaceSwapModel:
     DEPRECATED = True
 
     def load_model(self, faceswap_model: str):
+        import onnxruntime
+        from insightface.model_zoo.inswapper import INSwapper
+
         model_path = get_model_path("insightface", faceswap_model)
         if not model_path or not model_path.exists():
             raise ModelNotFound(f"{faceswap_model} ({model_path})")
@@ -212,6 +213,8 @@ def swap_face(
     face_swapper_model,
     faces_index: set[int] | None = None,
 ) -> Image.Image:
+    import cv2
+
     if faces_index is None:
         faces_index = {0}
     log.debug(f"Swapping faces: {faces_index}")
