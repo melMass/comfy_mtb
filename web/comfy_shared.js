@@ -25,6 +25,16 @@ export function makeUUID() {
   return uuid
 }
 
+// - basic debounce decorator
+export function debounce(func, delay) {
+  let timeout
+  return function (...args) {
+    // const context = this
+    clearTimeout(timeout)
+    timeout = setTimeout(() => func.apply(this, args), delay)
+  }
+}
+
 //- local storage manager
 export class LocalStorageManager {
   constructor(namespace) {
@@ -647,13 +657,15 @@ export const loadScript = (
   return new Promise((resolve, reject) => {
     try {
       // Check if the script already exists
-      const existingScript = document.querySelector(`script[src="${FILE_URL}"]`)
-      if (existingScript) {
-        resolve({ status: true, message: 'Script already loaded' })
+      let scriptEle = document.querySelector(`script[src="${FILE_URL}"]`)
+      if (scriptEle) {
+        scriptEle.addEventListener('load', (_ev) => {
+          resolve({ status: true })
+        })
         return
       }
 
-      const scriptEle = document.createElement('script')
+      scriptEle = document.createElement('script')
       scriptEle.type = type
       scriptEle.async = async
       scriptEle.src = FILE_URL
