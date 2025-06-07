@@ -467,6 +467,7 @@ class NotePlus extends LiteGraph.LGraphNode {
 
     // let select_mode = this.dialog.element.querySelector('#edit_mode')
 
+
     syncUI()
 
     const live_edit_label = document.createElement('label')
@@ -522,36 +523,12 @@ class NotePlus extends LiteGraph.LGraphNode {
         }
       })
   }
-  restoreNodeState(info) {
-    this.html_widget.element.id = `note-plus-${this.uuid}`
-    this.setMode('markdown')
-    this.setTheme(this.properties.theme)
-    this.updateHTML(this.html_widget.value)
-    this.updateCSS(this.properties.css)
-    if (info?.size) {
-      this.setSize(info.size)
-    }
-  }
   configure(info) {
     super.configure(info)
     infoLogger('Restoring serialized values', info)
-    this.restoreNodeState(info)
-    // - update view from serialzed data
+    this.html_widget.element.id = `note-plus-${this.uuid}`
   }
-  onNodeCreated() {
-    infoLogger('Node created', this.uuid)
-    this.restoreNodeState({})
-    // this.html_widget.element.id = `note-plus-${this.uuid}`
-    // this.setMode(this.edit_mode_widget.value)
-    // this.setTheme(this.theme_widget.value)
-    // this.updateHTML(this.html_widget.value) // widget is populated here since we called super
-    // this.updateCSS(this.css_widget.value)
-  }
-  // onRemoved() {
-  //   infoLogger('Node removed', this?.uuid)
-  // }
   getExtraMenuOptions() {
-
     const debugItems = window.MTB?.DEBUG
       ? [
           {
@@ -714,7 +691,7 @@ class NotePlus extends LiteGraph.LGraphNode {
   }
 
   updateHTML(val) {
-    if (!this.parserInitiated()) {
+    if (!this.parserInitiated() || !window.MTB?.ace_loaded) {
       return
     }
     val = val || this.html_widget.value
@@ -830,7 +807,7 @@ class NotePlus extends LiteGraph.LGraphNode {
       this.quickEditor = null
     }
 
-    if (this.quickEditorContainer && this.quickEditorContainer.parentNode) {
+    if (this.quickEditorContainer?.parentNode) {
       this.quickEditorContainer.parentNode.removeChild(
         this.quickEditorContainer,
       )
@@ -872,6 +849,5 @@ app.registerExtension({
 
     NotePlus.category = 'mtb/utils'
     NotePlus.title = 'Note+ (mtb)'
-
   },
 })
