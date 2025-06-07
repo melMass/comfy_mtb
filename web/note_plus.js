@@ -467,7 +467,6 @@ class NotePlus extends LiteGraph.LGraphNode {
 
     // let select_mode = this.dialog.element.querySelector('#edit_mode')
 
-
     syncUI()
 
     const live_edit_label = document.createElement('label')
@@ -510,6 +509,10 @@ class NotePlus extends LiteGraph.LGraphNode {
           window.MTB = {}
         }
         window.MTB.ace_loaded = true
+        this.setMode('markdown')
+        this.setTheme(this.properties.theme)
+        this.updateHTML(this.html_widget.value)
+        this.updateCSS(this.properties.css)
       })
       .catch((e) => {
         errorLogger(e)
@@ -540,9 +543,7 @@ class NotePlus extends LiteGraph.LGraphNode {
         ]
       : []
 
-    return [
-      ...debugItems,
-    ]
+    return [...debugItems]
   }
 
   _setupEditor(editor) {
