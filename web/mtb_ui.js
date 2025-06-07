@@ -203,7 +203,7 @@ export const wrapElement = (element, style = {}) => {
  * @param {Object} [style] - CSS styles to apply to the element.
  * @returns {HTMLElement} - The created DOM element.
  */
-export const makeElement = (kind, style) => {
+export const makeElement = (kind, style, parent) => {
   let [real_kind, className] = kind.split('.')
   let id
 
@@ -223,6 +223,9 @@ export const makeElement = (kind, style) => {
 
   if (id) {
     el.id = id
+  }
+  if (parent) {
+    parent.appendChild(el)
   }
 
   return el

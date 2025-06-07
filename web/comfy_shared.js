@@ -827,8 +827,7 @@ export const ensureMarkdownParser = async (callback) => {
     callbackQueue.push(callback)
   }
 
-  await parserPromise
-  await parserPromise
+  await await parserPromise
 
   return window.MTB.mdParser
 }
