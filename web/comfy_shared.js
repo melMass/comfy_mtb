@@ -797,12 +797,10 @@ function loadParser(shiki) {
 
 export const ensureMarkdownParser = async (callback) => {
   infoLogger('Ensuring md parser')
-  let use_shiki = false
-  try {
-    use_shiki = await api.getSetting('mtb.Use Shiki')
-  } catch (e) {
-    console.warn('Option not available yet', e)
-  }
+  const use_shiki = app.extensionManager.setting.get(
+    'mtb.noteplus.use-shiki',
+    false,
+  )
 
   if (window.MTB?.mdParser) {
     infoLogger('Markdown parser found')
