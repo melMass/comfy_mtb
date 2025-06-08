@@ -109,7 +109,6 @@ export const THEMES = [
 
 export const CSS_RESET = `
 * {
-  font-family: monospace;
   line-height: 1.25em;
 }
 .shiki{
@@ -119,6 +118,8 @@ export const CSS_RESET = `
 .markdown-callout-title {
     .octicon{
         fill:white;
+        width:29px;
+        height:29px;
     }
 	/* background: var(--current-color); */
 	color: var(--current-color);
@@ -127,6 +128,8 @@ export const CSS_RESET = `
 	/* border-start-start-radius: var(--radius); */
 	padding: 0.5em;
 	padding-inline-start: 1em;
+  display: flex;
+  align-items: center;
 }
 .markdown-callout-content {
 	padding: 1em;
@@ -139,7 +142,12 @@ export const CSS_RESET = `
 	border-left: 3px solid var(--current-color);
 	margin-bottom: 1em;
 	margin-top: 1em;
+
 }
+.markdown-callout p:nth-child(2) {
+    padding:1em;
+  }
+
 
 .markdown-callout-tip {
 	--text-color: whitesmoke;

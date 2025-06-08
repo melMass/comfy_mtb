@@ -98,7 +98,7 @@ class NotePlus extends LiteGraph.LGraphNode {
   /** widgets*/
 
   /** used to store the raw value and display the parsed html at the same time*/
-  html_widget
+  preview_widget
 
   editorsContainer
   /** ACE editors instances*/
@@ -135,6 +135,13 @@ class NotePlus extends LiteGraph.LGraphNode {
     this.live = true
     this.calculated_height = 0
 
+    // -
+    this.calculateHeight = shared.debounce(() => {
+      this.calculated_height = shared.calculateTotalChildrenHeight(
+        this.inner,
+      )
+    }, 100)
+
     // - add widgets
     const cinner = document.createElement('div')
     this.inner = document.createElement('div')
@@ -145,16 +152,20 @@ class NotePlus extends LiteGraph.LGraphNode {
     this.inner.classList.add('note-plus-preview')
     cinner.style.margin = '0'
     cinner.style.padding = '0'
-    this.html_widget = this.addDOMWidget('HTML', 'html', cinner, {
+    this.preview_widget = this.addDOMWidget('HTML', 'html', cinner, {
       setValue: (val) => {
         this._raw_html = val
       },
       getValue: () => this._raw_html,
-      getMinHeight: () => this.calculated_height, // (the edit button),
+      getMinHeight: () => {
+        this.calculateHeight()
+        return this.calculated_height
+      },
+
       onDraw: () => {
         // HACK: dirty hack for now until it's addressed upstream...
         // TODO: check if still needed
-        this.html_widget.element.style.pointerEvents = 'none'
+        this.preview_widget.element.style.pointerEvents = 'none'
         // NOTE: not sure about this, it avoid the visual "bugs" but scrolling over the wrong area will affect zoom...
         // this.html_widget.element.style.overflow = 'scroll'
       },
@@ -510,9 +521,8 @@ class NotePlus extends LiteGraph.LGraphNode {
         }
         window.MTB.ace_loaded = true
         this.setMode('markdown')
-        this.setTheme(this.properties.theme)
-        this.updateHTML(this.html_widget.value)
-        this.updateCSS(this.properties.css)
+        this.setTheme()
+        this.updateView()
       })
       .catch((e) => {
         errorLogger(e)
@@ -529,7 +539,8 @@ class NotePlus extends LiteGraph.LGraphNode {
   configure(info) {
     super.configure(info)
     infoLogger('Restoring serialized values', info)
-    this.html_widget.element.id = `note-plus-${this.uuid}`
+    this.preview_widget.element.id = `note-plus-${this.uuid}`
+    this.updateView()
   }
   getExtraMenuOptions() {
     const debugItems = window.MTB?.DEBUG
@@ -537,7 +548,7 @@ class NotePlus extends LiteGraph.LGraphNode {
           {
             content: 'Replace with demo content (debug)',
             callback: () => {
-              this.html_widget.value = DEMO_CONTENT
+              this.preview_widget.value = DEMO_CONTENT
             },
           },
         ]
@@ -547,7 +558,7 @@ class NotePlus extends LiteGraph.LGraphNode {
   }
 
   _setupEditor(editor) {
-    this.setTheme(this.properties.theme)
+    this.setTheme()
 
     editor.setShowPrintMargin(false)
     editor.session.setUseWrapMode(true)
@@ -562,6 +573,7 @@ class NotePlus extends LiteGraph.LGraphNode {
   }
 
   setTheme(theme) {
+    theme = theme || this.properties.theme
     this.properties.theme = theme
     if (this.html_editor) {
       this.html_editor.setTheme(`ace/theme/${theme}`)
@@ -574,6 +586,11 @@ class NotePlus extends LiteGraph.LGraphNode {
     }
   }
 
+  updateView() {
+    this.updateHTML()
+    this.updateCSS()
+    this.calculateHeight()
+  }
   setMode(mode) {
     if (this.html_editor) {
       this.html_editor.session.setMode(`ace/mode/${mode}`)
@@ -582,7 +599,7 @@ class NotePlus extends LiteGraph.LGraphNode {
       this.quickEditor.session.setMode(`ace/mode/${mode}`)
     }
 
-    this.updateHTML(this.html_widget.value)
+    this.updateView()
   }
   setupEditors() {
     infoLogger('NotePlus setupEditor')
@@ -617,7 +634,7 @@ class NotePlus extends LiteGraph.LGraphNode {
 
     this.setMode(DEFAULT_MODE)
 
-    this.html_editor.setValue(this.html_widget.value, -1)
+    this.html_editor.setValue(this.preview_widget.value, -1)
     this.css_editor.setValue(this.properties.css, -1)
   }
 
@@ -656,14 +673,9 @@ class NotePlus extends LiteGraph.LGraphNode {
 
     return styleTag
   }
-  calculateHeight() {
-    this.calculated_height = shared.calculateTotalChildrenHeight(
-      this.html_widget.element,
-    )
-    this.setDirtyCanvas(true, true)
-  }
   updateCSS(css) {
     infoLogger('NotePlus updateCSS')
+    css = css || this.properties.css
     // this.html_widget.element.style = css
     const scopedCss = this.scopeCss(
       `${CSS_RESET}\n${css}`,
@@ -674,8 +686,6 @@ class NotePlus extends LiteGraph.LGraphNode {
     cssDom.innerHTML = scopedCss
 
     this.properties.css = css
-    this.calculateHeight()
-    infoLogger('NotePlus updateCSS', this.calculated_height)
     // this.setSize(this.computeSize())
   }
 
@@ -692,10 +702,14 @@ class NotePlus extends LiteGraph.LGraphNode {
   }
 
   updateHTML(val) {
-    if (!this.parserInitiated() || !window.MTB?.ace_loaded) {
+    if (
+      !this.parserInitiated() ||
+      !window.MTB?.ace_loaded ||
+      !this.preview_widget
+    ) {
       return
     }
-    val = val || this.html_widget.value
+    val = val || this._raw_html
 
     const cleanHTML = this.purify(val)
 
@@ -704,19 +718,18 @@ class NotePlus extends LiteGraph.LGraphNode {
     // .replaceAll('&quot;', '"')
     // .replaceAll('&#039;', "'")
 
-    this.html_widget.value = value
+    this.preview_widget.value = value
 
     MTB.mdParser.parse(value).then((e) => {
       this.inner.innerHTML = e
     })
-    this.calculateHeight()
   }
 
   /**
    * Attaches the double-click listener to the preview area.
    */
   setupDoubleClickEdit() {
-    this.html_widget.element.addEventListener('dblclick', (e) => {
+    this.preview_widget.element.addEventListener('dblclick', (e) => {
       e.stopPropagation()
       e.preventDefault()
 
@@ -752,13 +765,19 @@ class NotePlus extends LiteGraph.LGraphNode {
 
     // hide the preview div and append the editor container
     this.inner.style.display = 'none'
-    this.html_widget.element.appendChild(this.quickEditorContainer)
+    this.preview_widget.element.appendChild(this.quickEditorContainer)
 
     // init ace
-    this.quickEditor = ace.edit(this.quickEditorContainer)
+    this.quickEditor = ace.edit(this.quickEditorContainer, {
+      mode: 'ace/mode/markdown',
+      theme: this.properties.theme,
+    })
+    this.quickEditor.setOptions({
+      autoScrollEditorIntoView: true,
+      copyWithEmptySelection: true,
+      hasCssTransforms: true,
+    })
     this._setupEditor(this.quickEditor)
-    this.quickEditor.session.setMode('ace/mode/markdown')
-    this.quickEditor.setTheme(`ace/theme/${this.properties.theme}`)
 
     this.quickEditor.setValue(this._raw_html, -1)
     this.quickEditor.focus()
@@ -801,7 +820,7 @@ class NotePlus extends LiteGraph.LGraphNode {
         const newValue = this.quickEditor.getValue()
         if (newValue !== this._raw_html) {
           this._raw_html = newValue
-          this.updateHTML(newValue)
+          this.updateView()
         }
       }
       this.quickEditor.destroy()
