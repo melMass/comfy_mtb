@@ -28,11 +28,14 @@ export function makeUUID() {
 // - basic debounce decorator
 export function debounce(func, delay) {
   let timeout
-  return function (...args) {
-    // const context = this
+  let debounced = function (...args) {
     clearTimeout(timeout)
     timeout = setTimeout(() => func.apply(this, args), delay)
   }
+  debounced.cancel = () => {
+    clearTimeout(timeout)
+  }
+  return debounced
 }
 
 //- local storage manager
@@ -632,21 +635,21 @@ function getBrightness(rgbObj) {
 export function calculateTotalChildrenHeight(parentElement) {
   let totalHeight = 0
 
+  if (!parentElement || !parentElement.children) {
+    return 0
+  }
+
   for (const child of parentElement.children) {
     const style = window.getComputedStyle(child)
 
-    // Get height as an integer (without 'px')
-    const height = Number.parseInt(style.height, 10)
+    const height = Number.parseFloat(style.height)
+    const marginTop = Number.parseFloat(style.marginTop)
+    const marginBottom = Number.parseFloat(style.marginBottom)
 
-    // Get vertical margin as integers
-    const marginTop = Number.parseInt(style.marginTop, 10)
-    const marginBottom = Number.parseInt(style.marginBottom, 10)
-
-    // Sum up height and vertical margins
     totalHeight += height + marginTop + marginBottom
   }
 
-  return totalHeight
+  return Math.ceil(totalHeight)
 }
 
 export const loadScript = (

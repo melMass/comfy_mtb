@@ -4,7 +4,7 @@ import { app } from '../../scripts/app.js'
 
 import * as shared from './comfy_shared.js'
 import * as mtb_ui from './mtb_ui.js'
-import { infoLogger, successLogger, errorLogger } from './comfy_shared.js'
+import { warnLogger, infoLogger, errorLogger } from './comfy_shared.js'
 import {
   DEFAULT_CSS,
   // DEFAULT_HTML,
@@ -31,7 +31,11 @@ const storage = new LocalStorageManager('mtb')
  * │ 1 │ web-dist/mtb_markdown.mjs      │  44.7 KB │
  * ╰───┴────────────────────────────────┴──────────╯
  */
-let useShiki = storage.get('np-use-shiki', false)
+
+let _css_reset = app.extensionManager.setting.get(
+  'mtb.noteplus.css-reset',
+  CSS_RESET,
+)
 
 const makeResizable = (dialog) => {
   dialog.style.resize = 'both'
@@ -82,7 +86,6 @@ class NotePlus extends LiteGraph.LGraphNode {
   resizeObserver
 
   /** Live update the preview*/
-  live = true
   /** DOM height by adding child size together*/
   calculated_height = 0
 
@@ -132,15 +135,10 @@ class NotePlus extends LiteGraph.LGraphNode {
     this._raw_html = DEFAULT_MD
 
     // - state
-    this.live = true
     this.calculated_height = 0
 
     // -
-    this.calculateHeight = shared.debounce(() => {
-      this.calculated_height = shared.calculateTotalChildrenHeight(
-        this.inner,
-      )
-    }, 100)
+    this.setupDebounce(100)
 
     // - add widgets
     const cinner = document.createElement('div')
@@ -189,6 +187,17 @@ class NotePlus extends LiteGraph.LGraphNode {
     // ctx.fillStyle = 'rgba(0, 255, 0, 0.3)'
     // const rect = this.rect
     // ctx.fillRect(rect.x, rect.y, rect.width, rect.height)
+  }
+
+  setupDebounce(ms) {
+    if (this.calculatedHeight) {
+      this.calculateHeight.cancel()
+    }
+    this.calculateHeight = shared.debounce(() => {
+      this.calculated_height = shared.calculateTotalChildrenHeight(
+        this.inner,
+      )
+    }, ms)
   }
 
   // drawSideHandle(ctx) {
@@ -303,26 +312,11 @@ class NotePlus extends LiteGraph.LGraphNode {
         width: '100%',
       })
     }
-    const closeButton = this.dialog.element.querySelector('button')
-    closeButton.textContent = 'CANCEL'
-    closeButton.id = 'cancel-editor-dialog'
-    closeButton.title =
-      "Cancel the changes since last opened (doesn't support live mode)"
-    closeButton.disabled = this.live
-
-    closeButton.style.background = this.live
-      ? 'repeating-linear-gradient(45deg,#606dbc,#606dbc 10px,#465298 10px,#465298 20px)'
-      : ''
-
-    const saveButton = document.createElement('button')
+    const saveButton = this.dialog.element.querySelector('button')
     saveButton.textContent = 'SAVE'
     saveButton.onclick = () => {
       this.closeEditorDialog(true)
     }
-    closeButton.onclick = () => {
-      this.closeEditorDialog(false)
-    }
-    closeButton.before(saveButton)
   }
 
   teardownEditors() {
@@ -338,7 +332,7 @@ class NotePlus extends LiteGraph.LGraphNode {
 
   closeEditorDialog(accept) {
     infoLogger('Closing editor dialog', accept)
-    if (accept && !this.live) {
+    if (accept) {
       this.updateHTML(this.html_editor.getValue())
       this.updateCSS(this.css_editor.getValue())
     }
@@ -348,6 +342,7 @@ class NotePlus extends LiteGraph.LGraphNode {
     }
     this.teardownEditors()
     this.dialog.close()
+    this.setupDebounce(100)
   }
 
   /**
@@ -370,6 +365,7 @@ class NotePlus extends LiteGraph.LGraphNode {
     }
   }
   openEditorDialog() {
+    this.setupDebounce(500)
     this.hookResize(this.dialog.element)
     const container = mtb_ui.makeElement('div', {
       display: 'flex',
@@ -414,21 +410,6 @@ class NotePlus extends LiteGraph.LGraphNode {
       this.editorsContainer,
     )
 
-    const live_edit = document.createElement('input')
-    live_edit.type = 'checkbox'
-    live_edit.checked = this.live
-    live_edit.onchange = () => {
-      this.live = live_edit.checked
-      const cancel_button = this.dialog.element.querySelector(
-        '#cancel-editor-dialog',
-      )
-      if (cancel_button) {
-        cancel_button.disabled = this.live
-        cancel_button.style.background = this.live
-          ? 'repeating-linear-gradient(45deg,#606dbc,#606dbc 10px,#465298 10px,#465298 20px)'
-          : ''
-      }
-    }
 
     //- "Dynamic" elements
     const syncUI = () => {
@@ -480,17 +461,6 @@ class NotePlus extends LiteGraph.LGraphNode {
 
     syncUI()
 
-    const live_edit_label = document.createElement('label')
-    live_edit_label.textContent = 'Live Edit'
-
-    // add a tooltip
-    live_edit_label.title =
-      'When this is on, the editor will update the note+ whenever you change the text.'
-
-    live_edit_label.append(live_edit)
-
-    // select_mode.before(live_edit_label)
-    container.append(live_edit_label)
 
     this.setupEditors()
   }
@@ -500,7 +470,7 @@ class NotePlus extends LiteGraph.LGraphNode {
     }
     let NEED_PATCH = false
     if (window.ace) {
-      shared.infoLogger(
+      infoLogger(
         'A global ace was found in scope not loaded by mtb, this might lead to issues.',
       )
       NEED_PATCH = true
@@ -511,7 +481,7 @@ class NotePlus extends LiteGraph.LGraphNode {
     shared
       .loadScript('/mtb_async/ace/ace.js')
       .then((m) => {
-        shared.infoLogger('ACE was loaded', m)
+        infoLogger('ACE was loaded', m)
         // window.MTB_ACE = window.ace
         if (!window.MTB) {
           errorLogger(
@@ -557,6 +527,10 @@ class NotePlus extends LiteGraph.LGraphNode {
     return [...debugItems]
   }
 
+  get fontSize() {
+    return app.extensionManager.setting.get('Comfy.TextareaWidget.FontSize', 16)
+  }
+
   _setupEditor(editor) {
     this.setTheme()
 
@@ -565,7 +539,7 @@ class NotePlus extends LiteGraph.LGraphNode {
     editor.renderer.setShowGutter(false)
     editor.session.setTabSize(4)
     editor.session.setUseSoftTabs(true)
-    editor.setFontSize(14)
+    editor.setFontSize(this.fontSize)
     editor.setReadOnly(false)
     editor.setHighlightActiveLine(false)
     editor.setShowFoldWidgets(true)
@@ -591,6 +565,7 @@ class NotePlus extends LiteGraph.LGraphNode {
     this.updateCSS()
     this.calculateHeight()
   }
+
   setMode(mode) {
     if (this.html_editor) {
       this.html_editor.session.setMode(`ace/mode/${mode}`)
@@ -601,6 +576,7 @@ class NotePlus extends LiteGraph.LGraphNode {
 
     this.updateView()
   }
+
   setupEditors() {
     infoLogger('NotePlus setupEditor')
 
@@ -613,9 +589,7 @@ class NotePlus extends LiteGraph.LGraphNode {
       this.html_editor = ace.edit('noteplus-html-editor')
       this._setupEditor(this.html_editor)
       this.html_editor.session.on('change', (_delta) => {
-        if (this.live) {
-          this.updateHTML(this.html_editor.getValue())
-        }
+        this.updateHTML(this.html_editor.getValue())
       })
     } else {
       infoLogger('Reusing html editor')
@@ -626,9 +600,7 @@ class NotePlus extends LiteGraph.LGraphNode {
       this.css_editor.session.setMode('ace/mode/css')
       this._setupEditor(this.css_editor)
       this.css_editor.session.on('change', (_delta) => {
-        if (this.live) {
-          this.updateCSS(this.css_editor.getValue())
-        }
+        this.updateCSS(this.css_editor.getValue())
       })
     }
 
@@ -678,7 +650,7 @@ class NotePlus extends LiteGraph.LGraphNode {
     css = css || this.properties.css
     // this.html_widget.element.style = css
     const scopedCss = this.scopeCss(
-      `${CSS_RESET}\n${css}`,
+      `${_css_reset}\n${css}`,
       `note-plus-${this.uuid}`,
     )
 
@@ -686,7 +658,6 @@ class NotePlus extends LiteGraph.LGraphNode {
     cssDom.innerHTML = scopedCss
 
     this.properties.css = css
-    // this.setSize(this.computeSize())
   }
 
   parserInitiated() {
@@ -702,6 +673,10 @@ class NotePlus extends LiteGraph.LGraphNode {
   }
 
   updateHTML(val) {
+    if (val) {
+      this._raw_html = val
+    }
+
     if (
       !this.parserInitiated() ||
       !window.MTB?.ace_loaded ||
@@ -720,9 +695,18 @@ class NotePlus extends LiteGraph.LGraphNode {
 
     this.preview_widget.value = value
 
-    MTB.mdParser.parse(value).then((e) => {
-      this.inner.innerHTML = e
-    })
+    MTB.mdParser
+      .parse(value)
+      .then((e) => {
+        this.inner.innerHTML = e
+      })
+      .catch((e) => {
+        if (e.name === 'ShikiError') {
+          warnLogger(e.message)
+          return
+        }
+        throw e
+      })
   }
 
   /**
@@ -752,6 +736,8 @@ class NotePlus extends LiteGraph.LGraphNode {
   enterEditMode() {
     this.isEditing = true
 
+    this.setupDebounce(10000)
+
     const id = `noteplus-quick-editor-${this.uuid}`
     this.quickEditorContainer = mtb_ui.makeElement(`div.#${id}`, {
       position: 'absolute',
@@ -772,6 +758,7 @@ class NotePlus extends LiteGraph.LGraphNode {
       mode: 'ace/mode/markdown',
       theme: this.properties.theme,
     })
+
     this.quickEditor.setOptions({
       autoScrollEditorIntoView: true,
       copyWithEmptySelection: true,
@@ -814,6 +801,7 @@ class NotePlus extends LiteGraph.LGraphNode {
     }
 
     this.isEditing = false
+    this.setupDebounce(100)
 
     if (this.quickEditor) {
       if (saveChanges) {
@@ -857,9 +845,21 @@ app.registerExtension({
           // fontFamily: 'monospace',
         },
       },
+    },
+    {
+      id: 'mtb.noteplus.css-reset',
+      category: ['mtb', 'Note+', 'css-reset'],
+      name: 'CSS reset',
+      tooltip: 'This is prepended to all notes',
+      type: 'string',
+      defaultValue: CSS_RESET,
+      attrs: {
+        style: {
+          // fontFamily: 'monospace',
+        },
+      },
       async onChange(value) {
-        storage.set('np-use-shiki', value)
-        useShiki = value === 'true'
+        _css_reset = value
       },
     },
   ],
