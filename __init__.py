@@ -10,6 +10,8 @@
 __version__ = "0.5.4"
 
 import os
+from collections import OrderedDict
+from typing import Any
 
 from aiohttp.web_request import Request
 
@@ -247,7 +249,7 @@ if IN_COMFY and hasattr(PromptServer, "instance"):
     with contextlib.suppress(ImportError):
         from cachetools import TTLCache
 
-        img_cache = TTLCache(maxsize=100, ttl=5)  # 1 min TTL
+        # img_cache = TTLCache(maxsize=100, ttl=5)  # 1 min TTL
         prompt_cache = TTLCache(maxsize=100, ttl=5)  # 1 min TTL
 
     node_dependency_mapping = get_node_dependencies()
@@ -362,29 +364,132 @@ if IN_COMFY and hasattr(PromptServer, "instance"):
 
     import asyncio
     import os
+    import time
+    from asyncio import Semaphore
+    from concurrent.futures import ThreadPoolExecutor
+    from contextlib import asynccontextmanager
     from io import BytesIO
 
     from aiohttp import web
     from PIL import Image
 
+    image_thread_pool = ThreadPoolExecutor(
+        max_workers=4, thread_name_prefix="img_worker"
+    )
+
+    @asynccontextmanager
+    async def get_image_with_timeout(
+        file_path, preview_params=None, channel=None, timeout=10
+    ):
+        try:
+            result = await asyncio.wait_for(
+                asyncio.get_event_loop().run_in_executor(
+                    image_thread_pool,
+                    get_cached_image,
+                    file_path,
+                    preview_params,
+                    channel,
+                ),
+                timeout=timeout,
+            )
+            yield result
+        except asyncio.TimeoutError:
+            print(f"Image processing timed out for {file_path}")
+            raise
+        except Exception as e:
+            print(f"Error processing image {file_path}: {str(e)}")
+            raise
+
+    async def get_image_response(
+        file, filename: str, preview_info=None, channel=None
+    ):
+        try:
+            async with get_image_with_timeout(
+                file, preview_info, channel
+            ) as img:
+                return web.Response(
+                    body=img,
+                    content_type="image/webp" if preview_info else "image/png",
+                    headers={"Content-Disposition": f'filename="{filename}"'},
+                )
+        except asyncio.TimeoutError:
+            return web.Response(status=504, text="Image processing timed out")
+        except Exception as e:
+            return web.Response(status=500, text=str(e))
+
+    class LRUCache:
+        def __init__(self, capacity: int):
+            self.cache = OrderedDict()
+            self.capacity = capacity
+
+        def get(self, key) -> Any:
+            if key not in self.cache:
+                return None
+            self.cache.move_to_end(key)
+            return self.cache[key]
+
+        def put(self, key, value: Any) -> None:
+            if key in self.cache:
+                self.cache.move_to_end(key)
+            self.cache[key] = value
+            if len(self.cache) > self.capacity:
+                self.cache.popitem(last=False)
+
+    img_cache = LRUCache(capacity=100)
+
     def get_cached_image(file_path: str, preview_params=None, channel=None):
         cache_key = (file_path, preview_params, channel)
-        if img_cache and (cache_key in img_cache):
-            return img_cache[cache_key]
-
-        with Image.open(file_path) as img:
-            info = img.info
-            if preview_params:
-                img = process_preview(img, preview_params)
-            if channel:
-                img = process_channel(img, channel)
-            if prompt_cache:
-                prompt_cache[cache_key] = info
+        try:
             if img_cache:
-                img_cache[cache_key] = img.getvalue()
-                return img_cache[cache_key]
+                cached_value = img_cache.get(cache_key)
+                if cached_value is not None:
+                    return cached_value
 
-            return img.getvalue()
+            with Image.open(file_path) as img:
+                info = img.info
+                if preview_params:
+                    img = process_preview(img, preview_params)
+                if channel:
+                    img = process_channel(img, channel)
+
+                result = img.getvalue()
+
+                try:
+                    if prompt_cache:
+                        prompt_cache[cache_key] = info
+                    if img_cache:
+                        img_cache.put(cache_key, result)
+                except Exception as e:
+                    print(
+                        f"Warning: Failed to cache image {file_path}: {str(e)}"
+                    )
+
+                return result
+        except Exception as e:
+            print(f"Error processing image {file_path}: {str(e)}")
+            raise
+
+    class RateLimiter:
+        def __init__(self, requests_per_second):
+            self.requests_per_second = requests_per_second
+            self.semaphore = Semaphore(requests_per_second)
+            self.timestamps = []
+
+        async def acquire(self):
+            await self.semaphore.acquire()
+            now = time.time()
+            self.timestamps.append(now)
+
+            # Remove old timestamps
+            self.timestamps = [t for t in self.timestamps if now - t < 1.0]
+
+            if len(self.timestamps) >= self.requests_per_second:
+                await asyncio.sleep(1.0)
+
+        def release(self):
+            self.semaphore.release()
+
+    rate_limiter = RateLimiter(requests_per_second=10)
 
     def process_preview(img: Image.Image, preview_params):
         image_format, quality, width = preview_params
@@ -437,41 +542,44 @@ if IN_COMFY and hasattr(PromptServer, "instance"):
     #       to load workflows in the sidebar
     @PromptServer.instance.routes.get("/mtb/view")
     async def view_image(request: Request):
-        import folder_paths
+        try:
+            import folder_paths
 
-        filename = request.rel_url.query.get("filename")
-        if not filename:
-            return web.Response(status=404)
+            await rate_limiter.acquire()
 
-        filename, output_dir = folder_paths.annotated_filepath(filename)
-        if filename[0] == "/" or ".." in filename:
-            return web.Response(status=400)
+            filename = request.rel_url.query.get("filename")
+            if not filename:
+                return web.Response(status=404)
 
-        if output_dir is None:
-            rtype = request.rel_url.query.get("type", "output")
-            output_dir = folder_paths.get_directory_by_type(rtype)
+            filename, output_dir = folder_paths.annotated_filepath(filename)
+            if filename[0] == "/" or ".." in filename:
+                return web.Response(status=400)
 
-        if output_dir is None:
-            return web.Response(status=400)
+            if output_dir is None:
+                rtype = request.rel_url.query.get("type", "output")
+                output_dir = folder_paths.get_directory_by_type(rtype)
 
-        if "subfolder" in request.rel_url.query:
-            full_output_dir = os.path.join(
-                output_dir, request.rel_url.query["subfolder"]
-            )
-            if (
-                os.path.commonpath(
-                    (os.path.abspath(full_output_dir), output_dir)
+            if output_dir is None:
+                return web.Response(status=400)
+
+            if "subfolder" in request.rel_url.query:
+                full_output_dir = os.path.join(
+                    output_dir, request.rel_url.query["subfolder"]
                 )
-                != output_dir
-            ):
-                return web.Response(status=403)
-            output_dir = full_output_dir
+                if (
+                    os.path.commonpath(
+                        (os.path.abspath(full_output_dir), output_dir)
+                    )
+                    != output_dir
+                ):
+                    return web.Response(status=403)
+                output_dir = full_output_dir
 
-        filename = os.path.basename(filename)
-        file = os.path.join(output_dir, filename)
+            filename = os.path.basename(filename)
+            file = os.path.join(output_dir, filename)
 
-        if not os.path.isfile(file):
-            return web.Response(status=404)
+            if not os.path.isfile(file):
+                return web.Response(status=404)
 
         ret_workflow = request.rel_url.query.get("workflow")
 
@@ -509,9 +617,13 @@ if IN_COMFY and hasattr(PromptServer, "instance"):
             width = request.rel_url.query.get("width")
             preview_info = (image_format, quality, width)
 
-        channel = request.rel_url.query.get("channel")
+            channel = request.rel_url.query.get("channel")
 
-        return await get_image_response(file, filename, preview_info, channel)
+            return await get_image_response(
+                file, filename, preview_info, channel
+            )
+        finally:
+            rate_limiter.release()
 
     @PromptServer.instance.routes.get("/mtb/server-info")
     async def get_debug(request: Request):

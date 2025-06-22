@@ -12,6 +12,9 @@
 import { app } from '../../scripts/app.js'
 import { api } from '../../scripts/api.js'
 
+if (!window.MTB) {
+  window.MTB = {}
+}
 // #region base utils
 
 // - crude uuid
@@ -290,6 +293,10 @@ export const getNamedWidget = (node, ...names) => {
  * @returns {{to:LGraphNode, from:LGraphNode, type:'error' | 'incoming' | 'outgoing'}}
  */
 export const nodesFromLink = (node, link) => {
+  if (typeof link === 'number') {
+    console.log('Resolving link from id', link)
+    link = app.graph.links[link]
+  }
   const fromNode = app.graph.getNodeById(link.origin_id)
   const toNode = app.graph.getNodeById(link.target_id)
 
@@ -1081,6 +1088,66 @@ export const addDocumentation = (
 
 // #endregion
 
+// #region canvas / drawing
+
+// calculate convex hull (Graham)
+export function getConvexHull(points) {
+  if (points.length < 3) return points
+
+  // find the bottommost point (and leftmost if tied)
+  let bottom = 0
+  for (let i = 1; i < points.length; i++) {
+    if (
+      points[i][1] < points[bottom][1] ||
+      (points[i][1] === points[bottom][1] && points[i][0] < points[bottom][0])
+    ) {
+      bottom = i
+    }
+  }
+  // swap bottom point to first position
+  ;[points[0], points[bottom]] = [points[bottom], points[0]]
+
+  // sort points by polar angle with respect to base point
+  const basePoint = points[0]
+  points.sort((a, b) => {
+    if (a === basePoint) return -1
+    if (b === basePoint) return 1
+
+    const angleA = Math.atan2(a[1] - basePoint[1], a[0] - basePoint[0])
+    const angleB = Math.atan2(b[1] - basePoint[1], b[0] - basePoint[0])
+
+    if (angleA < angleB) return -1
+    if (angleA > angleB) return 1
+
+    // if angles are equal, sort by distance
+    const distA = (a[0] - basePoint[0]) ** 2 + (a[1] - basePoint[1]) ** 2
+    const distB = (b[0] - basePoint[0]) ** 2 + (b[1] - basePoint[1]) ** 2
+    return distA - distB
+  })
+
+  // build convex hull
+  const stack = [points[0], points[1]]
+  for (let i = 2; i < points.length; i++) {
+    while (
+      stack.length > 1 &&
+      !isLeftTurn(stack[stack.length - 2], stack[stack.length - 1], points[i])
+    ) {
+      stack.pop()
+    }
+    stack.push(points[i])
+  }
+
+  return stack
+}
+
+function isLeftTurn(p1, p2, p3) {
+  return (
+    (p2[0] - p1[0]) * (p3[1] - p1[1]) - (p2[1] - p1[1]) * (p3[0] - p1[0]) > 0
+  )
+}
+
+// #endregion
+
 // #region node extensions
 
 /**
@@ -1155,6 +1222,8 @@ export const runAction = async (name, ...args) => {
   const res = await req.json()
   return res.result
 }
+
+window.MTB.run = runAction
 export const getServerInfo = async () => {
   const res = await api.fetchApi('/mtb/server-info')
   return await res.json()
