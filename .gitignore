@@ -13,3 +13,4 @@ node.zip
 
 # I store the gh-pages worktrees (src & build) there
 .worktrees
+comfy.lock

@@ -34,6 +34,8 @@ from aiohttp import web
 
 IN_COMFY = False
 
+PromptServer = None
+
 try:
     from server import PromptServer
 
@@ -240,9 +242,28 @@ if failed:
 # - ENDPOINT
 
 
-if IN_COMFY and hasattr(PromptServer, "instance"):
+# TODO: move that away and simplify existing endpoints
+
+
+def register_routes():
+    if not PromptServer:
+        log.error("No prompt server, are you inside comfy?")
+
+    if PromptServer.instance.app.frozen:
+        log.warning(
+            "The router is frozen and cannot be further edited."
+            "If you are hot reloading mtb this is expected."
+        )
+        return
+
     img_cache = None
     prompt_cache = None
+
+    import asyncio
+    import os
+    from io import BytesIO
+
+    from PIL import Image
 
     with contextlib.suppress(ImportError):
         from cachetools import TTLCache
@@ -359,13 +380,6 @@ if IN_COMFY and hasattr(PromptServer, "instance"):
 
         # Return JSON for other requests
         return web.json_response({"message": "Welcome to MTB!"})
-
-    import asyncio
-    import os
-    from io import BytesIO
-
-    from aiohttp import web
-    from PIL import Image
 
     def get_cached_image(file_path: str, preview_params=None, channel=None):
         cache_key = (file_path, preview_params, channel)
@@ -569,6 +583,10 @@ if IN_COMFY and hasattr(PromptServer, "instance"):
         reload(endpoint)
 
         return await endpoint.do_action(request)
+
+
+if IN_COMFY and hasattr(PromptServer, "instance"):
+    register_routes()
 
 
 # - WAS Dictionary
