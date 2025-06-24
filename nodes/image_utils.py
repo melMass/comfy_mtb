@@ -21,7 +21,11 @@ class MTB_StackImages:
                 "match_method": (
                     ["error", "smallest", "largest"],
                     {"default": "error"},
-                )
+                ),
+                "output_rgb": (
+                    "BOOLEAN",
+                    {"default": True, "tooltip": "Output RGB instead of RGBA"},
+                ),
             },
         }
 
@@ -29,7 +33,7 @@ class MTB_StackImages:
     FUNCTION = "stack"
     CATEGORY = "mtb/image utils"
 
-    def stack(self, vertical, match_method="error", **kwargs):
+    def stack(self, vertical, match_method="error", output_rgb=True, **kwargs):
         if not kwargs:
             raise ValueError("At least one tensor must be provided.")
 
@@ -97,6 +101,9 @@ class MTB_StackImages:
         dim = 1 if vertical else 2
 
         stacked_tensor = torch.cat(normalized_tensors, dim=dim)
+
+        if output_rgb:
+            stacked_tensor = stacked_tensor[:, :, :, :3]
 
         return (stacked_tensor,)
 
