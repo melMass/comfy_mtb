@@ -373,6 +373,30 @@ if (window?.__COMFYUI_FRONTEND_VERSION__) {
           'Name-Reverse',
         ],
       },
+      {
+        id: 'mtb.io-sidebar.notice',
+        category: ['mtb', 'Input & Output Sidebar', 'sort'],
+        name: ' ',
+
+        type: (name, setter, value, attrs) => {
+          const container = mtb_ui.makeElement('div')
+          const notice =
+            '## Important\nIf you make **any** edits here you need to toggle off and back on the sidebar for it to take effect.'
+
+          if (window.MTB?.mdParser) {
+            MTB.mdParser.parse(notice).then((e) => {
+              container.innerHTML = e
+            })
+          } else {
+            shared.ensureMarkdownParser((p) => {
+              p.parse(notice).then((e) => {
+                container.innerHTML = e
+              })
+            })
+          }
+          return container
+        },
+      },
     ],
 
     init: () => {
