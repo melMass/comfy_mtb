@@ -28,7 +28,7 @@ function createDebugSection(title) {
     margin: '8px 0',
     padding: '8px',
     borderRadius: '4px',
-    backgroundColor: 'rgba(0,0,0,0.2)'
+    backgroundColor: 'rgba(0,0,0,0.2)',
   })
 
   const header = mtb_ui.makeElement('h3', {
@@ -37,7 +37,7 @@ function createDebugSection(title) {
     borderBottom: '1px solid rgba(255,255,255,0.1)',
     fontSize: '14px',
     fontWeight: 'bold',
-    color: '#9f9'
+    color: '#9f9',
   })
   header.textContent = title
   section.appendChild(header)
@@ -47,21 +47,21 @@ function createDebugSection(title) {
 
 function createDebugContent(content, type) {
   const wrapper = mtb_ui.makeElement('div', {
-    margin: '4px 0'
+    margin: '4px 0',
   })
 
   if (type === 'text') {
     const text = mtb_ui.makeElement('p', {
       margin: '2px 0',
       fontFamily: 'monospace',
-      whiteSpace: 'pre-wrap'
+      whiteSpace: 'pre-wrap',
     })
     text.innerHTML = content
     wrapper.appendChild(text)
   } else if (type === 'image') {
     const img = mtb_ui.makeElement('img', {
       width: '100%',
-      borderRadius: '2px'
+      borderRadius: '2px',
     })
     img.src = content
     wrapper.appendChild(img)
@@ -148,18 +148,18 @@ app.registerExtension({
         const uiData = data.ui || data
 
         if (uiData.items) {
-            uiData.items.forEach(item => {
-                const inputName = item.input
-                if (!inputData[inputName]) {
-                    inputData[inputName] = { text: [], b64_images: [] }
-                }
-                if (item.text) {
-                    inputData[inputName].text.push(...item.text)
-                }
-                if (item.b64_images) {
-                    inputData[inputName].b64_images.push(...item.b64_images)
-                }
-            })
+          uiData.items.forEach((item) => {
+            const inputName = item.input
+            if (!inputData[inputName]) {
+              inputData[inputName] = { text: [], b64_images: [] }
+            }
+            if (item.text) {
+              inputData[inputName].text.push(...item.text)
+            }
+            if (item.b64_images) {
+              inputData[inputName].b64_images.push(...item.b64_images)
+            }
+          })
         }
 
         let widgetI = 1
@@ -171,23 +171,18 @@ app.registerExtension({
           const section = createDebugSection(inputName)
 
           if (content.text.length > 0) {
-            content.text.forEach(text => {
+            content.text.forEach((text) => {
               section.appendChild(createDebugContent(text, 'text'))
             })
           }
 
           if (content.b64_images.length > 0) {
-            content.b64_images.forEach(img => {
+            content.b64_images.forEach((img) => {
               section.appendChild(createDebugContent(img, 'image'))
             })
           }
 
-          this.addDOMWidget(
-            `debug_section_${widgetI}`,
-            'CUSTOM',
-            section,
-            {}
-          )
+          this.addDOMWidget(`debug_section_${widgetI}`, 'CUSTOM', section, {})
           widgetI++
         }
 

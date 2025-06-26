@@ -59,7 +59,7 @@ function notify(message, timeout = 3000) {
       log('Transition out')
       const totalHeight = Array.from(container.children).reduce(
         (acc, child) => acc + child.offsetHeight + 10, // Add spacing of 10px between toasts
-        0
+        0,
       )
       container.style.height = `${totalHeight}px`
 
@@ -83,7 +83,7 @@ function notify(message, timeout = 3000) {
   // Update container's height to fit new toast
   const totalHeight = Array.from(container.children).reduce(
     (acc, child) => acc + child.offsetHeight + 10, // Add spacing of 10px between toasts
-    0
+    0,
   )
   container.style.height = `${totalHeight}px`
 
