@@ -41,7 +41,16 @@ const toastStyle = `
     transition-duration: ${transition_time}ms;
   `
 
-function notify(message, timeout = 3000) {
+function notify(message, timeout = 3000, old_mode = false) {
+  if (!old_mode) {
+    app.extensionManager.toast.add({
+      severity: 'info',
+      summary: 'MTB',
+      detail: message,
+      life: timeout,
+    })
+    return
+  }
   log('Creating toast')
   const container = document.getElementById('mtb-notify-container')
   const toast = document.createElement('div')
