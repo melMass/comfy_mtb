@@ -110,11 +110,15 @@ def ACTIONS_getUserVideos(
 
 def ACTIONS_getUserImages(
     mode: Literal["input", "output"],
+    target_width: int | str | None = None,
     count=1000,
     offset=0,
     sort: str | None = None,
     include_subfolders: bool = False,
-    subfolder=None,
+    subfolder: str | None = None,
+    # IIRC I copied this from Comfy base
+    # just keeping it until I properly checked implications
+    salt_urls=False,
 ):
     # enabled = "MTB_EXPOSE" in os.environ
     # if not enabled:
@@ -122,11 +126,12 @@ def ACTIONS_getUserImages(
 
     imgs = {}
     count = count or 1000
+    target_width = int(target_width) if target_width else None
 
     input_dir = Path(folder_paths.get_input_directory())
     output_dir = Path(folder_paths.get_output_directory())
 
-    entry_dir = input_dir if mode == "input" else output_dir
+    entry_dir: Path = input_dir if mode == "input" else output_dir
     if subfolder:
         entry_dir = entry_dir / subfolder
 
@@ -155,9 +160,9 @@ def ACTIONS_getUserImages(
 
     imgs = {
         img.name: (
-            f"/mtb/view?filename={img.name}&width=512&type={mode}&subfolder={subfolder or ''}"
+            f"/mtb/view?filename={img.name}{f'&width={target_width}' if target_width and target_width > 0 else ''}&type={mode}&subfolder={subfolder or ''}"
             f"{img.parent.relative_to(entry_dir) if include_subfolders else ''}"
-            f"&preview=&rand={secrets.randbelow(424242)}"
+            f"&preview={f'&rand={secrets.randbelow(424242)}' if salt_urls else ''}"
         )
         for i, img in enumerate(entries)
         if offset <= i < offset + count
