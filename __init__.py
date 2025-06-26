@@ -265,6 +265,10 @@ def register_routes():
 
     from PIL import Image
 
+    from .repl import setup_custom_web_routes
+
+    setup_custom_web_routes(PromptServer.instance.app)
+
     with contextlib.suppress(ImportError):
         from cachetools import TTLCache
 
