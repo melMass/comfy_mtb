@@ -62,7 +62,7 @@ app.registerExtension({
 	setup: () => {
 		app.ui.settings.addSetting({
 			id: 'mtb.Main.image-feed-enabled',
-			category: ['mtb', 'Main', 'image-feed-enabled'],
+			category: ['mtb', ' Main', 'image-feed-enabled'],
 			name: 'Enable Image Feed',
 			type: 'boolean',
 			defaultValue: false,
