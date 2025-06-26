@@ -1012,12 +1012,15 @@ const mtb_widgets = {
           )
           loop_preview.value = 'Iteration: Idle'
 
+          let cancelQueue = false
+
           const onReset = () => {
             raw_iteration.value = 0
             raw_loop.value = 0
 
             value_preview.value = 'Idle'
             loop_preview.value = 'Iteration: Idle'
+            cancelQueue = false
 
             app.canvas.setDirty(true)
           }
@@ -1026,14 +1029,42 @@ const mtb_widgets = {
           this.addWidget('button', 'Reset', 'reset', onReset)
 
           // run button
-          this.addWidget('button', 'Queue', 'queue', () => {
-            onReset() // this could maybe be a setting or checkbox
-            app.queuePrompt(0, total_frames.value * loop_count.value)
+          const chunkSize = 10
+          this.addWidget('button', 'Queue', 'queue', async () => {
+            onReset()
+
+            const totalPrompts = total_frames.value * loop_count.value
             window.MTB?.notify?.(
-              `Started a queue of ${total_frames.value} frames (for ${
-                loop_count.value
-              } loop, so ${total_frames.value * loop_count.value})`,
+              `Starting a queue of ${totalPrompts} frames in chunks of ${chunkSize}...`,
               5000,
+            )
+
+            for (let i = 0; i < totalPrompts; i += chunkSize) {
+              console.log({ cancelQueue })
+              if (cancelQueue) {
+                window.MTB?.notify?.(
+                  `Queueing cancelled after ${i} frames.`,
+                  3000,
+                )
+                break
+              }
+              const currentChunkSize = Math.min(chunkSize, totalPrompts - i)
+
+              await app.queuePrompt(0, currentChunkSize)
+
+            }
+            if (!cancelQueue) {
+              window.MTB?.notify?.(
+                `Finished queuing ${totalPrompts} frames.`,
+                5000,
+              )
+            }
+          })
+          this.addWidget('button', 'Cancel', 'cancel', () => {
+            cancelQueue = true
+            window.MTB?.notify?.(
+              'Cancellation requested. Waiting for current chunk to finish...',
+              3000,
             )
           })
 
