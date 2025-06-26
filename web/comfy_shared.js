@@ -687,6 +687,8 @@ export const loadScript = (
       document.body.appendChild(scriptEle)
     } catch (error) {
       reject(error)
+    } finally {
+      infoLogger(`Finally loaded script: ${FILE_URL}`)
     }
   })
 }
