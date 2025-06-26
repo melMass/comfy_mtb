@@ -273,11 +273,11 @@ if (window?.__COMFYUI_FRONTEND_VERSION__) {
         id: 'mtb.io-sidebar.img-size',
         category: ['mtb', 'Input & Output Sidebar', 'img-size'],
 
-        name: 'Resolution of the images',
+        name: 'Resize width of shown images',
         type: 'number',
         defaultValue: 512,
 
-        tooltip: "It's recommended to keep it at 512px",
+        tooltip: "It's recommended to keep it at 512px. Setting a high enough value will show images of less width in their native resolution.",
         attrs: {
           style: {
             // fontFamily: 'monospace',
