@@ -867,6 +867,26 @@ class MTB_TensorOps:
         return (result,)
 
 
+class MTB_BooleanNot:
+    """Inverts a boolean."""
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "bool_in": ("BOOLEAN", {"default": False}),
+            },
+        }
+
+    RETURN_TYPES = ("BOOLEAN",)
+    RETURN_NAMES = ("inverted_bool",)
+    FUNCTION = "invert"
+    CATEGORY = "mtb/utils"
+
+    def invert(self, bool_in: bool):
+        return (not bool_in,)
+
+
 __nodes__ = [
     MTB_StringReplace,
     MTB_FitNumber,
@@ -882,4 +902,5 @@ __nodes__ = [
     MTB_FloatToFloats,
     MTB_FloatsToInts,
     MTB_TensorOps,
+    MTB_BooleanNot,
 ]
