@@ -4,11 +4,13 @@ import re
 import urllib.parse
 import urllib.request
 from math import pi
+from typing import Any
 
 import comfy.model_management as model_management
 import comfy.utils
 import numpy as np
 import torch
+from comfy.comfy_types.node_typing import IO as CIO
 from PIL import Image
 
 from ..log import log
@@ -867,6 +869,33 @@ class MTB_TensorOps:
         return (result,)
 
 
+class MTB_GetItem:
+    """Generic index based getter for common types"""
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "container": (CIO.ANY,),
+                "index": ("INT", {"default": 0}),
+            }
+        }
+
+    RETURN_TYPES = (CIO.ANY,)
+    RETURN_NAMES = ("item",)
+    FUNCTION = "get_item"
+    CATEGORY = "mtb/utils"
+
+    def get_item(self, container: Any, index: int):
+        if "__getitem__" in dir(container):
+            log.debug(f"Container is {type(container)}")
+            res = container[index]
+            if type(res) is torch.Tensor:
+                res = res.unsqueeze(0)
+
+            return (res,)
+
+
 class MTB_BooleanNot:
     """Inverts a boolean."""
 
@@ -903,4 +932,5 @@ __nodes__ = [
     MTB_FloatsToInts,
     MTB_TensorOps,
     MTB_BooleanNot,
+    MTB_GetItem,
 ]
