@@ -101,8 +101,9 @@ class MTB_StartClock:
             clock_id,
         )
 
+    @classmethod
     def IS_CHANGED(
-        self, *, name: str, cache: bool = False, passthrough: Any | None = None
+        cls, *, name: str, cache: bool = False, passthrough: Any | None = None
     ):
         if not cache:
             return float("Nan")
