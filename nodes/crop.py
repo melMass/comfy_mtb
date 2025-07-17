@@ -1,13 +1,22 @@
-import numpy as np
+from typing import NamedTuple
+
 import torch
-from PIL import Image, ImageDraw, ImageFilter
+import torchvision.transforms.functional as TF
 
 from ..log import log
-from ..utils import np2tensor, pil2tensor, tensor2np, tensor2pil
+
+
+class BoundingBox(NamedTuple):
+    """The bounding box tuple."""
+
+    x: int
+    y: int
+    width: int
+    height: int
 
 
 class MTB_Bbox:
-    """The bounding box (BBOX) custom type used by other nodes"""
+    """A literal bounding box."""
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -37,12 +46,14 @@ class MTB_Bbox:
     FUNCTION = "do_crop"
     CATEGORY = "mtb/crop"
 
-    def do_crop(self, x: int, y: int, width: int, height: int):  # bbox
-        return ((x, y, width, height),)
+    def do_crop(
+        self, x: int, y: int, width: int, height: int
+    ) -> tuple[BoundingBox]:  # bbox
+        return (BoundingBox(x, y, width, height),)
 
 
 class MTB_SplitBbox:
-    """Split the components of a bbox"""
+    """Split the components of a bbox."""
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -55,8 +66,8 @@ class MTB_SplitBbox:
     RETURN_TYPES = ("INT", "INT", "INT", "INT")
     RETURN_NAMES = ("x", "y", "width", "height")
 
-    def split_bbox(self, bbox):
-        return (bbox[0], bbox[1], bbox[2], bbox[3])
+    def split_bbox(self, bbox: BoundingBox) -> BoundingBox:
+        return bbox
 
 
 class MTB_UpscaleBboxBy:
@@ -74,26 +85,23 @@ class MTB_UpscaleBboxBy:
 
     FUNCTION = "upscale"
 
-    def upscale(
-        self, bbox: tuple[int, int, int, int], scale: float
-    ) -> tuple[tuple[int, int, int, int]]:
+    def upscale(self, bbox: BoundingBox, scale: float) -> tuple[BoundingBox]:
         x, y, width, height = bbox
 
-        center_x = x + width // 2
-        center_y = y + height // 2
+        center_x = x + width / 2
+        center_y = y + height / 2
 
         new_width = int(width * scale)
         new_height = int(height * scale)
 
-        new_x = center_x - new_width // 2
-        new_y = center_y - new_height // 2
+        new_x = int(center_x - new_width / 2)
+        new_y = int(center_y - new_height / 2)
 
-        scaled = (new_x, new_y, new_width, new_height)
-        return (scaled,)
+        return (BoundingBox(new_x, new_y, new_width, new_height),)
 
 
 class MTB_BboxFromMask:
-    """From a mask extract the bounding box"""
+    """From a mask extract the bounding box."""
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -103,7 +111,7 @@ class MTB_BboxFromMask:
                 "invert": ("BOOLEAN", {"default": False}),
             },
             "optional": {
-                "image": ("IMAGE",),
+                "image": ("IMAGE", {"tooltip": "Optional image"}),
             },
         }
 
@@ -119,52 +127,44 @@ class MTB_BboxFromMask:
     CATEGORY = "mtb/crop"
 
     def extract_bounding_box(
-        self, mask: torch.Tensor, invert: bool, image=None
-    ):
-        # if image != None:
-        #     if mask.size(0) != image.size(0):
-        #         if mask.size(0) != 1:
-        #             log.error(
-        #                 f"Batch count mismatch for mask and image, it can either be 1 mask for X images, or X masks for X images (mask: {mask.shape} | image: {image.shape})"
-        #             )
+        self,
+        mask: torch.Tensor,
+        *,
+        invert: bool = False,
+        image: torch.Tensor | None = None,
+    ) -> tuple[BoundingBox, torch.Tensor | None]:
+        mask = 1 - mask if invert else mask
+        non_zero_indices = torch.nonzero(mask)
 
-        #             raise Exception(
-        #                 f"Batch count mismatch for mask and image, it can either be 1 mask for X images, or X masks for X images (mask: {mask.shape} | image: {image.shape})"
-        #             )
+        if non_zero_indices.numel() == 0:
+            log.warning(
+                "BboxFromMask: Mask is empty. Returning a (0,0,0,0) bbox."
+            )
+            return (BoundingBox(0, 0, 0, 0), image)
 
-        # we invert it
-        _mask = tensor2pil(1.0 - mask)[0] if invert else tensor2pil(mask)[0]
-        alpha_channel = np.array(_mask)
+        min_coords = torch.min(non_zero_indices, dim=0).values
+        max_coords = torch.max(non_zero_indices, dim=0).values
 
-        non_zero_indices = np.nonzero(alpha_channel)
+        min_y, min_x = min_coords[1].item(), min_coords[2].item()
+        max_y, max_x = max_coords[1].item(), max_coords[2].item()
 
-        min_x, max_x = np.min(non_zero_indices[1]), np.max(non_zero_indices[1])
-        min_y, max_y = np.min(non_zero_indices[0]), np.max(non_zero_indices[0])
+        width = max_x - min_x + 1
+        height = max_y - min_y + 1
 
-        # Create a bounding box tuple
-        if image != None:
-            # Convert the image to a NumPy array
-            imgs = tensor2np(image)
-            out = []
-            for img in imgs:
-                # Crop the image from the bounding box
-                img = img[min_y:max_y, min_x:max_x, :]
-                log.debug(f"Cropped image to shape {img.shape}")
-                out.append(img)
-
-            image = np2tensor(out)
-            log.debug(f"Cropped images shape: {image.shape}")
-        bounding_box = (min_x, min_y, max_x - min_x, max_y - min_y)
-        return (
-            bounding_box,
-            image,
+        bounding_box = BoundingBox(
+            int(min_x), int(min_y), int(width), int(height)
         )
+
+        cropped_image = None
+        if image is not None:
+            cropped_image = image[:, min_y : max_y + 1, min_x : max_x + 1, :]
+
+        return (bounding_box, cropped_image)
 
 
 class MTB_Crop:
-    """Crops an image and an optional mask to a given bounding box
+    """Crop an image and an optional mask to a given bounding box.
 
-    The bounding box can be given as a tuple of (x, y, width, height) or as a BBOX type
     The BBOX input takes precedence over the tuple input
     """
 
@@ -204,35 +204,38 @@ class MTB_Crop:
     def do_crop(
         self,
         image: torch.Tensor,
-        mask=None,
-        x=0,
-        y=0,
-        width=256,
-        height=256,
-        bbox=None,
+        *,
+        mask: torch.Tensor | None = None,
+        x: int = 0,
+        y: int = 0,
+        width: int = 256,
+        height: int = 256,
+        bbox: BoundingBox | None = None,
     ):
-        image = image.numpy()
-        if mask is not None:
-            mask = mask.numpy()
-
         if bbox is not None:
             x, y, width, height = bbox
 
-        cropped_image = image[:, y : y + height, x : x + width, :]
-        cropped_mask = None
-        if mask is not None:
-            cropped_mask = (
-                mask[:, y : y + height, x : x + width]
-                if mask is not None
-                else None
+        if width <= 0 or height <= 0:
+            log.error(
+                "Crop dimensions must be positive. Check the BBOX or widget inputs."
             )
-        crop_data = (x, y, width, height)
+            return (
+                torch.zeros_like(image),
+                torch.zeros_like(mask) if mask is not None else None,
+                (x, y, width, height),
+            )
+
+        cropped_image = image[:, y : y + height, x : x + width, :]
+        cropped_mask = (
+            mask[:, y : y + height, x : x + width]
+            if mask is not None
+            else None
+        )
+        crop_data = BoundingBox(x, y, width, height)
 
         return (
-            torch.from_numpy(cropped_image),
-            torch.from_numpy(cropped_mask)
-            if cropped_mask is not None
-            else None,
+            cropped_image,
+            cropped_mask if cropped_mask is not None else None,
             crop_data,
         )
 
@@ -246,35 +249,33 @@ class MTB_Crop:
 #     return (x_left, y_top, x_right, y_bottom)
 
 
-def bbox_check(bbox, target_size=None):
+def bbox_check(bbox: BoundingBox, target_size: tuple[int, int] | None = None):
     if not target_size:
         return bbox
 
-    new_bbox = (
-        bbox[0],
-        bbox[1],
-        min(target_size[0] - bbox[0], bbox[2]),
-        min(target_size[1] - bbox[1], bbox[3]),
+    new_bbox = BoundingBox(
+        bbox.x,
+        bbox.y,
+        min(target_size[0] - bbox.x, bbox.width),
+        min(target_size[1] - bbox.y, bbox.height),
     )
     if new_bbox != bbox:
-        log.warn(f"BBox too big, constrained to {new_bbox}")
+        log.warning(f"BBox too big, constrained to {new_bbox}")
 
     return new_bbox
 
 
-def bbox_to_region(bbox, target_size=None):
+def bbox_to_region(
+    bbox: BoundingBox, target_size: tuple[int, int] | None = None
+):
     bbox = bbox_check(bbox, target_size)
 
     # to region
-    return (bbox[0], bbox[1], bbox[0] + bbox[2], bbox[1] + bbox[3])
+    return (bbox.x, bbox.y, bbox.x + bbox.width, bbox.y + bbox.height)
 
 
 class MTB_Uncrop:
-    """Uncrops an image to a given bounding box
-
-    The bounding box can be given as a tuple of (x, y, width, height) or as a BBOX type
-    The BBOX input takes precedence over the tuple input
-    """
+    """Uncrop an image to a given bounding box."""
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -291,91 +292,92 @@ class MTB_Uncrop:
         }
 
     RETURN_TYPES = ("IMAGE",)
-    FUNCTION = "do_crop"
-
+    FUNCTION = "do_uncrop"
     CATEGORY = "mtb/crop"
 
-    def do_crop(self, image, crop_image, bbox, border_blending):
-        def inset_border(image, border_width=20, border_color=(0)):
-            width, height = image.size
-            bordered_image = Image.new(
-                image.mode, (width, height), border_color
-            )
-            bordered_image.paste(image, (0, 0))
-            draw = ImageDraw.Draw(bordered_image)
-            draw.rectangle(
-                (0, 0, width - 1, height - 1),
-                outline=border_color,
-                width=border_width,
-            )
-            return bordered_image
-
-        single = image.size(0) == 1
-        if image.size(0) != crop_image.size(0):
-            if not single:
-                raise ValueError(
-                    "The Image batch count is greater than 1, but doesn't match the crop_image batch count. If using batches they should either match or only crop_image must be greater than 1"
-                )
-
-        images = tensor2pil(image)
-        crop_imgs = tensor2pil(crop_image)
-        out_images = []
-        for i, crop in enumerate(crop_imgs):
-            if single:
-                img = images[0]
-            else:
-                img = images[i]
-
-            # uncrop the image based on the bounding box
-            bb_x, bb_y, bb_width, bb_height = bbox
-
-            paste_region = bbox_to_region(
-                (bb_x, bb_y, bb_width, bb_height), img.size
-            )
-            # log.debug(f"Paste region: {paste_region}")
-            # new_region = adjust_paste_region(img.size, paste_region)
-            # log.debug(f"Adjusted paste region: {new_region}")
-            # # Check if the adjusted paste region is different from the original
-
-            crop_img = crop.convert("RGB")
-
-            log.debug(f"Crop image size: {crop_img.size}")
-            log.debug(f"Image size: {img.size}")
-
-            if border_blending > 1.0:
-                border_blending = 1.0
-            elif border_blending < 0.0:
-                border_blending = 0.0
-
-            blend_ratio = (max(crop_img.size) / 2) * float(border_blending)
-
-            blend = img.convert("RGBA")
-            mask = Image.new("L", img.size, 0)
-
-            mask_block = Image.new("L", (bb_width, bb_height), 255)
-            mask_block = inset_border(mask_block, int(blend_ratio / 2), (0))
-
-            mask.paste(mask_block, paste_region)
-            log.debug(f"Blend size: {blend.size} | kind {blend.mode}")
-            log.debug(
-                f"Crop image size: {crop_img.size} | kind {crop_img.mode}"
-            )
-            log.debug(f"BBox: {paste_region}")
-            blend.paste(crop_img, paste_region)
-
-            mask = mask.filter(ImageFilter.BoxBlur(radius=blend_ratio / 4))
-            mask = mask.filter(
-                ImageFilter.GaussianBlur(radius=blend_ratio / 4)
+    def do_uncrop(
+        self,
+        image: torch.Tensor,
+        crop_image: torch.Tensor,
+        bbox: BoundingBox,
+        border_blending: float = 0.25,
+    ):
+        if len(image) > 1 and len(image) != len(crop_image):
+            raise ValueError(
+                "Uncrop: Batch size of background 'image' must be 1 or match the 'crop_image' batch size."
             )
 
-            blend.putalpha(mask)
-            img = Image.alpha_composite(img.convert("RGBA"), blend)
-            out_images.append(img.convert("RGB"))
+        device = image.device
+        crop_image = crop_image.to(device)
 
-        return (pil2tensor(out_images),)
+        if len(image) == 1 and len(crop_image) > 1:
+            image = image.repeat(len(crop_image), 1, 1, 1)
+
+        batch_size, bg_h, bg_w, _ = image.shape
+        _, fg_h, fg_w, _ = crop_image.shape
+        x, y, width, height = bbox
+
+        if (width, height) != (fg_w, fg_h):
+            log.warning(
+                f"Uncrop: crop_image size {(fg_w, fg_h)} "
+                "differs from bbox {(width, height)}. Resizing to fit bbox."
+            )
+
+        resized_crop = crop_image.permute(0, 3, 1, 2)
+        resized_crop = torch.nn.functional.interpolate(
+            resized_crop,
+            size=(height, width),
+            mode="bicubic",
+            align_corners=False,
+        )
+        resized_crop = resized_crop.permute(0, 2, 3, 1)
+
+        # paste coords
+        paste_x1 = max(x, 0)
+        paste_y1 = max(y, 0)
+        paste_x2 = min(x + width, bg_w)
+        paste_y2 = min(y + height, bg_h)
+
+        # region from crop (bound)
+        crop_x1 = max(0, -x)
+        crop_y1 = max(0, -y)
+        crop_x2 = crop_x1 + (paste_x2 - paste_x1)
+        crop_y2 = crop_y1 + (paste_y2 - paste_y1)
+
+        if paste_x1 >= paste_x2 or paste_y1 >= paste_y2:
+            log.warning(
+                "Uncrop: BBOX is entirely outside the image boundaries. Returning original image."
+            )
+            return (image,)
+
+        source_slice = resized_crop[:, crop_y1:crop_y2, crop_x1:crop_x2, :]
+
+        final_image = image.clone()
+        final_image[:, paste_y1:paste_y2, paste_x1:paste_x2, :] = source_slice
+
+        blend_radius = int(max(width, height) * border_blending * 0.5)
+        if blend_radius > 0:
+            alpha_mask = torch.zeros((batch_size, bg_h, bg_w), device=device)
+            alpha_mask[:, paste_y1:paste_y2, paste_x1:paste_x2] = 1.0
+
+            kernel_size = 2 * blend_radius + 1
+            alpha_mask = TF.gaussian_blur(
+                alpha_mask.unsqueeze(1), kernel_size=[kernel_size, kernel_size]
+            ).squeeze(1)
+            alpha_mask = alpha_mask.unsqueeze(-1)
+
+            final_image = final_image * alpha_mask + image * (1.0 - alpha_mask)
+
+        return (final_image,)
 
 
 class MTB_BBoxForceDimensions:
+    """
+    Resize a BBOX to new dimensions while keeping its center.
+
+    Optionally constrains the BBOX to stay within image boundaries.
+    """
+
     @classmethod
     def INPUT_TYPES(cls):
         return {
@@ -383,6 +385,7 @@ class MTB_BBoxForceDimensions:
                 "bbox": ("BBOX",),
                 "width": ("INT", {"default": 512, "min": 1, "max": 8192}),
                 "height": ("INT", {"default": 512, "min": 1, "max": 8192}),
+                "constrain_to_image": ("BOOLEAN", {"default": True}),
             },
             "optional": {
                 "image": ("IMAGE",),
@@ -395,10 +398,12 @@ class MTB_BBoxForceDimensions:
 
     def force_dimensions(
         self,
+        *,
         bbox: tuple[int, int, int, int],
         width: int,
         height: int,
-        image: torch.Tensor = None,
+        constrain_to_image: bool = True,
+        image: torch.Tensor | None = None,
     ) -> tuple[tuple[int, int, int, int]]:
         x, y, curr_width, curr_height = bbox
 
@@ -408,27 +413,14 @@ class MTB_BBoxForceDimensions:
         new_x = center_x - width // 2
         new_y = center_y - height // 2
 
-        if image is not None:
+        if constrain_to_image and image is not None:
             img_height, img_width = image.shape[1:3]
-            x_overflow = max(0, new_x + width - img_width) + min(0, new_x)
-            y_overflow = max(0, new_y + height - img_height) + min(0, new_y)
-            if width > img_width or height > img_height:
-                x_exceed = width - img_width if width > img_width else 0
-                y_exceed = height - img_height if height > img_height else 0
-                raise ValueError(
-                    f"Target bbox dimensions ({width}x{height}) exceed image bounds ({img_width}x{img_height}) "
-                    f"by {x_exceed}px horizontally and {y_exceed}px vertically"
-                )
+            new_x = max(0, min(new_x, img_width - width))
+            new_y = max(0, min(new_y, img_height - height))
+            width = min(width, img_width)
+            height = min(height, img_height)
 
-            if x_overflow > 0 or x_overflow < 0:
-                new_x -= x_overflow
-
-            if y_overflow > 0:
-                new_y -= y_overflow
-            elif y_overflow < 0:
-                new_y -= y_overflow  # Add the negative overflow
-
-        return ((int(new_x), int(new_y), width, height),)
+        return ((new_x, new_y, width, height),)
 
 
 __nodes__ = [
