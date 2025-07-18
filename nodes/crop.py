@@ -306,8 +306,14 @@ class MTB_Uncrop:
             raise ValueError(
                 "Uncrop: Batch size of background 'image' must be 1 or match the 'crop_image' batch size."
             )
+        import comfy.utils
+
+        pbar = comfy.utils.ProgressBar(4)
 
         device = image.device
+
+        log.debug(f"Working on device: {device}")
+
         crop_image = crop_image.to(device)
 
         if len(image) == 1 and len(crop_image) > 1:
@@ -332,6 +338,7 @@ class MTB_Uncrop:
         )
         resized_crop = resized_crop.permute(0, 2, 3, 1)
 
+        pbar.update(1)
         # paste coords
         paste_x1 = max(x, 0)
         paste_y1 = max(y, 0)
@@ -350,25 +357,39 @@ class MTB_Uncrop:
             )
             return (image,)
 
+        pbar.update(1)
         source_slice = resized_crop[:, crop_y1:crop_y2, crop_x1:crop_x2, :]
 
         final_image = image.clone()
         final_image[:, paste_y1:paste_y2, paste_x1:paste_x2, :] = source_slice
 
+        pbar.update(1)
+
         blend_radius = int(max(width, height) * border_blending * 0.5)
         if blend_radius > 0:
-            alpha_mask = torch.zeros((batch_size, bg_h, bg_w), device=device)
+            _device = device
+            if torch.cuda.is_available():
+                _device = torch.device("cuda")
+
+            log.debug("Processing blending")
+            alpha_mask = torch.zeros((batch_size, bg_h, bg_w), device=_device)
             alpha_mask[:, paste_y1:paste_y2, paste_x1:paste_x2] = 1.0
 
             kernel_size = 2 * blend_radius + 1
+
+            log.debug("Gaussian blur...")
             alpha_mask = TF.gaussian_blur(
                 alpha_mask.unsqueeze(1), kernel_size=[kernel_size, kernel_size]
             ).squeeze(1)
             alpha_mask = alpha_mask.unsqueeze(-1)
 
-            final_image = final_image * alpha_mask + image * (1.0 - alpha_mask)
+            log.debug("Applying blending")
+            final_image = final_image.to(_device) * alpha_mask + image.to(
+                _device
+            ) * (1.0 - alpha_mask)
 
-        return (final_image,)
+        pbar.update(1)
+        return (final_image.to(device),)
 
 
 class MTB_BBoxForceDimensions:
