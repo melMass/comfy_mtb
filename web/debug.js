@@ -132,8 +132,9 @@ app.registerExtension({
           let tgt_len = this.widgets.length
           for (let i = 0; i < this.widgets.length; i++) {
             if (
-              this.widgets[i].name !== 'output_to_console' &&
-              this.widgets[i].name !== 'as_detailed_types'
+              !['output_to_console', 'as_detailed_types', 'rich_mode'].includes(
+                this.widgets[i].name,
+              )
             ) {
               this.widgets[i].onRemove?.()
               this.widgets[i].onRemoved?.()
