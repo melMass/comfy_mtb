@@ -6,7 +6,7 @@ import urllib.request
 from math import pi
 from typing import Any
 
-import comfy.model_management as model_management
+import comfy.model_management as mm
 import comfy.utils
 import numpy as np
 import torch
@@ -16,6 +16,7 @@ from PIL import Image
 from ..log import log
 from ..utils import (
     EASINGS,
+    LazyProxyTensor,
     apply_easing,
     get_server_info,
     numpy_NFOV,
@@ -343,7 +344,7 @@ class MTB_AutoPanEquilateral:
 
             frames.append(frame)
 
-            model_management.throw_exception_if_processing_interrupted()
+            mm.throw_exception_if_processing_interrupted()
             pbar.update(1)
 
         return (pil2tensor(frames),)
@@ -916,6 +917,61 @@ class MTB_BooleanNot:
         return (not bool_in,)
 
 
+class MTB_ProxyTensor:
+    """Wraps an input tensor into a LazyProxyTensor.
+
+    builds upon an idea by @AustinMroz
+    """
+
+    NODE_NAME = "ProxyTensor"
+    NODE_DISPLAY_NAME = "Proxy Tensor"
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "tensor": ("IMAGE",),
+                "target_dtype": (
+                    ["float32", "float16", "bfloat16"],
+                    {"default": "float32"},
+                ),
+                "target_device": (
+                    ["keep", "cpu", "gpu"],
+                    {
+                        "default": "keep",
+                        "tooltip": "CAUTION: This isn't compatible with most nodes for now",
+                    },
+                ),
+            }
+        }
+
+    RETURN_TYPES = ("IMAGE",)
+    RETURN_NAMES = ("proxy_tensor",)
+    FUNCTION = "execute"
+    CATEGORY = "mtb/utils"
+
+    def execute(
+        self,
+        tensor: torch.Tensor,
+        target_dtype: str = "float32",
+        target_device: str = "keep",
+    ):
+        torch_dtype: torch.dtype = getattr(torch, target_dtype)
+
+        if target_device == "gpu":
+            torch_device = mm.get_torch_device()
+        elif target_device == "cpu":
+            torch_device = torch.device("cpu")
+        else:
+            torch_device = tensor.device
+
+        proxy = LazyProxyTensor(tensor, torch_dtype, torch_device)
+
+        log.info(f"Created Proxy Tensor: \n{proxy}")
+
+        return (proxy,)
+
+
 __nodes__ = [
     MTB_StringReplace,
     MTB_FitNumber,
@@ -933,4 +989,5 @@ __nodes__ = [
     MTB_TensorOps,
     MTB_BooleanNot,
     MTB_GetItem,
+    MTB_ProxyTensor,
 ]
