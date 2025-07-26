@@ -8,11 +8,14 @@ import shutil
 import socket
 import subprocess
 import sys
+import textwrap
 import uuid
+import warnings
 from collections.abc import Callable, Sequence
 from enum import Enum
 from functools import reduce
 from pathlib import Path
+from types import EllipsisType
 from typing import TypeVar
 from urllib.parse import urlparse
 
@@ -461,8 +464,6 @@ def _run_command(shell_cmd, ignored_lines_start):
     print("Command executed successfully!")
 
 
-
-
 # endregion
 
 
@@ -526,6 +527,196 @@ PIL_FILTER_MAP = {
 
 
 # region TENSOR Utilities
+
+
+class LazyProxyTensor:
+    """Memory-efficient proxy that wrap a tensor but presents itself as a different dtype (e.g., float32).
+
+    It mimics a torch.Tensor's read-only attributes and methods. Data conversion
+    and normalization happen lazily on access (e.g., via slicing), avoiding
+    the high memory cost of a full conversion.
+
+    Supported source dtypes:
+    - torch.uint8 (normalized from [0, 255])
+    - torch.uint16 (normalized from [0, 65535])
+    - All float types (passed through, assumed to be in [0, 1] range)"
+    """
+
+    _source_tensor: torch.Tensor
+    _target_dtype: torch.dtype
+    _target_element_size: int
+    _scale_divisor: float
+    _warned_inefficient_access: bool
+
+    def __init__(
+        self, source_tensor, target_dtype=torch.float32, target_device=None
+    ):
+        if not isinstance(source_tensor, torch.Tensor):
+            raise ValueError("Input must be a torch.Tensor.")
+
+        self._source_tensor = source_tensor
+        self._target_dtype = target_dtype
+        self._target_device = (
+            target_device
+            if target_device is not None
+            else source_tensor.device
+        )
+
+        # Determine the normalization divisor based on source dtype
+        # fmt: off
+        if source_tensor.dtype == torch.uint8: self._scale_divisor = 255.0
+        elif source_tensor.dtype == torch.uint16: self._scale_divisor = 65535.0
+        elif torch.is_floating_point(source_tensor): self._scale_divisor = 1.0
+        else: raise ValueError(f"Unsupported source dtype for LazyProxyTensor: {source_tensor.dtype}")
+        # fmt: on
+
+        self._target_element_size = torch.empty(
+            (), dtype=self._target_dtype
+        ).element_size()
+        self._warned_inefficient_access = False
+
+    def is_contiguous(self, *args, **kwargs):
+        return self._source_tensor.is_contiguous(*args, **kwargs)
+
+    def stride(self, *args, **kwargs):
+        return self._source_tensor.stride(*args, **kwargs)
+
+    @property
+    def shape(self):
+        return self._source_tensor.shape
+
+    @property
+    def requires_grad(self):
+        return False
+
+    def nelement(self):
+        """Return the total number of elements in the (pretend) tensor."""
+        return self._source_tensor.nelement()
+
+    def element_size(self):
+        """Return the size in bytes of an individual (pretend) float element."""
+        return self._target_element_size
+
+    @property
+    def dtype(self):
+        return self._target_dtype
+
+    @property
+    def device(self):
+        return self._target_device
+
+    def __len__(self):
+        return self._source_tensor.shape[0]
+
+    def __getitem__(self, key):
+        if (
+            self._source_tensor.device != self._target_device
+            and not self._warned_inefficient_access
+        ):
+            warnings.warn(
+                "Inefficient access pattern detected for LazyProxyTensor. "
+                "You are slicing a device-proxied tensor, which causes slow, "
+                "repeated data transfers. For performance, use the .iter_chunks() method."
+            )
+            self._warned_inefficient_access = True
+
+        subset = self._source_tensor[key]
+
+        return (
+            subset.to(self._target_device).to(self._target_dtype)
+            / self._scale_divisor
+        )
+
+    # def __iter__(self):
+    #     for i in range(len(self)):
+    #         yield self[i]
+
+    def iter_chunks(self, chunk_size=16):
+        for i in range(0, len(self), chunk_size):
+            chunk = self._source_tensor[i : i + chunk_size]
+            yield (
+                chunk.to(self._target_device, non_blocking=True).to(
+                    self._target_dtype
+                )
+                / self._scale_divisor
+            )
+
+    def squeeze(self, dim: str | EllipsisType | None = None):
+        squeezed = self._source_tensor.squeeze(dim)
+        return LazyProxyTensor(squeezed, self._target_dtype)
+
+    def unsqueeze(self, dim: int = 0):
+        unsqueezed = self._source_tensor.unsqueeze(dim)
+        return LazyProxyTensor(unsqueezed, self._target_dtype)
+
+    def repeat(self, *sizes):
+        repeated = self._source_tensor.repeat(*sizes)
+        return LazyProxyTensor(repeated, self._target_dtype)
+
+    def _format_mem_size(self, mem_bytes):
+        if mem_bytes > 1e9:
+            return f"{mem_bytes / 1e9:.2f} GB"
+        if mem_bytes > 1e6:
+            return f"{mem_bytes / 1e6:.2f} MB"
+        if mem_bytes > 1e3:
+            return f"{mem_bytes / 1e3:.2f} KB"
+        return f"{mem_bytes} B"
+
+    def __repr__(self):
+
+        actual_info = get_torch_tensor_info(self._source_tensor, name="Source")
+        target_info = get_torch_tensor_info(self, name="Target")
+
+        info = f"""
+        {target_info}
+
+        {actual_info}
+        """
+        return textwrap.dedent(info).strip()
+
+
+def get_torch_tensor_info(
+    tensor: torch.Tensor | LazyProxyTensor | np.ndarray,
+    *,
+    name: str | None = None,
+):
+    mem_str = "N/A"
+
+    is_tensor = isinstance(tensor, torch.Tensor | LazyProxyTensor)
+    if is_tensor:
+        mem_bytes = tensor.element_size() * tensor.nelement()
+    else:
+        mem_bytes = tensor.itemsize * tensor.size
+
+    if mem_bytes > 1e9:
+        mem_str = f"{mem_bytes / 1e9:.2f} GB"
+    elif mem_bytes > 1e6:
+        mem_str = f"{mem_bytes / 1e6:.2f} MB"
+    elif mem_bytes > 1e3:
+        mem_str = f"{mem_bytes / 1e3:.2f} KB"
+    else:
+        mem_str = f"{mem_bytes} B"
+
+    device = "N/A"
+    grad = "False"
+    type_name = name or "Tensor" if is_tensor else "Numpy Array"
+
+    if is_tensor:
+        device = tensor.device
+        grad = str(tensor.requires_grad)
+
+    text = f"""
+    {type_name}
+    shape: {tensor.shape}
+    dtype: {str(tensor.dtype).replace("torch.", "")}
+    device: {device}
+    requires grad: {grad}
+    memory: {mem_str}
+    """
+
+    return textwrap.dedent(text).strip()
+
+
 def to_numpy(image: torch.Tensor) -> npt.NDArray[np.uint8]:
     """Converts a tensor to a ndarray with proper scaling and type conversion."""
     np_array = np.clip(255.0 * image.cpu().numpy(), 0, 255).astype(np.uint8)
@@ -536,12 +727,12 @@ def handle_batch(
     tensor: torch.Tensor,
     func: Callable[[torch.Tensor], Image.Image | npt.NDArray[np.uint8]],
 ) -> list[Image.Image] | list[npt.NDArray[np.uint8]]:
-    """Handles batch processing for a given tensor and conversion function."""
+    """Handle batch processing for a given tensor and conversion function."""
     return [func(tensor[i]) for i in range(tensor.shape[0])]
 
 
 def tensor2pil(tensor: torch.Tensor) -> list[Image.Image]:
-    """Converts a batch of tensors to a list of PIL Images."""
+    """Convert a batch of tensors to a list of PIL Images."""
 
     def single_tensor2pil(t: torch.Tensor) -> Image.Image:
         np_array = to_numpy(t)
@@ -558,7 +749,7 @@ def tensor2pil(tensor: torch.Tensor) -> list[Image.Image]:
 
 
 def pil2tensor(images: Image.Image | list[Image.Image]) -> torch.Tensor:
-    """Converts a PIL Image or a list of PIL Images to a tensor."""
+    """Convert a PIL Image or a list of PIL Images to a tensor."""
 
     def single_pil2tensor(image: Image.Image) -> torch.Tensor:
         np_image = np.array(image).astype(np.float32) / 255.0
