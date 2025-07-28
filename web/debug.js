@@ -80,12 +80,41 @@ app.registerExtension({
    */
   async beforeRegisterNodeDef(nodeType, nodeData, app) {
     if (nodeData.name === 'Debug (mtb)') {
+      const clear_widgets = (target) => {
+        if (target.widgets) {
+          let tgt_len = target.widgets.length
+          for (let i = 0; i < target.widgets.length; i++) {
+            if (
+              !['output_to_console', 'as_detailed_types', 'rich_mode'].includes(
+                target.widgets[i].name,
+              )
+            ) {
+              target.widgets[i].onRemove?.()
+              target.widgets[i].onRemoved?.()
+              tgt_len -= 1
+            }
+          }
+          target.widgets.length = tgt_len
+        }
+      }
+
       const onNodeCreated = nodeType.prototype.onNodeCreated
       nodeType.prototype.onNodeCreated = function (...args) {
         this.options = {}
         const r = onNodeCreated ? onNodeCreated.apply(this, args) : undefined
         this.addInput('anything_1', '*')
         return r
+      }
+      const original_getExtraMenuOptions =
+        nodeType.prototype.getExtraMenuOptions
+      nodeType.prototype.getExtraMenuOptions = function (_, options) {
+        original_getExtraMenuOptions?.apply(this, arguments)
+        options.push({
+          content: '🐛 Clear Outputs',
+          callback: async () => {
+            clear_widgets(this)
+          },
+        })
       }
 
       const onConnectionsChange = nodeType.prototype.onConnectionsChange
@@ -128,21 +157,7 @@ app.registerExtension({
         onExecuted?.apply(this, args)
         const [data, ..._rest] = args
 
-        if (this.widgets) {
-          let tgt_len = this.widgets.length
-          for (let i = 0; i < this.widgets.length; i++) {
-            if (
-              !['output_to_console', 'as_detailed_types', 'rich_mode'].includes(
-                this.widgets[i].name,
-              )
-            ) {
-              this.widgets[i].onRemove?.()
-              this.widgets[i].onRemoved?.()
-              tgt_len -= 1
-            }
-          }
-          this.widgets.length = tgt_len
-        }
+        clear_widgets(this)
 
         const inputData = {}
 
@@ -183,7 +198,9 @@ app.registerExtension({
             })
           }
 
-          this.addDOMWidget(`debug_section_${widgetI}`, 'CUSTOM', section, {})
+          this.addDOMWidget(`debug_section_${widgetI}`, 'CUSTOM', section, {
+            hideOnZoom: false,
+          })
           widgetI++
         }
 
