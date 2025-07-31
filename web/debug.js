@@ -11,7 +11,12 @@
 /// <reference path="../types/typedefs.js" />
 
 import { app } from '../../scripts/app.js'
-import * as shared from './comfy_shared.js'
+
+import {
+  setupDynamicConnections,
+  cleanupNode,
+  infoLogger,
+} from './comfy_shared.js'
 import * as mtb_ui from './mtb_ui.js'
 
 function escapeHtml(unsafe) {
@@ -45,25 +50,25 @@ function createDebugSection(title) {
   return section
 }
 
-function createDebugContent(content, type) {
+function createDebugContent(item) {
   const wrapper = mtb_ui.makeElement('div', {
     margin: '4px 0',
   })
 
-  if (type === 'text') {
-    const text = mtb_ui.makeElement('p', {
+  if (item.kind === 'text') {
+    const text = mtb_ui.makeElement('div', {
       margin: '2px 0',
       fontFamily: 'monospace',
       whiteSpace: 'pre-wrap',
     })
-    text.innerHTML = content
+    text.innerHTML = item.data
     wrapper.appendChild(text)
-  } else if (type === 'image') {
+  } else if (item.kind === 'b64_images') {
     const img = mtb_ui.makeElement('img', {
       width: '100%',
       borderRadius: '2px',
     })
-    img.src = content
+    img.src = item.data
     wrapper.appendChild(img)
   }
 
@@ -85,9 +90,12 @@ app.registerExtension({
           let tgt_len = target.widgets.length
           for (let i = 0; i < target.widgets.length; i++) {
             if (
-              !['output_to_console', 'as_detailed_types', 'rich_mode'].includes(
-                target.widgets[i].name,
-              )
+              ![
+                'output_to_console',
+                'deep_inspect',
+                'as_detailed_types',
+                'rich_mode',
+              ].includes(target.widgets[i].name)
             ) {
               target.widgets[i].onRemove?.()
               target.widgets[i].onRemoved?.()
@@ -98,13 +106,6 @@ app.registerExtension({
         }
       }
 
-      const onNodeCreated = nodeType.prototype.onNodeCreated
-      nodeType.prototype.onNodeCreated = function (...args) {
-        this.options = {}
-        const r = onNodeCreated ? onNodeCreated.apply(this, args) : undefined
-        this.addInput('anything_1', '*')
-        return r
-      }
       const original_getExtraMenuOptions =
         nodeType.prototype.getExtraMenuOptions
       nodeType.prototype.getExtraMenuOptions = function (_, options) {
@@ -117,40 +118,7 @@ app.registerExtension({
         })
       }
 
-      const onConnectionsChange = nodeType.prototype.onConnectionsChange
-      /**
-       * @param {OnConnectionsChangeParams} args
-       */
-      nodeType.prototype.onConnectionsChange = function (...args) {
-        const [_type, index, connected, link_info, ioSlot] = args
-        const r = onConnectionsChange
-          ? onConnectionsChange.apply(this, args)
-          : undefined
-        // TODO: remove all widgets on disconnect once computed
-        shared.dynamic_connection(this, index, connected, 'anything_', '*', {
-          link: link_info,
-          ioSlot: ioSlot,
-        })
-
-        //- infer type
-        if (link_info) {
-          // const fromNode = this.graph._nodes.find(
-          // (otherNode) => otherNode.id === link_info.origin_id,
-          // )
-          // const fromNode = app.graph.getNodeById(link_info.origin_id)
-          const { from } = shared.nodesFromLink(this, link_info)
-          if (!from || this.inputs.length === 0) return
-          const type = from.outputs[link_info.origin_slot].type
-          this.inputs[index].type = type
-          // this.inputs[index].label = type.toLowerCase()
-        }
-        //- restore dynamic input
-        if (!connected) {
-          this.inputs[index].type = '*'
-          this.inputs[index].label = `anything_${index + 1}`
-        }
-        return r
-      }
+      setupDynamicConnections(nodeType, 'var', '*')
 
       const onExecuted = nodeType.prototype.onExecuted
       nodeType.prototype.onExecuted = function (...args) {
@@ -163,45 +131,39 @@ app.registerExtension({
 
         const uiData = data.ui || data
 
+        const name_to_label = this.inputs.reduce((acc, input) => {
+          acc[input.name] = input.label || input.name
+          return acc
+        }, {})
+
+
         if (uiData.items) {
           uiData.items.forEach((item) => {
             const inputName = item.input
-            if (!inputData[inputName]) {
-              inputData[inputName] = { text: [], b64_images: [] }
-            }
-            if (item.text) {
-              inputData[inputName].text.push(...item.text)
-            }
-            if (item.b64_images) {
-              inputData[inputName].b64_images.push(...item.b64_images)
-            }
+            inputData[inputName] = item.items
           })
         }
-
-        let widgetI = 1
+        const mainDebugContainer = mtb_ui.makeElement('div', {
+          width: '100%',
+        })
+        let hasContent = false
         for (const [inputName, content] of Object.entries(inputData)) {
-          if (content.text.length === 0 && content.b64_images.length === 0) {
+          if (!content || content?.length === 0) {
             continue
           }
+          hasContent = true
 
-          const section = createDebugSection(inputName)
+          const section = createDebugSection(name_to_label[inputName])
 
-          if (content.text.length > 0) {
-            content.text.forEach((text) => {
-              section.appendChild(createDebugContent(text, 'text'))
-            })
+          for (const item of content) {
+            section.appendChild(createDebugContent(item))
           }
-
-          if (content.b64_images.length > 0) {
-            content.b64_images.forEach((img) => {
-              section.appendChild(createDebugContent(img, 'image'))
-            })
-          }
-
-          this.addDOMWidget(`debug_section_${widgetI}`, 'CUSTOM', section, {
+          mainDebugContainer.appendChild(section)
+        }
+        if (hasContent) {
+          this.addDOMWidget('debug_output', 'CUSTOM', mainDebugContainer, {
             hideOnZoom: false,
           })
-          widgetI++
         }
 
         this.onRemoved = function () {
@@ -212,8 +174,9 @@ app.registerExtension({
             widget.onRemoved?.()
             widget.onRemove?.()
           }
-          shared.cleanupNode(this)
+          cleanupNode(this)
         }
+        this.setDirtyCanvas(true, true)
       }
     }
   },
