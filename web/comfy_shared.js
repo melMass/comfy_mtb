@@ -384,6 +384,48 @@ export function getWidgetType(config) {
 
 // #endregion
 
+// function to test if input is a dynamic one
+const isDynamicInput = (input) => {
+  infoLogger('Checking if input dynamic', { input })
+  // return input.name.startsWith(connectionPrefix)
+  return input._isDynamic === true
+}
+
+// Add a dynamic input, update node properties and slot colors!
+const addDynamicInput = (node, name, kind) => {
+  const input = node.addInput(name, kind)
+  input._isDynamic = true
+
+  update_dynamic_properties(node)
+  set_slot_colors(node, ['cyan', undefined], isDynamicInput)
+
+  return input
+}
+
+const set_slot_colors = (node, colors, condition) => {
+  if (!condition) {
+    condition = (_s) => true
+  }
+
+  for (const slot of node.slots) {
+    infoLogger('Candidate', { slot, accepted: condition(slot) })
+    if (condition(slot)) {
+      slot.color_off = colors[0]
+      slot.color_on = colors[1]
+    }
+  }
+}
+
+const update_dynamic_properties = (node) => {
+  const dyn = []
+  for (const input of node.inputs) {
+    if (isDynamicInput(input)) {
+      dyn.push(input.name)
+    }
+  }
+  node.setProperty('dynamic_connections', dyn)
+}
+
 // #region dynamic connections
 /**
  * @param {NodeType} nodeType The nodetype to attach the documentation to
@@ -411,12 +453,84 @@ export const setupDynamicConnections = (
     },
     opts || {},
   )
+  nodeType.prototype.getSlotMenuOptions = function (slot) {
+    return [
+      {
+        content: 'Rename Input',
+        callback: () => {
+          let dialog = app.canvas.createDialog(
+            "<span class='name'>Name</span><input autofocus type='text'/><button>OK</button>",
+            {},
+          )
+          let dialogInput = dialog.querySelector('input')
+          if (dialogInput) {
+            dialogInput.value = slot.input.label || slot.input.name || ''
+          }
+          let inner = () => {
+            app.graph.beforeChange()
+            // TODO: check if name exists or other guards
+            slot.input.label = dialogInput.value
+            app.graph.afterChange()
+
+            dialog.close()
+          }
+          dialog.querySelector('button').addEventListener('click', inner)
+          dialogInput.addEventListener('keydown', (e) => {
+            dialog.is_modified = true
+            if (e.keyCode === 27) {
+              dialog.close()
+            } else if (e.keyCode === 13) {
+              inner()
+            } else if (e.keyCode !== 13 && e.target?.localName !== 'textarea') {
+              return
+            }
+            e.preventDefault()
+            e.stopPropagation()
+          })
+          dialogInput.focus()
+        },
+      },
+    ]
+
+  }
+
+  const onConfigure = nodeType.prototype.onConfigure
+
+  nodeType.prototype.onConfigure = function (data) {
+    const r = onConfigure ? onConfigure.apply(this, data) : undefined
+
+    // Set or restore serialized properties, lt seems to auto serialize/deserialize to/from string
+    if (!('dynamic_connections' in this.properties)) {
+      // this.addProperty('dynamic_connections', [], 'string')
+      this.setProperty('dynamic_connections', [])
+    } else {
+      const dynamic_connections = this.properties.dynamic_connections
+      if (typeof dynamic_connections !== 'object') {
+        return r
+      }
+      for (const name of dynamic_connections) {
+        infoLogger(`Would dynamize: ${name}`)
+        const input = this.inputs.find((i) => i.name === name)
+        if (input) {
+          infoLogger('Input found', { input })
+          input._isDynamic = true
+        }
+      }
+    }
+    // set color
+    set_slot_colors(this, ['cyan', undefined], isDynamicInput)
+
+    return r
+  }
+
   const onNodeCreated = nodeType.prototype.onNodeCreated
   const inputList = typeof inputType === 'object'
 
   nodeType.prototype.onNodeCreated = function () {
     const r = onNodeCreated ? onNodeCreated.apply(this, []) : undefined
-    this.addInput(
+
+    const input = addDynamicInput(
+      this,
       `${prefix}${options.separator}${options.start_index}`,
       inputList ? '*' : inputType,
     )
@@ -488,10 +602,7 @@ export const dynamic_connection = (
     opts || {},
   )
 
-  // function to test if input is a dynamic one
-  const isDynamicInput = (inputName) => inputName.startsWith(connectionPrefix)
-
-  if (node.inputs.length > 0 && !isDynamicInput(node.inputs[index].name)) {
+  if (node.inputs.length > 0 && !isDynamicInput(node.inputs[index])) {
     return
   }
 
@@ -501,7 +612,7 @@ export const dynamic_connection = (
   const nameArray = options.nameArray || []
 
   const clean_inputs = () => {
-    if (node.id < 0) return
+    if (node.id < 0) return // being duplicated
     if (node.inputs.length === 0) return
 
     let w_count = node.widgets?.length || 0
@@ -511,7 +622,7 @@ export const dynamic_connection = (
     const to_remove = []
     for (let n = 1; n < node.inputs.length; n++) {
       const element = node.inputs[n]
-      if (!element.link && isDynamicInput(element.name)) {
+      if (!element.link && isDynamicInput(element)) {
         if (node.widgets) {
           const w = node.widgets.find((w) => w.name === element.name)
           if (w) {
@@ -525,9 +636,12 @@ export const dynamic_connection = (
     }
     for (let i = 0; i < to_remove.length; i++) {
       const id = to_remove[i]
-
-      node.removeInput(id)
-      i_count -= 1
+      try {
+        node.removeInput(id)
+        i_count -= 1
+      } catch (err) {
+        errorLogger('Cannot remove input', err)
+      }
     }
     node.inputs.length = i_count
 
@@ -541,7 +655,7 @@ export const dynamic_connection = (
     for (let i = 0; i < node.inputs.length; i++) {
       let name = ''
       // rename only prefixed inputs
-      if (isDynamicInput(node.inputs[i].name)) {
+      if (node.inputs[i].name.startsWith(connectionPrefix)) {
         // prefixed => rename and increase index
         name = `${connectionPrefix}${prefixed_idx}`
         prefixed_idx += 1
@@ -595,9 +709,8 @@ export const dynamic_connection = (
     if (node.inputs.length === 0) return
     // add an extra input
     if (node.inputs[node.inputs.length - 1].link !== null) {
-      // count only the prefixed inputs
       const nextIndex = node.inputs.reduce(
-        (acc, cur) => (isDynamicInput(cur.name) ? ++acc : acc),
+        (acc, cur) => (isDynamicInput(cur) ? ++acc : acc),
         0,
       )
 
@@ -607,7 +720,7 @@ export const dynamic_connection = (
           : `${connectionPrefix}${nextIndex + options.start_index}`
 
       infoLogger(`Adding input ${nextIndex + 1} (${name})`)
-      node.addInput(name, conType)
+      addDynamicInput(node, name, conType)
     }
   }
 }
