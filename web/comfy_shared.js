@@ -290,6 +290,10 @@ export const getNamedWidget = (node, ...names) => {
  * @returns {{to:LGraphNode, from:LGraphNode, type:'error' | 'incoming' | 'outgoing'}}
  */
 export const nodesFromLink = (node, link) => {
+  if (typeof link === 'number') {
+    link = app.graph.getLink(link)
+  }
+
   const fromNode = app.graph.getNodeById(link.origin_id)
   const toNode = app.graph.getNodeById(link.target_id)
 
@@ -497,6 +501,7 @@ export const dynamic_connection = (
   const nameArray = options.nameArray || []
 
   const clean_inputs = () => {
+    if (node.id < 0) return
     if (node.inputs.length === 0) return
 
     let w_count = node.widgets?.length || 0
