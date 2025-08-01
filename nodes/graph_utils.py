@@ -19,6 +19,7 @@ from ..utils import (
     LazyProxyTensor,
     apply_easing,
     get_server_info,
+    get_torch_tensor_info,
     numpy_NFOV,
     pil2tensor,
     tensor2np,
@@ -135,12 +136,57 @@ class MTB_ApplyTextTemplate:
     CATEGORY = "mtb/utils"
     FUNCTION = "execute"
 
-    def execute(self, *, template: str, **kwargs):
-        res = f"{template}"
-        for k, v in kwargs.items():
-            res = res.replace(f"{{{k}}}", f"{v}")
+    def execute(self, *, template: str, **kwargs) -> tuple[str | list[str]]:
+        keys = list(kwargs.keys())
+        values = list(kwargs.values())
 
-        return (res,)
+        has_list = any(isinstance(v, list) for v in values)
+        target_length = -1
+
+        if has_list:
+            first_list = next(x for x in values if isinstance(x, list))
+
+            target_length = len(first_list)
+            same_length = all(
+                len(v) == target_length for v in values if isinstance(v, list)
+            )
+            if not same_length:
+                raise ValueError(
+                    "Text template received multiple list[str] but their size is varying, they should match..."
+                )
+
+        if has_list:
+            results = []
+
+            for it in range(target_length):
+                res = f"{template}"
+                for k, v in kwargs.items():
+                    if isinstance(v, list):
+                        res = self.apply_res(res, k, v[it])
+                    else:
+                        res = self.apply_res(res, k, v)
+                results.append(res)
+
+            return (results,)
+
+        else:
+            res = f"{template}"
+            for k, v in kwargs.items():
+                res = self.apply_res(res, k, v)
+
+            return (res,)
+
+    def apply_res(self, res, key, value):
+        if isinstance(value, float):
+            value = f"{value:.3f}"
+        elif isinstance(value, torch.Tensor):
+            value = get_torch_tensor_info(value)
+        else:
+            log.debug(
+                f"Falling back to default string conversion for {key} of type {type(value).__name__}"
+            )
+
+        return res.replace(f"{{{key}}}", f"{value}")
 
 
 class MTB_MatchDimensions:

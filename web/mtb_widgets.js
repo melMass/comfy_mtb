@@ -1205,7 +1205,9 @@ const mtb_widgets = {
 
       //NOTE: dynamic nodes
       case 'Apply Text Template (mtb)': {
-        shared.setupDynamicConnections(nodeType, 'var', '*')
+        shared.setupDynamicConnections(nodeType, 'var', '*', {
+          rename_menu: 'name',
+        })
         break
       }
       case 'Save Data Bundle (mtb)': {

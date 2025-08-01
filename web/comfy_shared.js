@@ -431,7 +431,7 @@ const update_dynamic_properties = (node) => {
  * @param {NodeType} nodeType The nodetype to attach the documentation to
  * @param {str} prefix A prefix added to each dynamic inputs
  * @param {str | [str]} inputType The datatype(s) of those dynamic inputs
- * @param {{separator?:string, start_index?:number, link?:LLink, ioSlot?:INodeInputSlot | INodeOutputSlot}?} [opts] Extra options
+ * @param {{separator?:string,rename_menu?:'label'|'name', start_index?:number, link?:LLink, ioSlot?:INodeInputSlot | INodeOutputSlot}?} [opts] Extra options
  * @returns
  */
 export const setupDynamicConnections = (
@@ -445,31 +445,55 @@ export const setupDynamicConnections = (
     Object.getOwnPropertyDescriptors(nodeType).title.value,
   )
 
-  /** @type {{separator:string, start_index:number, link?:LLink, ioSlot?:INodeInputSlot | INodeOutputSlot}?} */
+  /** @type {{separator:string,rename_menu?:"label"|"name" start_index:number, link?:LLink, ioSlot?:INodeInputSlot | INodeOutputSlot}?} */
   const options = Object.assign(
     {
       separator: '_',
       start_index: 1,
+      rename_menu: 'label',
     },
     opts || {},
   )
-  nodeType.prototype.getSlotMenuOptions = function (slot) {
+  const is_valid_name = (node, val) => {
+    return true
+  }
+  nodeType.prototype.getSlotMenuOptions = (slot) => {
+    if (!slot.input) {
+      return
+    }
+    infoLogger('Slot Menu', { slot })
     return [
       {
-        content: 'Rename Input',
+        content: `Rename Input (${options.rename_menu})`,
         callback: () => {
-          let dialog = app.canvas.createDialog(
+          const dialog = app.canvas.createDialog(
             "<span class='name'>Name</span><input autofocus type='text'/><button>OK</button>",
             {},
           )
-          let dialogInput = dialog.querySelector('input')
+          const dialogInput = dialog.querySelector('input')
           if (dialogInput) {
-            dialogInput.value = slot.input.label || slot.input.name || ''
+            if (options.rename_menu === 'label') {
+              dialogInput.value = slot.input.label || slot.input.name || ''
+            } else if (options.rename_menu === 'name') {
+              dialogInput.value = slot.input.name || ''
+            }
           }
-          let inner = () => {
-            app.graph.beforeChange()
+          const inner = () => {
             // TODO: check if name exists or other guards
-            slot.input.label = dialogInput.value
+            const val = dialogInput.value
+            if (!is_valid_name(slot.node, val)) {
+              dialog.close()
+              return
+            }
+
+            app.graph.beforeChange()
+            if (options.rename_menu === 'label') {
+              slot.input.label = val
+            } else if (options.rename_menu === 'name') {
+              slot.input.name = val
+              slot.input.label = val
+            }
+
             app.graph.afterChange()
 
             dialog.close()
@@ -491,7 +515,6 @@ export const setupDynamicConnections = (
         },
       },
     ]
-
   }
 
   const onConfigure = nodeType.prototype.onConfigure
