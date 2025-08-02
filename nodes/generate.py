@@ -7,6 +7,13 @@ from PIL import Image, ImageDraw, ImageFont
 from ..log import log
 from ..utils import comfy_dir, font_path, pil2tensor
 
+# try:
+#     from cairosvg import svg2png
+#     HAS_CAIRO = True
+# except ImportError:
+#     HAS_CAIRO = False
+
+
 # class MtbExamples:
 #     """MTB Example Images"""
 

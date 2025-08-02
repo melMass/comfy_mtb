@@ -146,6 +146,11 @@ class MTB_ApplyTextTemplate:
         if has_list:
             first_list = next(x for x in values if isinstance(x, list))
 
+            # all_list = all(isinstance(x, list) for x in kwargs.values())
+            # if not all_list:
+            #     raise ValueError(
+            #         "Text template supports either str or list[str] but not a mix of the two (yet?)"
+            #     )
             target_length = len(first_list)
             same_length = all(
                 len(v) == target_length for v in values if isinstance(v, list)
@@ -158,6 +163,8 @@ class MTB_ApplyTextTemplate:
         if has_list:
             results = []
 
+            # do a padded loop, not the most efficient but easy
+            # to handle for now
             for it in range(target_length):
                 res = f"{template}"
                 for k, v in kwargs.items():
