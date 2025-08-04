@@ -118,6 +118,20 @@ export class LocalStorageManager {
 
 // - log utilities
 
+const consoleMethodToSeverity = (method) => {
+  switch (method) {
+    case 'log': {
+      return 'info'
+    }
+    case 'error' | 'warn': {
+      return method
+    }
+    default: {
+      return 'secondary'
+    }
+  }
+}
+
 function createLogger(emoji, color, consoleMethod = 'log') {
   return (message, ...args) => {
     if (window.MTB?.DEBUG) {
@@ -126,6 +140,16 @@ function createLogger(emoji, color, consoleMethod = 'log') {
         `color: ${color};`,
         ...args,
       )
+    }
+    return {
+      notify: (timeout = 3000) => {
+        app.extensionManager.toast.add({
+          severity: consoleMethodToSeverity(consoleMethod),
+          summary: 'MTB',
+          detail: `${emoji} ${message}`,
+          life: timeout,
+        })
+      },
     }
   }
 }
