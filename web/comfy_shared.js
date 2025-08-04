@@ -165,6 +165,46 @@ export const log = (...args) => {
   }
 }
 
+export const safe_json = (object, replacer) => {
+  var objects = new WeakMap()
+  return (function derez(value, path) {
+    let old_path
+    let nu
+    if (replacer !== undefined) {
+      value = replacer(value)
+    }
+    if (
+      typeof value === 'object' &&
+      value !== null &&
+      !(value instanceof Boolean) &&
+      !(value instanceof Date) &&
+      !(value instanceof Number) &&
+      !(value instanceof RegExp) &&
+      !(value instanceof String)
+    ) {
+      old_path = objects.get(value)
+      if (old_path !== undefined) {
+        return { $ref: old_path }
+      }
+      objects.set(value, path)
+
+      if (Array.isArray(value)) {
+        nu = []
+        value.forEach((element, i) => {
+          nu[i] = derez(element, `${path}[${i}]`)
+        })
+      } else {
+        nu = {}
+        Object.keys(value).forEach((name) => {
+          nu[name] = derez(value[name], path + '[' + JSON.stringify(name) + ']')
+        })
+      }
+      return nu
+    }
+    return value
+  })(object, '$')
+}
+
 /**
  * Deep merge two objects.
  * @param {Object} target - The target object to merge into.
@@ -455,7 +495,7 @@ export function getWidgetType(config) {
 
 // function to test if input is a dynamic one
 const isDynamicInput = (input) => {
-  infoLogger('Checking if input dynamic', { input })
+  // infoLogger('Checking if input dynamic', { input })
   // return input.name.startsWith(connectionPrefix)
   return input._isDynamic === true
 }
@@ -477,7 +517,7 @@ const set_slot_colors = (node, colors, condition) => {
   }
 
   for (const slot of node.slots) {
-    infoLogger('Candidate', { slot, accepted: condition(slot) })
+    // infoLogger('Candidate', { slot, accepted: condition(slot) })
     if (condition(slot)) {
       slot.color_off = colors[0]
       slot.color_on = colors[1]
@@ -1301,17 +1341,17 @@ export const addDocumentation = (
  * @param {string} property - The name of the property to chain the callback to.
  * @param {Function} callback - The callback function to be chained.
  */
-export function extendPrototype(object, property, callback) {
+export function chainCallback(object, property, callback) {
   if (object === undefined) {
-    console.error('Could not extend undefined object', { object, property })
+    errorLogger('Could not extend undefined object', { object, property })
     return
   }
   if (property in object) {
     const callback_orig = object[property]
     object[property] = function (...args) {
-      const r = callback_orig.apply(this, args)
-      callback.apply(this, args)
-      return r
+      const r = callback_orig?.apply(this, args)
+      const n = callback.apply(this, args)
+      return r || n
     }
   } else {
     object[property] = callback
