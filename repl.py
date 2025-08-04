@@ -1,12 +1,20 @@
+# ruff: noqa: S102 - Use of `exec` detected
+# ruff: noqa: S307 - Use of possibly insecure function
+
+
+# region imports
+import ast
 import base64
 import code
 import io
 import re
 import sys
+import textwrap
 from contextlib import redirect_stderr, redirect_stdout
+from typing import Any
 
-# import matplotlib.pyplot as plt
 import numpy as np
+import rich
 import torch
 from aiohttp import web
 from PIL import Image
@@ -14,15 +22,21 @@ from rich.console import Console
 from rich.traceback import Traceback
 
 from .log import log
+from .utils import singleton
 
+# region safe imports
 try:
     import pyflakes.api
     import pyflakes.reporter
 
     _HAS_LINT = True
 except ImportError:
-    print(
-        "ComfyREPL: pyflakes not found. Linting will be disabled. Install with 'pip install pyflakes'."
+    log.error(
+        textwrap.dedent("""
+        ComfyREPL: pyflakes not found.
+        Linting will be disabled.
+        Install with 'pip install pyflakes'.
+        """)
     )
     _HAS_LINT = False
 
@@ -36,7 +50,10 @@ except ImportError:
 #     _HAS_LINT = True
 # except ImportError:
 #     print(
-#         "ComfyREPL: ruff not found. Linting will be disabled. Install with 'pip install ruff'."
+#         """ComfyREPL: ruff not found.
+#            Linting will be disabled.
+#            Install with 'pip install ruff'.
+#         """
 #     )
 #     _HAS_LINT = False
 
@@ -45,37 +62,61 @@ try:
     import scipy.io.wavfile
 
     _HAS_SCIPY = True
+
+
 except ImportError:
-    print(
-        "ComfyREPL: SciPy not found. Audio display will be disabled. Install with 'pip install scipy'."
+    log.warning(
+        textwrap.dedent("""
+        ComfyREPL: SciPy not found.
+        Audio display will be disabled. Install with 'pip install scipy'.
+        """)
     )
     _HAS_SCIPY = False
 
 try:
     import imageio
-    import imageio.plugins.ffmpeg  # Ensure ffmpeg plugin is available
+    import imageio.plugins.ffmpeg
 
     _HAS_IMAGEIO = True
 except ImportError:
-    print(
-        "ComfyREPL: Imageio or imageio-ffmpeg not found. Video display will be disabled. Install with 'pip install imageio imageio-ffmpeg'."
+    log.warning(
+        textwrap.dedent(
+            """ComfyREPL: Imageio or imageio-ffmpeg not found.
+            Video display will be disabled.
+            Install with 'pip install imageio imageio-ffmpeg'
+            or even better use uv.
+        """
+        )
     )
     _HAS_IMAGEIO = False
 
+# endregion
+# endregion
 
-# --- Audio Display ---
-class AudioDisplay:
+
+# region constants
+# NOTE: The best way I can think of to make outputs dynamic
+# is to register a large number from the python side and
+# control their display dynamically from js (based on the dynamic inputs)
+# but this is hacky and I would rather wait for V3 to start doing that.
+SOCKET_COUNT = 5
+# endregion
+
+
+# region media_handlers
+class _AudioDisplay:
     def __init__(self, samples, sample_rate):
         if not _HAS_SCIPY:
             raise ImportError("Audio display requires scipy and numpy.")
-        if not isinstance(samples, (np.ndarray, torch.Tensor)):
+        if not isinstance(samples, np.ndarray | torch.Tensor):
             raise TypeError(
                 "Audio samples must be a numpy array or torch tensor."
             )
         if isinstance(samples, torch.Tensor):
             samples = samples.detach().cpu().numpy()
 
-        # Ensure samples are in a format scipy.io.wavfile can handle (e.g., int16, float32)
+        # Ensure samples are in a format scipy.io.wavfile
+        # can handle (e.g., int16, float32)
         if samples.dtype == np.float64:
             samples = samples.astype(np.float32)
         elif samples.dtype == np.int64:
@@ -98,30 +139,39 @@ class AudioDisplay:
         base64_data = self._to_wav_base64()
         if base64_data.startswith("<div"):
             return base64_data
-        return f'<audio controls src="data:audio/wav;base64,{base64_data}" style="margin: 5px 0;"/>'
+        return f"""
+        <audio
+            controls
+            src="data:audio/wav;base64,{base64_data}"
+            style="margin: 5px 0;"
+        />"""
 
 
-def render_audio(samples, sample_rate):
+def render_audio(samples: np.ndarray | torch.Tensor, sample_rate: int):
     """
     Render audio samples as an HTML audio player.
 
     Args:
-        samples (np.ndarray or torch.Tensor): Audio samples.
-        sample_rate (int): Sample rate in Hz.
+        samples: Audio samples.
+        sample_rate: Sample rate in Hz.
 
     Returns
     -------
         AudioDisplay: An object that will render as an HTML audio player.
     """
-    return AudioDisplay(samples, sample_rate)
+    return _AudioDisplay(samples, sample_rate)
 
 
-# --- Display Classes ---
-class VideoDisplay:
+class _VideoDisplay:
     def __init__(self, frames, fps=24, options=None):
-        if not _HAS_IMAGEIO:  # numpy/PIL/torch needed for frames
+        if not _HAS_IMAGEIO:
             raise ImportError(
-                "Video display requires imageio, imageio-ffmpeg, and image libraries (numpy, Pillow, torch)."
+                textwrap.dedent(
+                    """Video display requires
+                    imageio, imageio-ffmpeg, and image libraries
+                    (numpy, Pillow, torch).
+                    """
+                )
             )
 
         self.frames = []
@@ -129,8 +179,9 @@ class VideoDisplay:
             if isinstance(frame, Image.Image):
                 self.frames.append(np.array(frame))
             elif isinstance(frame, np.ndarray):
-                # Ensure HWC and uint8
-                if frame.ndim == 3 and frame.shape[0] in [1, 3, 4]:  # CHW
+                # ensure HWC and uint8
+                # CHW
+                if frame.ndim == 3 and frame.shape[0] in [1, 3, 4]:
                     frame = np.transpose(frame, (1, 2, 0))
                 if frame.dtype != np.uint8:
                     frame = (
@@ -141,11 +192,12 @@ class VideoDisplay:
                 self.frames.append(frame)
             elif isinstance(frame, torch.Tensor):
                 np_frame = frame.detach().cpu().numpy()
+                # CHW
                 if np_frame.ndim == 3 and np_frame.shape[0] in [
                     1,
                     3,
                     4,
-                ]:  # CHW
+                ]:
                     np_frame = np.transpose(np_frame, (1, 2, 0))
                 if np_frame.dtype != np.uint8:
                     np_frame = (
@@ -156,7 +208,10 @@ class VideoDisplay:
                 self.frames.append(np_frame)
             else:
                 raise TypeError(
-                    f"Unsupported frame type: {type(frame)}. Must be PIL.Image, numpy.ndarray, or torch.Tensor."
+                    textwrap.dedent(f"""
+                    Unsupported frame type: {type(frame)}.
+                    Must be PIL.Image, numpy.ndarray, or torch.Tensor.
+                """)
                 )
 
         self.fps = fps
@@ -165,15 +220,14 @@ class VideoDisplay:
     def _to_mp4_base64(self):
         buffer = io.BytesIO()
         try:
-            # Use imageio to write frames to an in-memory MP4 file
             imageio.mimwrite(
-                buffer,
-                self.frames,
+                uri=buffer,
+                ims=self.frames,
                 format="mp4",
                 fps=self.fps,
                 codec="libx264",
                 quality=8,
-            )  # quality 1-10
+            )
             video_base64 = base64.b64encode(buffer.getvalue()).decode("utf-8")
             return video_base64
         except Exception as e:
@@ -181,10 +235,9 @@ class VideoDisplay:
 
     def _repr_html_(self):
         base64_data = self._to_mp4_base64()
-        if base64_data.startswith("<div"):  # Check if it's an error message
+        if base64_data.startswith("<div"):
             return base64_data
 
-        # Build HTML options string
         option_str = ""
         for key, value in self.options.items():
             if isinstance(value, bool) and value:
@@ -192,106 +245,305 @@ class VideoDisplay:
             elif isinstance(value, str):
                 option_str += f' {key}="{value}"'
             else:
-                option_str += f' {key}="{value}"'  # Fallback for numbers etc.
+                option_str += f' {key}="{value}"'
 
-        return f'<video controls src="data:video/mp4;base64,{base64_data}" style="max-width: 100%; height: auto; border: 1px solid #555; margin: 5px 0;"{option_str}/>'
+        return f"""
+        <video
+            controls
+            src="data:video/mp4;base64,{base64_data}"
+            style="max-width: 100%; height: auto; border: 1px solid #555; margin: 5px 0;"{option_str}
+        />"""
 
 
-def render_video(batch_tensor_or_array_of_pil_images, fps=24, options=None):
+def render_video(
+    frames: torch.Tensor | list[np.ndarray] | list[Image.Image] | Any,
+    fps=24,
+    options=None,
+):
     """
     Render video frames as an HTML video player.
 
     Args:
-        batch_tensor_or_array_of_pil_images (list of PIL.Image, np.ndarray, or torch.Tensor):
-            A list of frames, or a single batch tensor/array (B, H, W, C) or (B, C, H, W).
+        frames: A list of frames, or a single batch tensor/array
+                (B, H, W, C) or (B, C, H, W).
         fps (int): Frames per second.
-        options (dict): Dictionary of HTML <video> tag attributes (e.g., {"loop": True, "autoplay": True}).
+        options (dict): Dictionary of HTML <video> tag attributes
+                        (e.g., {"loop": True, "autoplay": True}).
 
     Returns
     -------
         VideoDisplay: An object that will render as an HTML video player.
     """
     frames_list = []
-    if isinstance(
-        batch_tensor_or_array_of_pil_images, (np.ndarray, torch.Tensor)
-    ):
-        # Assume it's a batch tensor/array
-        for i in range(batch_tensor_or_array_of_pil_images.shape[0]):
-            frames_list.append(batch_tensor_or_array_of_pil_images[i])
-    elif isinstance(batch_tensor_or_array_of_pil_images, list):
-        frames_list = batch_tensor_or_array_of_pil_images
+    if isinstance(frames, np.ndarray | torch.Tensor):
+        for i in range(frames.shape[0]):
+            frames_list.append(frames[i])
+    elif isinstance(frames, list):
+        frames_list = frames
     else:
         raise TypeError(
-            "Input for render_video must be a list of frames or a batch tensor/array."
+            textwrap.dedent("""
+            Wrong input passed to render_video.
+            must be a list of frames or a batch tensor/array.
+        """)
         )
 
-    return VideoDisplay(frames_list, fps, options)
+    return _VideoDisplay(frames_list, fps, options)
 
 
-class ComfyREPLBackend:
+class _ImageDisplay:
+    """Convert and display image-like objects."""
+
+    def __init__(self, img_data: Any):
+        self.pil_img = None
+        self.error = None
+
+        if isinstance(img_data, Image.Image):
+            self.pil_img = img_data
+        elif isinstance(img_data, np.ndarray):
+            try:
+                if img_data.ndim == 3 and img_data.shape[0] in [
+                    1,
+                    3,
+                    4,
+                ]:  # CHW
+                    img_data = np.transpose(img_data, (1, 2, 0))
+                if img_data.dtype != np.uint8:
+                    img_data = (
+                        (img_data * 255).astype(np.uint8)
+                        if img_data.max() <= 1.0
+                        else img_data.astype(np.uint8)
+                    )
+                self.pil_img = Image.fromarray(img_data)
+            except Exception as e:
+                self.error = f"Error converting NumPy array to image: {e}"
+        elif isinstance(img_data, torch.Tensor):
+            try:
+                np_img = img_data.detach().cpu().numpy()
+                if np_img.ndim == 3 and np_img.shape[0] in [1, 3, 4]:  # CHW
+                    np_img = np.transpose(np_img, (1, 2, 0))
+                if np_img.dtype != np.uint8:
+                    np_img = (
+                        (np_img * 255).astype(np.uint8)
+                        if np_img.max() <= 1.0
+                        else np_img.astype(np.uint8)
+                    )
+                self.pil_img = Image.fromarray(np_img)
+            except Exception as e:
+                self.error = f"Error converting torch.Tensor to image: {e}"
+        else:
+            self.error = (
+                f"Unsupported image type for display: {type(img_data)}"
+            )
+
+    def _repr_html_(self) -> str:
+        """Convert the internal PIL image to a base64 HTML string."""
+        if self.error:
+            return f"<div style='color: red;'>{self.error}</div>"
+        if not self.pil_img:
+            return (
+                "<div style='color: red;'>Could not process image data.</div>"
+            )
+
+        buffer = io.BytesIO()
+        try:
+            self.pil_img.save(buffer, format="PNG")
+            img_base64 = base64.b64encode(buffer.getvalue()).decode("utf-8")
+            return f'<img src="data:image/png;base64,{img_base64}" style="max-width: 100%; height: auto; border: 1px solid #555; margin: 5px 0;"/>'
+        except Exception as e:
+            return f"<div style='color: red;'>Error saving image: {e}</div>"
+
+
+def render_image(img_data: Any):
+    """
+    Render image-like data (PIL, NumPy, Torch) as an HTML image.
+
+    This is a user-facing function for explicit display calls.
+    """
+    return _ImageDisplay(img_data)
+
+
+# endregion
+
+
+class SafeInputList(list):
+    """Wrapper of list for custom error message."""
+
+    def __getitem__(self, key):
+        """Get item with error rewired."""
+        try:
+            return super().__getitem__(key)
+        except IndexError as e:
+            raise IndexError(
+                textwrap.dedent("""
+                Input index out of range.
+                In live mode, the 'inputs' list is empty,
+                You can use the guard 'if IS_LIVE:'
+                to fill them only for the live mode""")
+            ) from e
+
+
+class ComfyReplAPI:
+    """'API' available from the REPL instances."""
+
     def __init__(self):
-        self.repl_consoles: dict[str, code.InteractiveConsole] = {}
-        # self.repl_console = None
-        self.image_outputs = []
-        self.audio_outputs = []
-        self.video_outputs = []
-        self._original_displayhook = sys.displayhook
-        # self._init_repl_console()
+        self.__color = ""
+        pass
 
-    @staticmethod
-    def _init_repl_console():
+    def set_color(self, color: str):
+        self.__color = color
+
+    # def get_input(self, at: int, mock: Any) -> Any:
+    #     pass
+
+    def get_gradient_2d(self, start, stop, width, height, is_horizontal):
+        if is_horizontal:
+            return np.tile(np.linspace(start, stop, width), (height, 1))
+        else:
+            return np.tile(np.linspace(start, stop, height), (width, 1)).T
+
+    def get_gradient_3d(
+        self,
+        width,
+        height,
+        start_list,
+        stop_list,
+        is_horizontal_list,
+        *,
+        as_image=False,
+    ):
+        result = np.zeros((height, width, len(start_list)), dtype=np.float32)
+
+        for i, (start, stop, is_horizontal) in enumerate(
+            zip(start_list, stop_list, is_horizontal_list, strict=False)
+        ):
+            result[:, :, i] = self.get_gradient_2d(
+                start, stop, width, height, is_horizontal
+            )
+        if as_image:
+            return Image.fromarray(np.uint8(result))
+        else:
+            return result
+
+
+@singleton
+class ComfyREPLBackend:
+    """Singleton "backend" for the REPL editor."""
+
+    def __init__(self):
+        self._repl_consoles: dict[str, code.InteractiveConsole] = {}
+
+        self.media_outputs = []
+
+        # self._original_displayhook = sys.displayhook
+        self.handlers = []
+        self.register_handlers()
+
+    def register_handlers(self):
+        self.handlers.extend(
+            [
+                self._handle_video,
+                self._handle_audio,
+                self._handle_image,
+            ]
+        )
+
+    def _handle_image(self, value):
+        """Handle PIL Images, and Numpy/Torch tensors that represent images."""
+        if isinstance(value, _ImageDisplay):
+            return value._repr_html_()
+
+        if isinstance(value, Image.Image | np.ndarray | torch.Tensor):
+            return _ImageDisplay(value)._repr_html_()
+
+        return None
+
+    def _handle_audio(self, value):
+        """Handle AudioDisplay objects."""
+        if isinstance(value, _AudioDisplay):
+            return value._repr_html_()
+        return None
+
+    def _handle_video(self, value):
+        """Handle VideoDisplay objects."""
+        if isinstance(value, _VideoDisplay):
+            return value._repr_html_()
+        return None
+
+    def _init_repl_console(self, *inputs):
         """Define the globals that will be available in the REPL session."""
-        repl_globals = {"__builtins__": __builtins__}
+        repl_locals = {"__builtins__": __builtins__}
         # repl_globals["plt"] = plt
-        repl_globals["np"] = np
-        repl_globals["Image"] = Image
-        repl_globals["torch"] = torch
+        repl_locals["np"] = np
+        repl_locals["Image"] = Image
+        repl_locals["torch"] = torch
+        repl_locals["repl"] = ComfyReplAPI()
+        repl_locals["IS_LIVE"] = True
 
-        repl_globals["repl_display"] = _repl_display_image
+        repl_locals["inputs"] = [None] * SOCKET_COUNT
+        repl_locals["outputs"] = [None] * SOCKET_COUNT
+
+        if len(inputs):
+            repl_locals["inputs"] = SafeInputList(inputs)
+
+        # internals but exposed for debug
         if _HAS_SCIPY:
-            repl_globals["render_audio"] = render_audio
+            repl_locals["render_audio"] = render_audio
         if _HAS_IMAGEIO:
-            repl_globals["render_video"] = render_video
+            repl_locals["render_video"] = render_video
 
-        return code.InteractiveConsole(locals=repl_globals)
+        repl_locals["render_image"] = render_image
+
+        return code.InteractiveConsole(locals=repl_locals)
 
     def _custom_displayhook(self, value):
         """
         Displayhook that capture and process image, audio, video objects.
 
+        It can also look for renderable items inside lists, tuples, and dicts.
         For other objects, it fallsback to the original displayhook.
         """
+        log.debug("Custom displayhook called")
         if value is None:
             return
 
-        # Attempt to handle as an image
-        if (
-            isinstance(value, (Image.Image, np.ndarray, torch.Tensor))
-            # or (
-            #     hasattr(value, "figure")
-            #     and isinstance(value.figure, plt.Figure)
-            # )
-            # or isinstance(value, plt.Figure)
-        ):
-            img_html = _repl_display_image(value)
-            self.image_outputs.append(img_html)
+        # handle with handler
+        if self._handle_item(value):
             return
 
-        # Attempt to handle as audio
-        elif isinstance(value, AudioDisplay):
-            audio_html = value._repr_html_()
-            self.audio_outputs.append(audio_html)
-            return
+        # containers
+        items_to_process = []
+        if isinstance(value, list | tuple):
+            items_to_process.extend(value)
+        elif isinstance(value, dict):
+            items_to_process.extend(value.values())
 
-        # Attempt to handle as video
-        elif isinstance(value, VideoDisplay):
-            video_html = value._repr_html_()
-            self.video_outputs.append(video_html)
-            return
+        if items_to_process:
+            was_anything_rendered = False
+            for item in items_to_process:
+                if self._handle_item(item):
+                    was_anything_rendered = True
+                    # Item handled, move to the next item in the container
+                    break
 
-        else:
-            # If not a special media type, let the original displayhook handle it.
-            self._original_displayhook(value)
+            # If we found any media inside the container, we consider the
+            # displayhook's job done. We don't also print the container itself.
+            if was_anything_rendered:
+                return
+
+        log.debug("Falling back to original display hook")
+        # self._original_displayhook(value)
+        sys.displayhook(value)
+
+    def _handle_item(self, item):
+        # handle with handler
+        for handler in self.handlers:
+            html_output = handler(item)
+            if html_output:
+                log.debug(f"Object handled by {handler.__name__}")
+                self.media_outputs.append(html_output)
+                return True
+        return False
 
     def _console_to_html(
         self, stream: io.StringIO | Traceback, width: int = 120
@@ -299,7 +551,10 @@ class ComfyREPLBackend:
         if isinstance(stream, io.StringIO):
             captured_text_output = stream.getvalue()
         else:
-            captured_text_output = Traceback
+            log.debug(
+                f"Steam is not an io.StringIO but a {type(stream).__name__}"
+            )
+            captured_text_output = stream  # Traceback
 
         html_console = Console(
             file=io.StringIO(), record=True, force_terminal=True, width=width
@@ -308,52 +563,168 @@ class ComfyREPLBackend:
 
         return html_console.export_html(inline_styles=True)
 
-    def get_console(self, node_name: str):
-        console = self.repl_consoles.get(node_name)
-        if console:
+    def get_console(self, name: str | None = None, *, reset=False):
+        """Get or create a new named console."""
+        if name is None:
+            log.error("Cannot get console without providing a name (uuid)")
+            return
+
+        console = self._repl_consoles.get(name)
+
+        if console and not reset:
             return console
 
+        if reset:
+            if console is not None:
+                del self._repl_consoles[name]
+                console = None
+
+            console = self._init_repl_console()
+            self._repl_consoles[name] = console
+            return self._repl_consoles[name]
+
+        log.debug(
+            textwrap.dedent(f"""
+                Creating new console for node {name}
+                (active: {len(self._repl_consoles.keys())})
+                """)
+        )
         console = self._init_repl_console()
-        self.repl_consoles[node_name] = console
-        return self.repl_consoles[node_name]
+        self._repl_consoles[name] = console
+        return self._repl_consoles[name]
 
-    def execute_code(self, node_name: str, code: str):
-        # Clear outputs from previous execution
-        self.image_outputs = []
-        self.audio_outputs = []
-        self.video_outputs = []
+    def get_outputs(
+        self,
+        *,
+        name: str | None = None,
+        console: code.InteractiveConsole | None = None,
+    ):
+        if name is None and console is None:
+            raise ValueError("Either id or console must be provided")
 
+        if name is not None:
+            console = self.get_console(name)
+
+        if console is None:
+            raise RuntimeError("No console found")
+
+        if "outputs" in console.locals:
+            outputs = console.locals["outputs"]
+            # guards
+            if outputs is None:
+                outputs = [None] * SOCKET_COUNT
+            elif isinstance(outputs, list) and len(outputs) > SOCKET_COUNT:
+                raise RuntimeError(
+                    textwrap.dedent(f"""
+                    Too many outputs: {len(outputs)} vs {SOCKET_COUNT}
+                    Outputs can be smaller then {SOCKET_COUNT} but not higher.
+                """)
+                )
+
+            # enlist if needed
+            if not isinstance(outputs, list):
+                outputs = [outputs]
+
+            # pad the outputs
+            if len(outputs) < SOCKET_COUNT:
+                outputs = outputs + [None] * (SOCKET_COUNT - len(outputs))
+        else:
+            outputs = [None] * SOCKET_COUNT
+
+        return outputs
+
+    def execute_code(
+        self,
+        code: str,
+        *,
+        name: str | None = None,
+        console=None,
+        reset=False,
+        inputs: list[Any] | None = None,
+    ):
+        log.debug(f"Executing code for node {name}")
+
+        inputs = inputs or []
+
+        if not console and not name:
+            raise ValueError("Either name or console must be provided")
+        if console is not None and reset:
+            raise ValueError(
+                textwrap.dedent("""
+                Cannot specify both console and reset,
+                use name and reset instead
+                """)
+            )
+
+        self.media_outputs = []
         output_html = ""
         error_message = None
 
-        repl_console = self.get_console(node_name)
+        repl_console = console or self.get_console(name, reset=reset)
+        if not repl_console:
+            log.error(f"Failed to get console named {name}")
+            return
 
         string_io = io.StringIO()
+        repl_console.locals["inputs"] = SafeInputList(inputs)
 
         # Temporarily patch sys.displayhook
-        sys.displayhook = self._custom_displayhook
+        # sys.displayhook = self._custom_displayhook
 
         try:
+            log.debug(f"CODE SENT:\n\n{code}")
             with redirect_stdout(string_io), redirect_stderr(string_io):
-                for line in code.splitlines():
-                    repl_console.push(line)
+                try:
+                    tree = ast.parse(code)
+                except SyntaxError as e:
+                    raise e
+
+                if tree.body:
+                    # split if last statement is an expr
+                    if isinstance(tree.body[-1], ast.Expr):
+                        setup_module = ast.Module(
+                            body=tree.body[:-1], type_ignores=[]
+                        )
+                        setup_code = compile(
+                            setup_module, "<mtb-repl-setup>", "exec"
+                        )
+
+                        # the last expr
+                        last_expr = ast.Expression(body=tree.body[-1].value)
+                        last_code = compile(
+                            last_expr, "<mtb-repl-eval>", "eval"
+                        )
+
+                        exec(setup_code, repl_console.locals)
+                        result = eval(last_code, repl_console.locals)
+
+                        # required as runsource doesn't trigger displayhook
+                        self._custom_displayhook(result)
+
+                        if "outputs" in repl_console.locals:
+                            log.warning(
+                                textwrap.dedent("""
+                                Outputs are defined
+                                but the display hook will overwrite them""")
+                            )
+                        repl_console.locals["outputs"] = result
+
+                    # no expression as last statement
+                    else:
+                        exec(code, repl_console.locals)
+
+                # NOTE: old
+                # repl_console.runsource(code, "mtb-repl", "exec")
+
 
             full_rich_html = self._console_to_html(string_io)
+
             match = re.search(
                 r"<body.*?>(.*?)</body>", full_rich_html, re.DOTALL
             )
-            if match:
-                output_html = match.group(1)
-            else:
-                output_html = full_rich_html
+            output_html = match.group(1) if match else full_rich_html
 
-            # Append any captured media HTML *after* the rich text output
-            for img_html in self.image_outputs:
-                output_html += img_html
-            for audio_html in self.audio_outputs:
-                output_html += audio_html
-            for video_html in self.video_outputs:
-                output_html += video_html
+            output_html += "".join(self.media_outputs)
 
         except Exception as e:
             exc_type, exc_value, exc_traceback = sys.exc_info()
@@ -378,14 +749,19 @@ class ComfyREPLBackend:
             output_html = match.group(1) if match else full_error_html
 
             error_message = str(e)
-        finally:
-            sys.displayhook = (
-                self._original_displayhook
-            )  # Always restore original displayhook
+        # finally:
+        #     sys.displayhook = (
+        #         self._original_displayhook
+        #     )  # Always restore original displayhook
 
         return {"output_html": output_html, "error": error_message}
 
-    def lint_code(self, node_name: str, code: str):
+    @property
+    def active_consoles(self):  # noqa: N805
+        return [str(k) for k in self._repl_consoles]
+
+    def lint_code(self, *, name: str = "", code: str):
+        log.debug(f"Linting code for node {name}")
         diagnostics = []
 
         if not _HAS_LINT:
@@ -393,11 +769,17 @@ class ComfyREPLBackend:
                 {
                     "row": 0,
                     "column": 0,
-                    "text": "Pyflakes not installed. Linting disabled. Install with 'uv add pyflakes'.",
+                    "text": textwrap.dedent("""
+                        Pyflakes not installed.
+                        Linting disabled.
+                        Install with 'uv add pyflakes'.
+                    """),
                     "type": "warning",
                 }
             )
             return web.json_response({"diagnostics": diagnostics})
+
+        custom_globals = {"render_video", "render_audio", "repl_display"}
 
         # Use a custom reporter to capture messages
         class PyflakesReporter(pyflakes.reporter.Reporter):
@@ -409,13 +791,32 @@ class ComfyREPLBackend:
                 super().__init__(self._stdout, self._stderr)
 
             def flake(self, message):
-                # Ace editor expects 0-indexed row, pyflakes gives 1-indexed lineno
+                # Ace editor expects 0-indexed row
+                # pyflakes gives 1-indexed lineno
+
+                import pyflakes.messages
+
+                kind = "warning"
+
+                if isinstance(message, pyflakes.messages.UndefinedName):
+                    kind = "error"
+
+                    if (
+                        message.message_args
+                        and message.message_args[0] in custom_globals
+                    ):
+                        return
+
+                log.info("result from flake")
+                console = rich.console.Console(stderr=True)
+                rich.inspect(message, console=console)
+
                 self.messages.append(
                     {
                         "row": message.lineno - 1,
                         "column": message.col,
-                        "text": str(message),
-                        "type": "warning",  # pyflakes usually gives warnings
+                        "text": str(message) + "prout",
+                        "type": kind,
                     }
                 )
 
@@ -441,7 +842,7 @@ class ComfyREPLBackend:
                 )
 
         reporter = PyflakesReporter()
-        pyflakes.api.check(code, node_name, reporter)
+        pyflakes.api.check(code, name, reporter)
 
         return {"diagnostics": reporter.messages}
 
@@ -453,7 +854,11 @@ class ComfyREPLBackend:
                 {
                     "row": 0,
                     "column": 0,
-                    "text": "Ruff not installed. Linting disabled. Install with 'pip install ruff'.",
+                    "text": textwrap.dedent("""
+                        Ruff not installed.
+                        Linting disabled.
+                        Install with 'pip install ruff'.
+                    """),
                     "type": "warning",
                 }
             )
@@ -465,7 +870,7 @@ class ComfyREPLBackend:
             "repl_display",
             "render_audio",
             "render_video",
-            # "plt",
+            "plt",
             "np",
             "Image",
             "torch",
@@ -481,8 +886,14 @@ class ComfyREPLBackend:
 
             for diagnostic in result.diagnostics:
                 diag_type = "warning"  # Default
-                # Ruff's error codes: F (Pyflakes), E (Pycodestyle), W (Pycodestyle warning), I (isort), N (naming), etc.
-                # F821: Undefined name (often an error)
+                # Ruff's error codes:
+                # F (Pyflakes)
+                # E (Pycodestyle)
+                # W (Pycodestyle warning)
+                # I (isort)
+                # N (naming)
+                # ...
+                # F821: Undefined name
                 if (
                     diagnostic.kind.code.startswith("E")
                     or diagnostic.kind.code == "F821"
@@ -514,97 +925,27 @@ class ComfyREPLBackend:
         return {"diagnostics": diagnostics}
 
 
-def _repl_display_image(img_data):
-    """
-    Internal function to convert image data (PIL, numpy, torch, matplotlib) to base64 HTML.
-    """
-    pil_img = None
-    # fig = None
-
-    if isinstance(img_data, Image.Image):
-        pil_img = img_data
-    elif isinstance(img_data, np.ndarray):
-        # Handle different numpy array shapes (HWC, CHW)
-        if img_data.ndim == 3:
-            if img_data.shape[0] in [1, 3, 4]:  # Likely CHW
-                if img_data.shape[0] == 1:  # Grayscale
-                    img_data = img_data.squeeze(0)
-                else:  # Color
-                    img_data = np.transpose(img_data, (1, 2, 0))  # CHW to HWC
-            # Ensure it's uint8 for PIL, assuming float [0,1] or int [0,255]
-            if img_data.dtype != np.uint8:
-                img_data = (
-                    (img_data * 255).astype(np.uint8)
-                    if img_data.max() <= 1.0
-                    else img_data.astype(np.uint8)
-                )
-        pil_img = Image.fromarray(img_data)
-    elif isinstance(img_data, torch.Tensor):
-        # Move to CPU, convert to numpy
-        np_img = img_data.detach().cpu().numpy()
-        # Handle different tensor shapes (CHW, HWC)
-        if np_img.ndim == 3:
-            if np_img.shape[0] in [1, 3, 4]:  # Likely CHW
-                if np_img.shape[0] == 1:  # Grayscale
-                    np_img = np_img.squeeze(0)
-                else:  # Color
-                    np_img = np.transpose(np_img, (1, 2, 0))  # CHW to HWC
-            # Ensure it's uint8 for PIL, assuming float [0,1] or int [0,255]
-            if np_img.dtype != np.uint8:
-                np_img = (
-                    (np_img * 255).astype(np.uint8)
-                    if np_img.max() <= 1.0
-                    else np_img.astype(np.uint8)
-                )
-        pil_img = Image.fromarray(np_img)
-    # elif hasattr(img_data, "figure") and isinstance(
-    #     img_data.figure, plt.Figure
-    # ):
-    #     # If it's a matplotlib Axes object, get its figure
-    #     fig = img_data.figure
-    # elif isinstance(img_data, plt.Figure):
-    #     fig = img_data
-    else:
-        return f"<div style='color: red;'>Unsupported image type for display: {type(img_data)}</div>"
-
-    buffer = io.BytesIO()
-    try:
-        if pil_img:
-            pil_img.save(buffer, format="PNG")
-        # elif fig:
-        #     fig.savefig(
-        #         buffer, format="PNG", bbox_inches="tight", pad_inches=0.1
-        #     )
-        #     plt.close(
-        #         fig
-        #     )  # Close the figure to prevent it from showing up in other contexts
-        else:
-            return (
-                "<div style='color: red;'>Could not process image data.</div>"
-            )
-    except Exception as e:
-        return f"<div style='color: red;'>Error saving image: {e}</div>"
-
-    img_base64 = base64.b64encode(buffer.getvalue()).decode("utf-8")
-    return f'<img src="data:image/png;base64,{img_base64}" style="max-width: 100%; height: auto; border: 1px solid #555; margin: 5px 0;"/>'
-
-
-# Instantiate the backend class globally
 _comfy_repl_backend = ComfyREPLBackend()
 
 
-# Update aiohttp handlers to use the backend instance
+# region endpoint handlers
 async def repl_execute_code_handler(request):
     data = await request.json()
 
     name = data.get("name")
+    reset = data.get("reset")
 
-    if name is None:  # we send an error
+    if reset is None:
+        reset = False
+
+    if name is None:
         return web.Response(
-            status=417, reason="Expectation Failed", text="Missing name key"
+            status=417, reason="Expectation Failed, missing name key"
         )
+
     code = data.get("code", "")
-    result = _comfy_repl_backend.execute_code(name, code)
+    result = _comfy_repl_backend.execute_code(code, name=name, reset=reset)
+
     return web.json_response(result)
 
 
@@ -621,17 +962,15 @@ async def repl_lint_code_handler(request):
         # )
 
     code = data.get("code", "")
-    result = _comfy_repl_backend.lint_code(name, code)
+    result = _comfy_repl_backend.lint_code(name=name, code=code)
     return web.json_response(result)
 
 
 def setup_custom_web_routes(app: web.Application):
-    """
-    Function to register our custom web routes with the ComfyUI server.
-    """
-    log.info("ComfyREPL: Registering /mtb/execute route...")
+    """Register REPL routes."""
+    log.info("ComfyREPL: Registering repl routes...")
     app.router.add_post("/mtb/execute", repl_execute_code_handler)
     app.router.add_post("/mtb/lint", repl_lint_code_handler)
 
 
-# You can add more routes here if needed, e.g., for clearing state.
+# endregion

@@ -135,6 +135,7 @@ const consoleMethodToSeverity = (method) => {
 function createLogger(emoji, color, consoleMethod = 'log') {
   return (message, ...args) => {
     if (window.MTB?.DEBUG) {
+      // biome-ignore lint/suspicious/noConsole: logger wrapper
       console[consoleMethod](
         `%c${emoji} ${message}`,
         `color: ${color};`,
@@ -161,6 +162,7 @@ export const successLogger = createLogger('✅', 'green')
 
 export const log = (...args) => {
   if (window.MTB?.DEBUG) {
+    // biome-ignore lint/suspicious/noConsole: logger wrapper
     console.debug(...args)
   }
 }

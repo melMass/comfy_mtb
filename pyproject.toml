@@ -125,8 +125,10 @@ select = ["A", "B", "C", "D", "E", "F", "FBT", "I", "N", "S", "SIM", "UP", "W"]
 # D102 - undocumented-public-method (noisy)
 # D103 - undocumented-public-function (noisy)
 # D100 - undocumented-public-module (noisy)
+# D101 - undocumented-public-class (kept for DESCRIPTION definitions)
+# N801 - classname should use CapWord (forced by mtb registration (for now))
 # N802 - invalid-function-name (forced by comfy's arch)
-ignore = ["D103", "D102", "D100", "N802"]
+ignore = ["D103", "D102", "D100", "N801", "N802"]
 
 [tool.ruff.lint.per-file-ignores]
 # imported but unused

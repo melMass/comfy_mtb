@@ -53,6 +53,35 @@ def make_report():
 # endregion
 
 
+# region decorators
+class classproperty:
+    def __init__(self, method=None):
+        self.fget = method
+
+    def __get__(self, instance, cls=None):
+        if self.fget:
+            return self.fget(cls)
+
+    def getter(self, method):
+        self.fget = method
+        return self
+
+
+def singleton(cls):
+    """Turn a class into a singleton."""
+    instances = {}
+
+    def get_instance(*args, **kwargs):
+        if cls not in instances:
+            instances[cls] = cls(*args, **kwargs)
+        return instances[cls]
+
+    return get_instance
+
+
+# endregion
+
+
 # region NFOV
 class numpy_NFOV:
     def __init__(self, fov=None, height: int = 400, width: int = 800):
@@ -663,7 +692,6 @@ class LazyProxyTensor:
         return f"{mem_bytes} B"
 
     def __repr__(self):
-
         actual_info = get_torch_tensor_info(self._source_tensor, name="Source")
         target_info = get_torch_tensor_info(self, name="Target")
 
