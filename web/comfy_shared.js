@@ -402,11 +402,11 @@ export const getNamedWidget = (node, ...names) => {
  */
 export const nodesFromLink = (node, link) => {
   if (typeof link === 'number') {
-    link = app.graph.getLink(link)
+    link = node.graph.getLink(link)
   }
 
-  const fromNode = app.graph.getNodeById(link.origin_id)
-  const toNode = app.graph.getNodeById(link.target_id)
+  const fromNode = node.graph.getNodeById(link.origin_id)
+  const toNode = node.graph.getNodeById(link.target_id)
 
   let tp = 'error'
 
