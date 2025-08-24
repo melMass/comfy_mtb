@@ -7,7 +7,7 @@ from ..utils import log
 
 
 class MTB_Repl:
-    """Write python code from within a python graph."""
+    """Write python code from within a comfy graph."""
 
     @classmethod
     def INPUT_TYPES(cls):

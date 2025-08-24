@@ -10,9 +10,14 @@ import io
 import re
 import sys
 import textwrap
+import time
+import urllib.parse
+import uuid
 from contextlib import redirect_stderr, redirect_stdout
-from typing import Any
+from pathlib import Path
+from typing import TYPE_CHECKING, Any
 
+import folder_paths
 import numpy as np
 import rich
 import torch
@@ -20,6 +25,9 @@ from aiohttp import web
 from PIL import Image
 from rich.console import Console
 from rich.traceback import Traceback
+
+if TYPE_CHECKING:
+    from .nodes.audio import AudioTensor
 
 from .log import log
 from .utils import singleton
@@ -75,7 +83,7 @@ except ImportError:
 
 try:
     import imageio
-    import imageio.plugins.ffmpeg
+    # import imageio.plugins.ffmpeg
 
     _HAS_IMAGEIO = True
 except ImportError:
@@ -163,7 +171,9 @@ def render_audio(samples: np.ndarray | torch.Tensor, sample_rate: int):
 
 
 class _VideoDisplay:
-    def __init__(self, frames, fps=24, options=None):
+    def __init__(
+        self, frames, fps=24, options=None, audio: "AudioTensor | None" = None
+    ):
         if not _HAS_IMAGEIO:
             raise ImportError(
                 textwrap.dedent(
@@ -217,7 +227,63 @@ class _VideoDisplay:
         self.fps = fps
         self.options = options if options is not None else {}
 
+        self.audio_array = None
+        self.audio_samplerate = None
+        if audio:
+            if (
+                isinstance(audio, dict)
+                and "waveform" in audio
+                and "sample_rate" in audio
+            ):
+                waveform_tensor = audio["waveform"]
+                self.audio_samplerate = audio["sample_rate"]
+                audio_np = waveform_tensor.detach().cpu().numpy()
+                if audio_np.ndim == 1:
+                    audio_np = audio_np[:, np.newaxis]
+                elif (
+                    audio_np.ndim > 1 and audio_np.shape[0] < audio_np.shape[1]
+                ):
+                    audio_np = np.transpose(audio_np)
+                self.audio_array = audio_np
+            else:
+                log.warning("Audio provided in an incorrect format, ignoring.")
+
+    def _save_to_disk_and_get_url(self):
+        """Saves the video to a temp file and returns its URL."""
+        output_dir = Path(folder_paths.get_temp_directory(), "mtb_repl_videos")
+        output_dir.mkdir(exist_ok=True)
+
+        filename = f"vid_{time.strftime('%Y%m%d-%H%M%S')}_{uuid.uuid4()}.mp4"
+        filepath = output_dir / filename
+
+        try:
+            imageio.mimwrite(
+                uri=filepath,
+                ims=self.frames,
+                format="mp4",
+                fps=self.fps,
+                codec="libx264",
+                quality=8,
+                audio_array=self.audio_array,
+                audio_samplerate=self.audio_samplerate,
+                audio_codec="aac",
+            )
+
+            params = urllib.parse.urlencode(
+                {
+                    "filename": filename,
+                    "subfolder": "mtb_repl_videos",
+                    "type": "temp",
+                }
+            )
+
+            return f"/view?{params}"
+
+        except Exception as e:
+            return f"<div style='color: red;'>Error saving video to disk: {e}</div>"
+
     def _to_mp4_base64(self):
+        """[DEPRECATED] this bloats the client"""
         buffer = io.BytesIO()
         try:
             imageio.mimwrite(
@@ -233,32 +299,55 @@ class _VideoDisplay:
         except Exception as e:
             return f"<div style='color: red;'>Error encoding video: {e}</div>"
 
-    def _repr_html_(self):
-        base64_data = self._to_mp4_base64()
-        if base64_data.startswith("<div"):
-            return base64_data
+    def _repr_html_(self, *, old=False):
+        if old:
+            base64_data = self._to_mp4_base64()
+            if base64_data.startswith("<div"):
+                return base64_data
+
+            option_str = ""
+            for key, value in self.options.items():
+                if isinstance(value, bool) and value:
+                    option_str += f" {key}"
+                elif isinstance(value, str):
+                    option_str += f' {key}="{value}"'
+                else:
+                    option_str += f' {key}="{value}"'
+
+            return f"""
+            <video
+                controls
+                src="data:video/mp4;base64,{base64_data}"
+                style="max-width: 100%; height: auto; border: 1px solid #555; margin: 5px 0;"{option_str}
+            />"""
+
+        video_url = self._save_to_disk_and_get_url()
+
+        if video_url.startswith("<div"):
+            return video_url
 
         option_str = ""
         for key, value in self.options.items():
             if isinstance(value, bool) and value:
                 option_str += f" {key}"
-            elif isinstance(value, str):
-                option_str += f' {key}="{value}"'
             else:
-                option_str += f' {key}="{value}"'
+                option_str += f' {key}="{str(value)}"'
 
         return f"""
-        <video
-            controls
-            src="data:video/mp4;base64,{base64_data}"
-            style="max-width: 100%; height: auto; border: 1px solid #555; margin: 5px 0;"{option_str}
-        />"""
+        <video 
+            controls 
+            src="{video_url}"
+            style="max-width: 100%; height: auto; border: 1px solid #555; margin: 5px 0;"{option_str}>
+        </video>
+        """
 
 
 def render_video(
     frames: torch.Tensor | list[np.ndarray] | list[Image.Image] | Any,
     fps=24,
     options=None,
+    *,
+    audio: "AudioTensor | None" = None,
 ):
     """
     Render video frames as an HTML video player.
@@ -288,7 +377,7 @@ def render_video(
         """)
         )
 
-    return _VideoDisplay(frames_list, fps, options)
+    return _VideoDisplay(frames_list, fps, options, audio=audio)
 
 
 class _ImageDisplay:
@@ -468,6 +557,16 @@ class ComfyREPLBackend:
         """Handle VideoDisplay objects."""
         if isinstance(value, _VideoDisplay):
             return value._repr_html_()
+
+        if isinstance(value, torch.Tensor) and len(value.shape) == 4:
+            return render_video(value)._repr_html_()
+
+        if (
+            isinstance(value, list)
+            and len(value) > 0
+            and isinstance(value, Image.Image | np.ndarray | torch.Tensor)
+        ):
+            return render_video(value)._repr_html_()
         return None
 
     def _init_repl_console(self, *inputs):
@@ -477,8 +576,32 @@ class ComfyREPLBackend:
         repl_locals["np"] = np
         repl_locals["Image"] = Image
         repl_locals["torch"] = torch
-        repl_locals["repl"] = ComfyReplAPI()
+        repl_api = ComfyReplAPI()
+        repl_locals["repl"] = repl_api
+
+        # "globals"
         repl_locals["IS_LIVE"] = True
+
+        filename = Path(folder_paths.get_input_directory()) / "example.png"
+        log.debug(
+            f"Looking for example in {filename.as_posix()}, {filename.exists()}"
+        )
+
+        if filename.exists():
+            img = Image.open(filename)
+            repl_locals["EXAMPLE"] = torch.from_numpy(
+                np.array(img).astype(np.float32) / 255.0
+            ).unsqueeze(0)
+        else:
+            repl_locals["EXAMPLE"] = torch.from_numpy(
+                repl_api.get_gradient_3d(
+                    1024,
+                    1024,
+                    (0, 0, 192),
+                    (255, 255, 64),
+                    (True, False, False),
+                )
+            ).unsqueeze(0)
 
         repl_locals["inputs"] = [None] * SOCKET_COUNT
         repl_locals["outputs"] = [None] * SOCKET_COUNT
@@ -701,13 +824,15 @@ class ComfyREPLBackend:
                         # required as runsource doesn't trigger displayhook
                         self._custom_displayhook(result)
 
-                        if "outputs" in repl_console.locals:
+                        if "outputs" in repl_console.locals and isinstance(
+                            repl_console.locals["outputs"], list | tuple
+                        ):
                             log.warning(
                                 textwrap.dedent("""
                                 Outputs are defined
                                 but the display hook will overwrite them""")
                             )
-                        repl_console.locals["outputs"] = result
+                            repl_console.locals["outputs"] = result
 
                     # no expression as last statement
                     else:

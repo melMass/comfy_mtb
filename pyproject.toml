@@ -70,10 +70,11 @@ exclude = [
   "**/__pycache__",
   "src/experimental",
   "src/typestubs",
+  "extern/",
 ]
 ignore = ["src/oldstuff"]
 defineConstant = { DEBUG = true }
-extraPaths = ["python", "../.."]
+extraPaths = ["python", "../..", "../ComfyUI-Impact-Pack/modules"]
 stubPath = "src/stubs"
 
 reportMissingImports = true

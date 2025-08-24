@@ -32,16 +32,6 @@ export class MtbEditor {
   constructor(node, options) {
     infoLogger('ME: construct')
 
-    this.container = mtb_ui.makeElement('div', {
-      boxSizing: 'border-box',
-      display: 'flex',
-      flexDirection: 'column',
-      fontFamily: 'monospace',
-      height: '100%',
-      padding: '5px',
-      width: '100%',
-    })
-
     this.uuid = shared.makeUUID()
     this._code = ''
 
@@ -135,6 +125,16 @@ export class MtbEditor {
   }
 
   setupUI() {
+    this.container = mtb_ui.makeElement('div', {
+      boxSizing: 'border-box',
+      display: 'flex',
+      flexDirection: 'column',
+      fontFamily: 'monospace',
+      height: '100%',
+      padding: '5px',
+      width: '100%',
+    })
+
     this.inputDiv = mtb_ui.makeElement(
       'div',
       {
@@ -184,7 +184,7 @@ export class MtbEditor {
         },
         this.container,
       )
-      runButton.textContent = 'Run Code (Ctrl+Enter)'
+      runButton.textContent = 'Run Code (Alt+Enter)'
       runButton.onclick = () => {
         // node.__repl('RUN') //node.executeCode()
         this.executeCode()
@@ -239,16 +239,7 @@ export class MtbEditor {
     }
   }
   get code() {
-    if (this._code) {
-      return this._code
-    }
-    if (this.aceEditor) {
-      return this.aceEditor.getValue()
-    }
-    // if (this.parentNode) {
-    // return this.parentNode.properties.inputCode
-    // }
-    return ''
+    return this._code
   }
   async lintCode() {
     if (this.options.mode !== 'python') {
@@ -308,6 +299,7 @@ export class MtbEditor {
       this.container,
       {
         getValue: () => {
+          // infoLogger(
           //   'Called get value of Code Editor',
           //   node.properties,
           //   editor.code,
@@ -315,7 +307,7 @@ export class MtbEditor {
           // return 'foobar'
           // return node.properties.inputCode
           // return this.parentNode?.properties?.inputCode // editor.code
-          return this._code
+          return this.code
         },
         hideOnZoom: false,
         setValue: (v) => {
@@ -471,6 +463,8 @@ export class MtbEditor {
       const currentHistory = this.parentNode.properties.outputHistory || ''
       this.parentNode.setProperty('outputHistory', currentHistory + html)
     }
+
+    this.outputArea.scrollTop = this.outputArea.scrollHeight
   }
 
   async executeCode() {
@@ -571,7 +565,7 @@ export class MtbEditor {
 
     if (this.options.capabilities.execute) {
       this.aceEditor.commands.addCommand({
-        bindKey: { mac: 'Command-Enter', win: 'Ctrl-Enter' },
+        bindKey: { mac: 'Alt-Enter', win: 'Alt-Enter' },
         exec: () => this.executeCode(),
         name: 'runCode',
       })
@@ -615,7 +609,9 @@ export const CODE_EDITOR = (node, name, inputData, _app) => {
         .notify()
       break
     }
+    // case 'Repl (mtb)': {
     case 'python': {
+      infoLogger('Handling python editor', { node })
 
       const editor = new MtbEditor(node, {
         capabilities: {
@@ -623,6 +619,7 @@ export const CODE_EDITOR = (node, name, inputData, _app) => {
         },
         lang: 'python',
       })
+      infoLogger('MTBEditor created', editor)
 
       return editor.setupWidget(name, typeName)
 
