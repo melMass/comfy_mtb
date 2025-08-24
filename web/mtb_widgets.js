@@ -1296,7 +1296,32 @@ const mtb_widgets = {
 
         break
       }
+      case 'String Replace (mtb)': {
+        shared.addMenuHandler(nodeType, function (_app, options) {
+          /** @type {ContextMenuItem} */
+          const item = {
+            content: 'swap',
+            title: 'Swap Old/New ⚡',
+            callback: (_menuItem) => {
+              const old_w = this.widgets.find((w) => w.name === 'old')
+              const novel_w = this.widgets.find(
+                (w) => w.name === 'new',
+              )
 
+              const old = old_w.value
+              const novel = novel_w.value
+
+              novel_w.value = old
+              old_w.value = novel
+
+            },
+          }
+
+          options.push(item)
+          return [item]
+        })
+        break
+      }
       case 'Batch Shape (mtb)':
       case 'Mask To Image (mtb)':
       case 'Text To Image (mtb)': {
