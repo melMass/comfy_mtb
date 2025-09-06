@@ -879,8 +879,11 @@ class MTB_MaskToImage:
         return {
             "required": {
                 "mask": ("MASK",),
-                "color": ("COLOR",),
-                "background": ("COLOR", {"default": "#000000"}),
+                "color": ("COLOR", {"widgetType": "MTB_COLOR"}),
+                "background": (
+                    "COLOR",
+                    {"default": "#000000", "widgetType": "MTB_COLOR"},
+                ),
             },
             "optional": {
                 "invert": ("BOOLEAN", {"default": False}),

@@ -193,11 +193,11 @@ by default it fallsback to a default font.
                 ),
                 "color": (
                     "COLOR",
-                    {"default": "black"},
+                    {"default": "black", "widgetType": "MTB_COLOR"},
                 ),
                 "background": (
                     "COLOR",
-                    {"default": "white"},
+                    {"default": "white", "widgetType": "MTB_COLOR"},
                 ),
                 "h_align": (("left", "center", "right"), {"default": "left"}),
                 "v_align": (("top", "center", "bottom"), {"default": "top"}),
