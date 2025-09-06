@@ -43,7 +43,10 @@ class MTB_TransformImage:
                     ["edge", "constant", "reflect", "symmetric"],
                     {"default": "edge"},
                 ),
-                "constant_color": ("COLOR", {"default": "#000000"}),
+                "constant_color": (
+                    "COLOR",
+                    {"default": "#000000", "widgetType": "MTB_COLOR"},
+                ),
             },
             "optional": {
                 "filter_type": (
