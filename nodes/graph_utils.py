@@ -129,6 +129,9 @@ class MTB_ApplyTextTemplate:
             "required": {
                 "template": ("STRING", {"default": "", "multiline": True}),
             },
+            "optional":{
+                "strip": ("BOOLEAN", {"default": True}),
+            },
         }
 
     RETURN_TYPES = ("STRING",)
@@ -136,7 +139,7 @@ class MTB_ApplyTextTemplate:
     CATEGORY = "mtb/utils"
     FUNCTION = "execute"
 
-    def execute(self, *, template: str, **kwargs) -> tuple[str | list[str]]:
+    def execute(self, *, strip:bool,template: str, **kwargs) -> tuple[str | list[str]]:
         keys = list(kwargs.keys())
         values = list(kwargs.values())
 
@@ -172,7 +175,10 @@ class MTB_ApplyTextTemplate:
                         res = self.apply_res(res, k, v[it])
                     else:
                         res = self.apply_res(res, k, v)
-                results.append(res)
+                if strip:
+                    results.append(res.strip())
+                else:
+                    results.append(res)
 
             return (results,)
 
@@ -181,7 +187,10 @@ class MTB_ApplyTextTemplate:
             for k, v in kwargs.items():
                 res = self.apply_res(res, k, v)
 
-            return (res,)
+            if strip:
+                return (res.strip(),)
+            else:
+                return (res,)
 
     def apply_res(self, res, key, value):
         if isinstance(value, float):
