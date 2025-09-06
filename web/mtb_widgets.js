@@ -21,7 +21,7 @@ import { infoLogger } from './comfy_shared.js'
 import { NumberInputWidget } from './numberInput.js'
 
 // NOTE: new widget types registered by MTB Widgets
-const newTypes = [/*'BOOL'*/ 'COLOR', 'BBOX']
+const newTypes = [/*'BOOL'*/ 'COLOR','MTB_COLOR', 'BBOX']
 
 const deprecated_nodes = {
   //  'Animation Builder':
@@ -739,7 +739,6 @@ const mtb_widgets = {
       // },
 
       COLOR: (node, inputName, inputData, _app) => {
-        console.debug('Registering color')
         return {
           widget: node.addCustomWidget(
             MtbWidgets.COLOR(inputName, inputData[1]?.default || '#ff0000'),
@@ -748,6 +747,16 @@ const mtb_widgets = {
           minHeight: 30,
         }
       },
+      MTB_COLOR: (node, inputName, inputData, _app) => {
+        return {
+          widget: node.addCustomWidget(
+            MtbWidgets.COLOR(inputName, inputData[1]?.default || '#ff0000'),
+          ),
+          minWidth: 150,
+          minHeight: 30,
+        }
+      },
+
       // BBOX: (node, inputName, inputData, app) => {
       //     console.debug("Registering bbox")
       //     return {
