@@ -1,15 +1,17 @@
 {
   "$schema": "https://biomejs.dev/schemas/2.0.5/schema.json",
-  "assist": { "actions": { "source": { "organizeImports": "on" } } },
+  "assist": {
+    "enabled": true,
+    "actions": { "source": { "useSortedKeys": "on", "organizeImports": "on" } }
+  },
   "linter": {
     "enabled": true,
     "rules": {
       "recommended": true,
       "suspicious": {
-        "noConsole": { "level": "warn", "options": { "allow": ["log"] } }
+        "noConsole": "error"
       },
       "style": {
-        "noParameterAssign": "off",
         "noShoutyConstants": "warn",
         "useNamingConvention": "off",
         "useAsConstAssertion": "error",

@@ -14,6 +14,51 @@ import { api } from '../../scripts/api.js'
 
 // #region base utils
 
+/**
+ * Computes the convex hull of a set of points using the Monotone Chain algorithm.
+ *
+ * @param {Array<Array<number>>} points An array of points, where each point is an array of two numbers [x, y].
+ * @returns {Array<Array<number>>} The points forming the convex hull, in counter-clockwise order.
+ */
+export const getConvexHull = (points) => {
+  if (points.length <= 3) {
+    return points
+  }
+
+  points.sort((a, b) => a[0] - b[0] || a[1] - b[1])
+
+  const lower = []
+  for (const p of points) {
+    while (
+      lower.length >= 2 &&
+      cross_product(lower[lower.length - 2], lower[lower.length - 1], p) <= 0
+    ) {
+      lower.pop()
+    }
+    lower.push(p)
+  }
+
+  const upper = []
+  for (let i = points.length - 1; i >= 0; i--) {
+    const p = points[i]
+    while (
+      upper.length >= 2 &&
+      cross_product(upper[upper.length - 2], upper[upper.length - 1], p) <= 0
+    ) {
+      upper.pop()
+    }
+    upper.push(p)
+  }
+
+  function cross_product(o, a, b) {
+    return (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0])
+  }
+
+  return lower
+    .slice(0, lower.length - 1)
+    .concat(upper.slice(0, upper.length - 1))
+}
+
 // - crude uuid
 export function makeUUID() {
   let dt = new Date().getTime()
@@ -73,14 +118,39 @@ export class LocalStorageManager {
 
 // - log utilities
 
+const consoleMethodToSeverity = (method) => {
+  switch (method) {
+    case 'log': {
+      return 'info'
+    }
+    case 'error' | 'warn': {
+      return method
+    }
+    default: {
+      return 'secondary'
+    }
+  }
+}
+
 function createLogger(emoji, color, consoleMethod = 'log') {
   return (message, ...args) => {
     if (window.MTB?.DEBUG) {
+      // biome-ignore lint/suspicious/noConsole: logger wrapper
       console[consoleMethod](
         `%c${emoji} ${message}`,
         `color: ${color};`,
         ...args,
       )
+    }
+    return {
+      notify: (timeout = 3000) => {
+        app.extensionManager.toast.add({
+          severity: consoleMethodToSeverity(consoleMethod),
+          summary: 'MTB',
+          detail: `${emoji} ${message}`,
+          life: timeout,
+        })
+      },
     }
   }
 }
@@ -92,8 +162,49 @@ export const successLogger = createLogger('✅', 'green')
 
 export const log = (...args) => {
   if (window.MTB?.DEBUG) {
+    // biome-ignore lint/suspicious/noConsole: logger wrapper
     console.debug(...args)
   }
+}
+
+export const safe_json = (object, replacer) => {
+  var objects = new WeakMap()
+  return (function derez(value, path) {
+    let old_path
+    let nu
+    if (replacer !== undefined) {
+      value = replacer(value)
+    }
+    if (
+      typeof value === 'object' &&
+      value !== null &&
+      !(value instanceof Boolean) &&
+      !(value instanceof Date) &&
+      !(value instanceof Number) &&
+      !(value instanceof RegExp) &&
+      !(value instanceof String)
+    ) {
+      old_path = objects.get(value)
+      if (old_path !== undefined) {
+        return { $ref: old_path }
+      }
+      objects.set(value, path)
+
+      if (Array.isArray(value)) {
+        nu = []
+        value.forEach((element, i) => {
+          nu[i] = derez(element, `${path}[${i}]`)
+        })
+      } else {
+        nu = {}
+        Object.keys(value).forEach((name) => {
+          nu[name] = derez(value[name], path + '[' + JSON.stringify(name) + ']')
+        })
+      }
+      return nu
+    }
+    return value
+  })(object, '$')
 }
 
 /**
@@ -290,8 +401,12 @@ export const getNamedWidget = (node, ...names) => {
  * @returns {{to:LGraphNode, from:LGraphNode, type:'error' | 'incoming' | 'outgoing'}}
  */
 export const nodesFromLink = (node, link) => {
-  const fromNode = app.graph.getNodeById(link.origin_id)
-  const toNode = app.graph.getNodeById(link.target_id)
+  if (typeof link === 'number') {
+    link = node.graph.getLink(link)
+  }
+
+  const fromNode = node.graph.getNodeById(link.origin_id)
+  const toNode = node.graph.getNodeById(link.target_id)
 
   let tp = 'error'
 
@@ -380,12 +495,54 @@ export function getWidgetType(config) {
 
 // #endregion
 
+// function to test if input is a dynamic one
+const isDynamicInput = (input) => {
+  // infoLogger('Checking if input dynamic', { input })
+  // return input.name.startsWith(connectionPrefix)
+  return input._isDynamic === true
+}
+
+// Add a dynamic input, update node properties and slot colors!
+const addDynamicInput = (node, name, kind) => {
+  const input = node.addInput(name, kind)
+  input._isDynamic = true
+
+  update_dynamic_properties(node)
+  set_slot_colors(node, ['cyan', undefined], isDynamicInput)
+
+  return input
+}
+
+const set_slot_colors = (node, colors, condition) => {
+  if (!condition) {
+    condition = (_s) => true
+  }
+
+  for (const slot of node.slots) {
+    // infoLogger('Candidate', { slot, accepted: condition(slot) })
+    if (condition(slot)) {
+      slot.color_off = colors[0]
+      slot.color_on = colors[1]
+    }
+  }
+}
+
+const update_dynamic_properties = (node) => {
+  const dyn = []
+  for (const input of node.inputs) {
+    if (isDynamicInput(input)) {
+      dyn.push(input.name)
+    }
+  }
+  node.setProperty('dynamic_connections', dyn)
+}
+
 // #region dynamic connections
 /**
  * @param {NodeType} nodeType The nodetype to attach the documentation to
  * @param {str} prefix A prefix added to each dynamic inputs
  * @param {str | [str]} inputType The datatype(s) of those dynamic inputs
- * @param {{separator?:string, start_index?:number, link?:LLink, ioSlot?:INodeInputSlot | INodeOutputSlot}?} [opts] Extra options
+ * @param {{separator?:string,rename_menu?:'label'|'name', start_index?:number, link?:LLink, ioSlot?:INodeInputSlot | INodeOutputSlot}?} [opts] Extra options
  * @returns
  */
 export const setupDynamicConnections = (
@@ -399,20 +556,115 @@ export const setupDynamicConnections = (
     Object.getOwnPropertyDescriptors(nodeType).title.value,
   )
 
-  /** @type {{separator:string, start_index:number, link?:LLink, ioSlot?:INodeInputSlot | INodeOutputSlot}?} */
+  /** @type {{separator:string,rename_menu?:"label"|"name" start_index:number, link?:LLink, ioSlot?:INodeInputSlot | INodeOutputSlot}?} */
   const options = Object.assign(
     {
       separator: '_',
       start_index: 1,
+      rename_menu: 'label',
     },
     opts || {},
   )
+  const is_valid_name = (node, val) => {
+    return true
+  }
+  nodeType.prototype.getSlotMenuOptions = (slot) => {
+    if (!slot.input) {
+      return
+    }
+    infoLogger('Slot Menu', { slot })
+    return [
+      {
+        content: `Rename Input (${options.rename_menu})`,
+        callback: () => {
+          const dialog = app.canvas.createDialog(
+            "<span class='name'>Name</span><input autofocus type='text'/><button>OK</button>",
+            {},
+          )
+          const dialogInput = dialog.querySelector('input')
+          if (dialogInput) {
+            if (options.rename_menu === 'label') {
+              dialogInput.value = slot.input.label || slot.input.name || ''
+            } else if (options.rename_menu === 'name') {
+              dialogInput.value = slot.input.name || ''
+            }
+          }
+          const inner = () => {
+            // TODO: check if name exists or other guards
+            const val = dialogInput.value
+            if (!is_valid_name(slot.node, val)) {
+              dialog.close()
+              return
+            }
+
+            app.graph.beforeChange()
+            if (options.rename_menu === 'label') {
+              slot.input.label = val
+            } else if (options.rename_menu === 'name') {
+              slot.input.name = val
+              slot.input.label = val
+            }
+
+            app.graph.afterChange()
+
+            dialog.close()
+          }
+          dialog.querySelector('button').addEventListener('click', inner)
+          dialogInput.addEventListener('keydown', (e) => {
+            dialog.is_modified = true
+            if (e.keyCode === 27) {
+              dialog.close()
+            } else if (e.keyCode === 13) {
+              inner()
+            } else if (e.keyCode !== 13 && e.target?.localName !== 'textarea') {
+              return
+            }
+            e.preventDefault()
+            e.stopPropagation()
+          })
+          dialogInput.focus()
+        },
+      },
+    ]
+  }
+
+  const onConfigure = nodeType.prototype.onConfigure
+
+  nodeType.prototype.onConfigure = function (data) {
+    const r = onConfigure ? onConfigure.apply(this, data) : undefined
+
+    // Set or restore serialized properties, lt seems to auto serialize/deserialize to/from string
+    if (!('dynamic_connections' in this.properties)) {
+      // this.addProperty('dynamic_connections', [], 'string')
+      this.setProperty('dynamic_connections', [])
+    } else {
+      const dynamic_connections = this.properties.dynamic_connections
+      if (typeof dynamic_connections !== 'object') {
+        return r
+      }
+      for (const name of dynamic_connections) {
+        infoLogger(`Would dynamize: ${name}`)
+        const input = this.inputs.find((i) => i.name === name)
+        if (input) {
+          infoLogger('Input found', { input })
+          input._isDynamic = true
+        }
+      }
+    }
+    // set color
+    set_slot_colors(this, ['cyan', undefined], isDynamicInput)
+
+    return r
+  }
+
   const onNodeCreated = nodeType.prototype.onNodeCreated
   const inputList = typeof inputType === 'object'
 
   nodeType.prototype.onNodeCreated = function () {
     const r = onNodeCreated ? onNodeCreated.apply(this, []) : undefined
-    this.addInput(
+
+    const input = addDynamicInput(
+      this,
       `${prefix}${options.separator}${options.start_index}`,
       inputList ? '*' : inputType,
     )
@@ -484,10 +736,7 @@ export const dynamic_connection = (
     opts || {},
   )
 
-  // function to test if input is a dynamic one
-  const isDynamicInput = (inputName) => inputName.startsWith(connectionPrefix)
-
-  if (node.inputs.length > 0 && !isDynamicInput(node.inputs[index].name)) {
+  if (node.inputs.length > 0 && !isDynamicInput(node.inputs[index])) {
     return
   }
 
@@ -497,6 +746,7 @@ export const dynamic_connection = (
   const nameArray = options.nameArray || []
 
   const clean_inputs = () => {
+    if (node.id < 0) return // being duplicated
     if (node.inputs.length === 0) return
 
     let w_count = node.widgets?.length || 0
@@ -506,7 +756,7 @@ export const dynamic_connection = (
     const to_remove = []
     for (let n = 1; n < node.inputs.length; n++) {
       const element = node.inputs[n]
-      if (!element.link && isDynamicInput(element.name)) {
+      if (!element.link && isDynamicInput(element)) {
         if (node.widgets) {
           const w = node.widgets.find((w) => w.name === element.name)
           if (w) {
@@ -520,9 +770,12 @@ export const dynamic_connection = (
     }
     for (let i = 0; i < to_remove.length; i++) {
       const id = to_remove[i]
-
-      node.removeInput(id)
-      i_count -= 1
+      try {
+        node.removeInput(id)
+        i_count -= 1
+      } catch (err) {
+        errorLogger('Cannot remove input', err)
+      }
     }
     node.inputs.length = i_count
 
@@ -536,7 +789,7 @@ export const dynamic_connection = (
     for (let i = 0; i < node.inputs.length; i++) {
       let name = ''
       // rename only prefixed inputs
-      if (isDynamicInput(node.inputs[i].name)) {
+      if (node.inputs[i].name.startsWith(connectionPrefix)) {
         // prefixed => rename and increase index
         name = `${connectionPrefix}${prefixed_idx}`
         prefixed_idx += 1
@@ -590,9 +843,8 @@ export const dynamic_connection = (
     if (node.inputs.length === 0) return
     // add an extra input
     if (node.inputs[node.inputs.length - 1].link !== null) {
-      // count only the prefixed inputs
       const nextIndex = node.inputs.reduce(
-        (acc, cur) => (isDynamicInput(cur.name) ? ++acc : acc),
+        (acc, cur) => (isDynamicInput(cur) ? ++acc : acc),
         0,
       )
 
@@ -602,7 +854,7 @@ export const dynamic_connection = (
           : `${connectionPrefix}${nextIndex + options.start_index}`
 
       infoLogger(`Adding input ${nextIndex + 1} (${name})`)
-      node.addInput(name, conType)
+      addDynamicInput(node, name, conType)
     }
   }
 }
@@ -1091,17 +1343,17 @@ export const addDocumentation = (
  * @param {string} property - The name of the property to chain the callback to.
  * @param {Function} callback - The callback function to be chained.
  */
-export function extendPrototype(object, property, callback) {
+export function chainCallback(object, property, callback) {
   if (object === undefined) {
-    console.error('Could not extend undefined object', { object, property })
+    errorLogger('Could not extend undefined object', { object, property })
     return
   }
   if (property in object) {
     const callback_orig = object[property]
     object[property] = function (...args) {
-      const r = callback_orig.apply(this, args)
-      callback.apply(this, args)
-      return r
+      const r = callback_orig?.apply(this, args)
+      const n = callback.apply(this, args)
+      return r || n
     }
   } else {
     object[property] = callback

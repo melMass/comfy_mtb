@@ -7,7 +7,7 @@
 #
 ###
 
-__version__ = "0.5.4"
+__version__ = "0.6.0"
 
 import os
 
@@ -264,6 +264,10 @@ def register_routes():
     from io import BytesIO
 
     from PIL import Image
+
+    from .repl import setup_custom_web_routes
+
+    setup_custom_web_routes(PromptServer.instance.app)
 
     with contextlib.suppress(ImportError):
         from cachetools import TTLCache

@@ -1060,7 +1060,6 @@ const mtb_widgets = {
               const currentChunkSize = Math.min(chunkSize, totalPrompts - i)
 
               await app.queuePrompt(0, currentChunkSize)
-
             }
             if (!cancelQueue) {
               window.MTB?.notify?.(
@@ -1206,7 +1205,9 @@ const mtb_widgets = {
 
       //NOTE: dynamic nodes
       case 'Apply Text Template (mtb)': {
-        shared.setupDynamicConnections(nodeType, 'var', '*')
+        shared.setupDynamicConnections(nodeType, 'var', '*', {
+          rename_menu: 'name',
+        })
         break
       }
       case 'Save Data Bundle (mtb)': {
@@ -1295,7 +1296,32 @@ const mtb_widgets = {
 
         break
       }
+      case 'String Replace (mtb)': {
+        shared.addMenuHandler(nodeType, function (_app, options) {
+          /** @type {ContextMenuItem} */
+          const item = {
+            content: 'swap',
+            title: 'Swap Old/New ⚡',
+            callback: (_menuItem) => {
+              const old_w = this.widgets.find((w) => w.name === 'old')
+              const novel_w = this.widgets.find(
+                (w) => w.name === 'new',
+              )
 
+              const old = old_w.value
+              const novel = novel_w.value
+
+              novel_w.value = old
+              old_w.value = novel
+
+            },
+          }
+
+          options.push(item)
+          return [item]
+        })
+        break
+      }
       case 'Batch Shape (mtb)':
       case 'Mask To Image (mtb)':
       case 'Text To Image (mtb)': {
@@ -1338,47 +1364,54 @@ const mtb_widgets = {
             const related = new Set([this.id])
             const visited = new Set()
             if (this.outputs[0].links) {
-              const initLink = this.outputs[0].links[0]
-              const { to: loopEnd } = shared.nodesFromLink(this, initLink)
-              const canReachEnd = (node, visited = new Set()) => {
-                if (node === loopEnd) return true
-                if (visited.has(node.id)) return false
-                visited.add(node.id)
-                for (const output of node.outputs || []) {
-                  if (!output.links) continue
-                  for (const linkId of output.links) {
-                    const { to: nextNode } = shared.nodesFromLink(node, linkId)
-                    if (!nextNode) continue
-                    if (canReachEnd(nextNode, visited)) {
-                      return true
+              for (const linkId of this.outputs[0].links) {
+                const { to: loopEnd } = shared.nodesFromLink(this, linkId)
+                const canReachEnd = (node, visited = new Set()) => {
+                  if (node === loopEnd) return true
+                  if (visited.has(node.id)) return false
+                  visited.add(node.id)
+                  for (const output of node.outputs || []) {
+                    if (!output.links) continue
+                    for (const linkId of output.links) {
+                      const { to: nextNode } = shared.nodesFromLink(
+                        node,
+                        linkId,
+                      )
+                      if (!nextNode) continue
+                      if (canReachEnd(nextNode, visited)) {
+                        return true
+                      }
+                    }
+                  }
+                  return false
+                }
+                const traverseNodes = (node) => {
+                  if (visited.has(node.id)) return
+                  visited.add(node.id)
+
+                  // can reach the end
+                  if (node !== this && node !== loopEnd && !canReachEnd(node)) {
+                    return
+                  }
+
+                  related.add(node.id)
+                  for (const output of node.outputs || []) {
+                    if (!output.links) continue
+
+                    for (const linkId of output.links) {
+                      const { to: nextNode } = shared.nodesFromLink(
+                        node,
+                        linkId,
+                      )
+                      if (!nextNode) continue
+
+                      traverseNodes(nextNode)
                     }
                   }
                 }
-                return false
+
+                traverseNodes(this)
               }
-              const traverseNodes = (node) => {
-                if (visited.has(node.id)) return
-                visited.add(node.id)
-
-                // can reach the end
-                if (node !== this && node !== loopEnd && !canReachEnd(node)) {
-                  return
-                }
-
-                related.add(node.id)
-                for (const output of node.outputs || []) {
-                  if (!output.links) continue
-
-                  for (const linkId of output.links) {
-                    const { to: nextNode } = shared.nodesFromLink(node, linkId)
-                    if (!nextNode) continue
-
-                    traverseNodes(nextNode)
-                  }
-                }
-              }
-
-              traverseNodes(this)
             }
             this.related_to_flow = Array.from(related)
             this.computed_flow = true

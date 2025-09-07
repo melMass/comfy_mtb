@@ -194,9 +194,7 @@ class NotePlus extends LiteGraph.LGraphNode {
       this.calculateHeight.cancel()
     }
     this.calculateHeight = shared.debounce(() => {
-      this.calculated_height = shared.calculateTotalChildrenHeight(
-        this.inner,
-      )
+      this.calculated_height = shared.calculateTotalChildrenHeight(this.inner)
     }, ms)
   }
 
@@ -410,7 +408,6 @@ class NotePlus extends LiteGraph.LGraphNode {
       this.editorsContainer,
     )
 
-
     //- "Dynamic" elements
     const syncUI = () => {
       // let convert_to_html =
@@ -460,7 +457,6 @@ class NotePlus extends LiteGraph.LGraphNode {
     // let select_mode = this.dialog.element.querySelector('#edit_mode')
 
     syncUI()
-
 
     this.setupEditors()
   }
