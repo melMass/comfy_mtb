@@ -560,6 +560,28 @@ if (window?.__COMFYUI_FRONTEND_VERSION__) {
 
           imgs = getImgsFromUrls(urls, imgGrid)
 
+          const loader = makeElement('div', {}, imgGrid)
+          Object.assign(loader.style, {
+            display: 'none',
+            width: '100%',
+            padding: '8px 0',
+            textAlign: 'center',
+            color: 'var(--mtb-text, #ccc)',
+            fontSize: '12px',
+          })
+          loader.textContent = 'Loading…'
+
+          const endMsg = makeElement('div', {}, imgGrid)
+          Object.assign(endMsg.style, {
+            display: 'none',
+            width: '100%',
+            padding: '8px 0',
+            textAlign: 'center',
+            color: 'var(--mtb-text, #888)',
+            fontSize: '12px',
+          })
+          endMsg.textContent = 'No more items'
+
           const sentinel = makeElement('div', {}, imgGrid)
           sentinel.style.height = '1px'
           sentinel.style.width = '100%'
@@ -568,22 +590,32 @@ if (window?.__COMFYUI_FRONTEND_VERSION__) {
           const loadNextPage = async () => {
             if (isLoadingPage || !hasMorePages) return
             isLoadingPage = true
+            loader.style.display = 'block'
             try {
               const nextUrls = await getUrls(subfolder, undefined, pageOffset)
               const keys = Object.keys(nextUrls || {})
               if (!keys.length) {
                 hasMorePages = false
                 observer.disconnect()
+                loader.style.display = 'none'
+                endMsg.style.display = 'block'
                 return
               }
               getImgsFromUrls(nextUrls, imgGrid)
               if (pageSizeCache != null) pageOffset += pageSizeCache
+              // Ensure footer elements order and sentinel stay last
+              imgGrid.appendChild(loader)
+              imgGrid.appendChild(endMsg)
+              imgGrid.appendChild(sentinel)
             } catch (e) {
               console.error('Failed to load next page:', e)
               hasMorePages = false
               observer.disconnect()
+              loader.style.display = 'none'
+              endMsg.style.display = 'block'
             } finally {
               isLoadingPage = false
+              loader.style.display = hasMorePages ? 'none' : loader.style.display
             }
           }
 
