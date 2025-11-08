@@ -1,3 +1,4 @@
+import sys
 from typing import TYPE_CHECKING, Any, TypedDict
 
 import torch
@@ -485,17 +486,24 @@ class MTB_AudioCut(MtbAudio):
             "required": {
                 "audio": ("AUDIO",),
                 "length": (
-                    ("FLOAT"),
+                    ("INT"),
                     {
-                        "default": 1000.0,
-                        "min": 0.0,
-                        "max": 999999.0,
+                        "default": 1000,
+                        "min": 100,
+                        "max": sys.maxsize,
                         "step": 1,
+                        "tooltip": "Length in milliseconds",
                     },
                 ),
                 "offset": (
-                    ("FLOAT"),
-                    {"default": 0.0, "min": 0.0, "max": 999999.0, "step": 1},
+                    ("INT"),
+                    {
+                        "default": 0,
+                        "min": 0,
+                        "max": sys.maxsize,
+                        "step": 1,
+                        "tooltip": "Offset in milliseconds",
+                    },
                 ),
             },
         }
@@ -505,11 +513,11 @@ class MTB_AudioCut(MtbAudio):
     CATEGORY = "mtb/audio"
     FUNCTION = "cut"
 
-    def cut(self, audio: AudioTensor, length: float, offset: float):
+    def cut(self, audio: AudioTensor, length: int, offset: int):
         sample_rate = audio["sample_rate"]
-        start_idx = int(offset * sample_rate / 1000)
+        start_idx: int = int(float(offset) * float(sample_rate) / 1000)
         end_idx = min(
-            start_idx + int(length * sample_rate / 1000),
+            start_idx + int(float(length) * float(sample_rate) / 1000),
             audio["waveform"].shape[-1],
         )
         cut_waveform = audio["waveform"][:, :, start_idx:end_idx]
