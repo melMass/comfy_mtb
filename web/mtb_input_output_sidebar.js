@@ -21,6 +21,7 @@ let isLoadingPage = false
 let hasMorePages = true
 let pageSizeCache = undefined
 
+let observer = null
 // These are "global" variables mostly meant to sync user settings.
 let currentWidth = 200
 let saltUrls =
@@ -298,6 +299,89 @@ const getUrls = async (subfolder, countOverride, offsetOverride) => {
   return output || {}
 }
 
+/**
+ * Initialize pagination (loader, end-of-results message, sentinel, and IntersectionObserver)
+ * for the provided grid container. Safely disconnects any previous observer.
+ * @param {HTMLElement} imgGrid
+ */
+function initPagination(imgGrid) {
+  // disconnect any existing observer to avoid duplicates
+  if (observer) {
+    try {
+      observer.disconnect()
+    } catch { }
+    observer = null
+  }
+  
+  // create footer UI elements
+  const loader = makeElement('div', {}, imgGrid)
+  Object.assign(loader.style, {
+    display: 'none',
+    width: '100%',
+    padding: '8px 0',
+    textAlign: 'center',
+    color: 'var(--mtb-text, #ccc)',
+    fontSize: '12px',
+  })
+  loader.textContent = 'Loading…'
+  
+  const endMsg = makeElement('div', {}, imgGrid)
+  Object.assign(endMsg.style, {
+    display: 'none',
+    width: '100%',
+    padding: '8px 0',
+    textAlign: 'center',
+    color: 'var(--mtb-text, #888)',
+    fontSize: '12px',
+  })
+  endMsg.textContent = 'No more items'
+  
+  const sentinel = makeElement('div', {}, imgGrid)
+  sentinel.style.height = '1px'
+  sentinel.style.width = '100%'
+  sentinel.style.marginTop = '1px'
+  
+  const loadNextPage = async () => {
+    if (isLoadingPage || !hasMorePages) return
+    isLoadingPage = true
+    loader.style.display = 'block'
+    try {
+      const nextUrls = await getUrls(subfolder, undefined, pageOffset)
+      const keys = Object.keys(nextUrls || {})
+      if (!keys.length) {
+        hasMorePages = false
+        if (observer) observer.disconnect()
+        loader.style.display = 'none'
+        endMsg.style.display = 'block'
+        return
+      }
+      getImgsFromUrls(nextUrls, imgGrid)
+      if (pageSizeCache != null) pageOffset += pageSizeCache
+      // keep footer elements and sentinel at the bottom
+      imgGrid.appendChild(loader)
+      imgGrid.appendChild(endMsg)
+      imgGrid.appendChild(sentinel)
+    } catch (e) {
+      console.error('Failed to load next page:', e)
+      hasMorePages = false
+      if (observer) observer.disconnect()
+      loader.style.display = 'none'
+      endMsg.style.display = 'block'
+    } finally {
+      isLoadingPage = false
+      if (hasMorePages) loader.style.display = 'none'
+    }
+  }
+  
+  observer = new IntersectionObserver((entries) => {
+    for (const entry of entries) {
+      if (entry.isIntersecting) loadNextPage()
+    }
+  })
+  observer.observe(sentinel)
+
+}
+
 //NOTE: do not load if using the old ui
 if (window?.__COMFYUI_FRONTEND_VERSION__) {
   // NOTE: removed this for now since I'm not actually exposing anything a client
@@ -527,6 +611,8 @@ if (window?.__COMFYUI_FRONTEND_VERSION__) {
               if (urls) {
                 imgs = getImgsFromUrls(urls, imgGrid)
               }
+              // re-init pagination after content reset
+              initPagination(imgGrid)
             }
           })
 
@@ -551,6 +637,8 @@ if (window?.__COMFYUI_FRONTEND_VERSION__) {
               if (urls) {
                 imgs = getImgsFromUrls(urls, imgGrid)
               }
+              // re-init pagination after content reset
+              initPagination(imgGrid)
             }
           })
 
@@ -559,74 +647,8 @@ if (window?.__COMFYUI_FRONTEND_VERSION__) {
           imgTools.appendChild(sizeSlider)
 
           imgs = getImgsFromUrls(urls, imgGrid)
-
-          const loader = makeElement('div', {}, imgGrid)
-          Object.assign(loader.style, {
-            display: 'none',
-            width: '100%',
-            padding: '8px 0',
-            textAlign: 'center',
-            color: 'var(--mtb-text, #ccc)',
-            fontSize: '12px',
-          })
-          loader.textContent = 'Loading…'
-
-          const endMsg = makeElement('div', {}, imgGrid)
-          Object.assign(endMsg.style, {
-            display: 'none',
-            width: '100%',
-            padding: '8px 0',
-            textAlign: 'center',
-            color: 'var(--mtb-text, #888)',
-            fontSize: '12px',
-          })
-          endMsg.textContent = 'No more items'
-
-          const sentinel = makeElement('div', {}, imgGrid)
-          sentinel.style.height = '1px'
-          sentinel.style.width = '100%'
-          sentinel.style.marginTop = '1px'
-
-          const loadNextPage = async () => {
-            if (isLoadingPage || !hasMorePages) return
-            isLoadingPage = true
-            loader.style.display = 'block'
-            try {
-              const nextUrls = await getUrls(subfolder, undefined, pageOffset)
-              const keys = Object.keys(nextUrls || {})
-              if (!keys.length) {
-                hasMorePages = false
-                observer.disconnect()
-                loader.style.display = 'none'
-                endMsg.style.display = 'block'
-                return
-              }
-              getImgsFromUrls(nextUrls, imgGrid)
-              if (pageSizeCache != null) pageOffset += pageSizeCache
-              // Ensure footer elements order and sentinel stay last
-              imgGrid.appendChild(loader)
-              imgGrid.appendChild(endMsg)
-              imgGrid.appendChild(sentinel)
-            } catch (e) {
-              console.error('Failed to load next page:', e)
-              hasMorePages = false
-              observer.disconnect()
-              loader.style.display = 'none'
-              endMsg.style.display = 'block'
-            } finally {
-              isLoadingPage = false
-              loader.style.display = hasMorePages ? 'none' : loader.style.display
-            }
-          }
-
-          const observer = new IntersectionObserver((entries) => {
-            for (const entry of entries) {
-              if (entry.isIntersecting) {
-                loadNextPage()
-              }
-            }
-          })
-          observer.observe(sentinel)
+          // Setup infinite pagination for the initial render
+          initPagination(imgGrid)
 
           let pendingWidth = null
           let rafToken = null
@@ -655,6 +677,8 @@ if (window?.__COMFYUI_FRONTEND_VERSION__) {
             handle = undefined
             app.api.removeEventListener('status')
           }
+          // Attempt to disconnect any stray observers to avoid retained callbacks
+          if (observer) observer.disconnect()
         },
       })
     },
