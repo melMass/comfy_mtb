@@ -260,7 +260,10 @@ class MTB_MatchDimensions:
 
 
 class MTB_FloatToFloats:
-    """Conversion utility for compatibility with other extensions (AD, IPA, Fitz are using FLOAT to represent list of floats.)"""
+    """Conversion utility for compatibility with other extensions.
+
+    AD, IPA, Fitz, KJ are using FLOAT to represent list of floats.
+    """
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -278,6 +281,26 @@ class MTB_FloatToFloats:
     def convert(self, float: float):
         return (float,)
 
+class MTB_FloatsToFloatList:
+    """Turn a FLOATS type into a list of floats (for loops)."""
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "floats": ("FLOATS", { "forceInput": True }),
+            }
+        }
+
+    RETURN_TYPES = ("FLOAT",)
+    RETURN_NAMES = ("float",)
+    OUTPUT_IS_LIST = (True,)
+
+    CATEGORY = "mtb/utils"
+    FUNCTION = "convert"
+
+    def convert(self, floats: list[float]):
+        return (floats,)
 
 class MTB_FloatsToInts:
     """Conversion utility for compatibility with frame interpolation."""
@@ -1047,6 +1070,7 @@ __nodes__ = [
     MTB_AutoPanEquilateral,
     MTB_FloatsToFloat,
     MTB_FloatToFloats,
+    MTB_FloatsToFloatList,
     MTB_FloatsToInts,
     MTB_TensorOps,
     MTB_BooleanNot,
