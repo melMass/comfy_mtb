@@ -1,0 +1,18 @@
+// tsconfig.node.json
+{
+  "compilerOptions": {
+    "composite": true, // Recommended for project references
+    "module": "esnext",
+    "moduleResolution": "bundler", // Or "node"
+    "allowSyntheticDefaultImports": true,
+    "target": "es2020",
+    "lib": ["es2020"], // Node.js environment, no DOM
+    "types": ["node"], // Explicitly include Node.js types
+    "noEmit": true, // Don't emit JS files for this config, just for type checking
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true
+  },
+  "include": ["vite.config.ts"] // Only include the Vite config file here
+}

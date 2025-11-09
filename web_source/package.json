@@ -1,0 +1,41 @@
+{
+  "name": "comfy-mtb-web",
+  "private": true,
+  "version": "0.4.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "check-deps": "bun x syncpack list"
+  },
+  "devDependencies": {
+    "@comfyorg/comfyui-frontend-types": "^1.20.2",
+    "@comfyorg/litegraph": "^0.15.15",
+    "@neodrag/svelte": "^2.3.2",
+    "@sveltejs/vite-plugin-svelte": "^5.1.0",
+    "@swc/cli": "^0.7.7",
+    "@swc/core": "^1.11.31",
+    "@types/node": "^22.15.30",
+    "prettier-plugin-svelte": "^3.2.7",
+    "sass": "^1.89.1",
+    "svelte": "^5.33.14",
+    "svelte-awesome-color-picker": "^4.0.2",
+    "svelte-dnd-action": "^0.9.61",
+    "svelte-portal": "^2.2.1",
+    "syncpack": "^13.0.0",
+    "typescript": "^5.7.2",
+    "vite": "^6.3.5",
+    "vite-plugin-no-bundle": "^4.0.0"
+  },
+  "packageManager": "bun@1.2.15",
+  "volta": {
+    "node": "22.14.0"
+  },
+  "dependencies": {
+    "@untemps/svelte-palette": "^4.1.0",
+    "iconify-icon": "^3.0.0",
+    "vite-plugin-css-injected-by-js": "^3.5.2"
+  },
+  "trustedDependencies": ["@parcel/watcher", "@swc/core", "svelte-preprocess"]
+}

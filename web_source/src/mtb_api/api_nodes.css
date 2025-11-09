@@ -1,0 +1,178 @@
+.mtb_api_checkbox_label{
+  padding-bottom:1em;
+
+}
+#mtb-api-panel {
+    font-size: 15px;
+    text-align: center;
+    z-index: 999;
+    align-items: stretch;
+    font-family: sans-serif;
+    border-radius: 12px;
+    background: var(--bg-color);
+    position: absolute;
+    width: 200px;
+    height: 200px;
+    box-shadow: 3px 3px 8px rgba(0, 0, 0, 0.4);
+    border: 1px solid var(--descrip-text);
+    color: var(--descrip-text);
+    /*cursor: grab;*/ 
+    justify-content: space-evenly;
+    flex-direction: column;
+
+    button {
+      background: var(--comfy-menu-bg);
+      border: 1px solid var(--border-color);
+      color: var(--descrip-text);
+      border-radius: 6px;
+    }
+   /* Scrollbar styling for Chrome */
+    &::-webkit-scrollbar {
+       width: 6px;
+    }
+    &::-webkit-scrollbar-track {
+       background: var(--bg-color);
+    }
+    &::-webkit-scrollbar-thumb {
+       background-color: var(--fg-color);
+       border-radius: 6px;
+       border: 3px solid var(--bg-color);
+    }
+   
+    /* Scrollbar styling for Firefox */
+    scrollbar-width: thin;
+    scrollbar-color: var(--fg-color) var(--bg-color);
+
+}
+#mtb-api-panel #spacer {
+  flex-grow: 1;
+
+}
+#mtb-api-content {
+    padding: 0 1em;
+}
+.mtb_api_input{
+    display: flex;
+    flex: auto;
+    border-radius: 12px;
+    flex-direction: column;
+}
+.mtb_api_input_container {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+}
+.mtb_api_input_tools {
+
+}
+
+.mtb_api_input_tools button {
+    background: var(--comfy-menu-bg);
+    border: 1px solid var(--border-color);
+    color: var(--descrip-text);
+    border-radius: 6px;
+}
+
+.mtb_api_input textarea {
+
+  resize:vertical;
+
+}
+
+.mtb_api_input input,
+.mtb_api_input textarea,
+.mtb_api_input select,
+.mtb_api_settings input,
+.mtb_api_settings textarea,
+.mtb_api_settings select
+{
+      background: var(--comfy-input-bg);
+      border: 1px solid var(--border-color);
+      color: var(--fg-color);
+      border-radius: 12px;
+      padding: 0 0.75em;
+   /* Scrollbar styling for Chrome */
+    &::-webkit-scrollbar {
+       width: 6px;
+    }
+    &::-webkit-scrollbar-track {
+       background: var(--bg-color);
+    }
+    &::-webkit-scrollbar-thumb {
+       background-color: var(--fg-color);
+       border-radius: 6px;
+       border: 3px solid var(--bg-color);
+    }
+   
+    /* Scrollbar styling for Firefox */
+    scrollbar-width: thin;
+    scrollbar-color: var(--fg-color) var(--bg-color);
+
+}
+
+.mtb_api_settings hr {
+    width: 80%;
+    border: 1px solid var(--bg-color);
+    opacity: 0.5; 
+}
+
+.mtb_api_settings {
+    font-family: sans-serif;
+    background-color: ${API_COLOR};
+    pointer-events:none;
+    color: var(--descrip-text);
+    font-size:15px;
+    border-radius: 12px;
+}
+.mtb_api_output {
+   /*background-color: ${OUTPUT_COLOR};*/
+    background-color:transparent;
+    height:0;
+}
+.mtb_api_section {
+    font-family: sans-serif;
+    font-size: 15px;
+    display: flex;
+    flex-direction: column;
+}
+
+.mtb_api_section input, .mtb_api_section select, .mtb_api_section label {
+  pointer-events:auto;
+}
+
+.mtb_api_title {
+  font-size: 15px;
+  user-select: none;
+  color: yellow;
+}
+
+#mtb-api-panel-bar{
+  cursor: grab;
+  border-top-left-radius: 12px;
+  border-top-right-radius: 12px;
+  height: 24px;
+  background-color: var(--comfy-menu-bg);
+  position: absolute;
+  width: 100%;
+  top: 0;
+}
+
+#mtb-api-panel-title{
+  padding-top: 1em;
+  user-select: none;
+}
+
+#mtb-api-resize-handle {
+    width: 10px;
+    height: 10px;
+    background-color: #ccc;
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    cursor: se-resize; 
+}
+
+.mtb_api_disabled {
+  opacity: 0.5; 
+  pointer-events: none;
+}
