@@ -3,19 +3,27 @@
   import InspectorItem from './InspectorItem.svelte'
   import { flip } from 'svelte/animate'
   import 'iconify-icon'
-  export let inputs = []
+
+  interface InputItem {
+    id: number
+    [key: string]: unknown
+  }
+
+  let { inputs = [] as InputItem[] } = $props()
+
   const flipDurationMs = 100
-  function handleDndConsider(e) {
+  let locked = $state(false)
+
+  function handleDndConsider(e: CustomEvent<{ items: InputItem[] }>) {
     inputs = e.detail.items
   }
-  function handleDndFinalize(e) {
+  function handleDndFinalize(e: CustomEvent<{ items: InputItem[] }>) {
     inputs = e.detail.items
   }
-  let locked = false
 </script>
 
 <div id="controls">
-  <button id="lock" on:click={() => (locked = !locked)}>
+  <button id="lock" onclick={() => (locked = !locked)}>
     {#if locked}
       <iconify-icon icon="uis:lock"></iconify-icon>
     {:else}
@@ -24,8 +32,8 @@
   </button>
   <section
     use:dndzone={{ items: inputs, flipDurationMs, dragDisabled: locked }}
-    on:consider={handleDndConsider}
-    on:finalize={handleDndFinalize}
+    onconsider={handleDndConsider}
+    onfinalize={handleDndFinalize}
   >
     {#each inputs as item, index (item.id)}
       <div animate:flip={{ duration: flipDurationMs }}>

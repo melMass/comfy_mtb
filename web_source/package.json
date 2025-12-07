@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build && bun run postbuild",
+    "postbuild": "cp -r dist/* ../web/dist/",
     "preview": "vite preview",
     "check-deps": "bun x syncpack list"
   },

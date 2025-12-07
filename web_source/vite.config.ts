@@ -24,8 +24,8 @@ const rewriteComfyImports = ({
 
       // Check if the source is one of ComfyUI's core scripts
       // We'll handle both the direct '/scripts/app.js' and the aliased '@/scripts/app'
-      const comfyScriptMatch = source.match(/^\/?scripts\/(app|api)\.js$/)
-      const comfyAliasMatch = source.match(/^@\/scripts\/(app|api)$/)
+      const comfyScriptMatch = source.match(/^\/?scripts\/(app|api|ui)\.js$/)
+      const comfyAliasMatch = source.match(/^@\/scripts\/(app|api|ui)$/)
 
       if (comfyScriptMatch || comfyAliasMatch) {
         console.log('found match')
@@ -44,11 +44,7 @@ const rewriteComfyImports = ({
 
 const entryPoints = {
   mtb_inspector: path.resolve(__dirname, 'src/mtb_inspector/index.ts'),
-  // my_react_node: path.resolve(__dirname, 'src/my_react_node/main.tsx'), // Example React entry
-  // my_svelte_node: path.resolve(__dirname, 'src/my_svelte_node/main.ts'), // Example Svelte entry (main.ts imports .svelte files)
-  // my_plain_ts_node: path.resolve(__dirname, 'src/my_plain_ts_node/index.ts'), // Example plain TS entry
-  // Add more entry points as needed for your pack
-  // 'another_node': path.resolve(__dirname, 'src/another_node/index.ts'),
+  mtb_api: path.resolve(__dirname, 'src/mtb_api/index.ts'),
 }
 
 import noBundlePlugin from 'vite-plugin-no-bundle'
@@ -73,14 +69,15 @@ export default defineConfig(({ mode }) => {
         fileName: (format, entryName) => `${entryName}.js`,
       },
       rollupOptions: {
-        external: ['/scripts/app.js', '/scripts/api.js'],
+        external: ['/scripts/app.js', '/scripts/api.js', '/scripts/ui.js', '@mtb/shared'],
         // input: entryPoints,
         output: {
-          // entryFileNames: 'mtb-[name].',
-          // assetFileNames: 'mtb-[name].[ext]',
-          // entryFileNames: '[name].js', // Each entry point gets its own JS file (e.g., my_react_node.js)
           chunkFileNames: 'chunks/[name]-[hash].js',
           assetFileNames: 'assets/[name][extname]',
+          // Remap external imports to actual runtime paths
+          paths: {
+            '@mtb/shared': '../comfy_shared.js',
+          },
           manualChunks(id) {
             // Create a 'vendor' chunk for all node_modules
             console.log(id)
@@ -100,7 +97,7 @@ export default defineConfig(({ mode }) => {
       },
     },
     ssr: {
-      external: ['/scripts/app.js', '/scripts/api.js'],
+      external: ['/scripts/app.js', '/scripts/api.js', '/scripts/ui.js'],
     },
     plugins: [
       rewriteComfyImports({ isDev, comfyuiHost }),
@@ -111,16 +108,22 @@ export default defineConfig(({ mode }) => {
     ],
     resolve: {
       alias: {
-        // '@/scripts/app': '/scripts/app.js',
-        // '@/scripts/api': '/scripts/api.js',
-        // // '@/scripts/utils': '/scripts/utils.js',
         '@/scripts/app': isDev
           ? path.resolve(__dirname, 'src/mocks/app.ts')
-          : '/scripts/app.js', // In production, it's the real ComfyUI path
+          : '/scripts/app.js',
 
         '@/scripts/api': isDev
           ? path.resolve(__dirname, 'src/mocks/api.ts')
           : '/scripts/api.js',
+
+        '@/scripts/ui': isDev
+          ? path.resolve(__dirname, 'src/mocks/ui.ts')
+          : '/scripts/ui.js',
+
+        // comfy_shared.js - only alias in dev (prod uses external + output.paths)
+        ...(isDev && {
+          '@mtb/shared': path.resolve(__dirname, 'src/mocks/comfy_shared.ts'),
+        }),
       },
     },
   }

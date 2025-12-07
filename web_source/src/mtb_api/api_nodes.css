@@ -1,3 +1,9 @@
+/* MTB API Authoring Layer Styles */
+:root {
+  --mtb-api-color: #2930b0;
+  --mtb-api-output-color: #e6c679;
+}
+
 .mtb_api_checkbox_label{
   padding-bottom:1em;
 
@@ -118,15 +124,14 @@
 
 .mtb_api_settings {
     font-family: sans-serif;
-    background-color: ${API_COLOR};
+    background-color: var(--mtb-api-color);
     pointer-events:none;
     color: var(--descrip-text);
     font-size:15px;
     border-radius: 12px;
 }
 .mtb_api_output {
-   /*background-color: ${OUTPUT_COLOR};*/
-    background-color:transparent;
+    background-color: transparent;
     height:0;
 }
 .mtb_api_section {

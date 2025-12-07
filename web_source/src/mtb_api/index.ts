@@ -1,13 +1,23 @@
-import CSS from './api_nodes.css'
+/**
+ * MTB API Authoring Layer
+ * Main entry point for the API extension
+ *
+ * NOTE: This bundle does NOT auto-register to avoid side-effects.
+ * ComfyUI loads all .js files in web/, so dist/ files must be side-effect free.
+ * Call registerMtbApiExtension() explicitly from the main entry point.
+ */
 
-const API_INPUT_TYPES = [
-  'STRING',
-  'IMAGE',
-  'COMBO',
-  'MODEL',
-  'NUMBER',
-  'FLOATS',
-] as const
+// Import CSS for injection (this is bundled, not a side-effect at runtime)
+import './api_nodes.css'
 
-const API_COLOR = '#2930b0'
-const OUTPUT_COLOR = '#e6c679'
+// Re-export types
+export * from './types'
+
+// Re-export constants
+export { API_COLOR, OUTPUT_COLOR } from './constants'
+
+// Re-export core modules
+export { graphToPrompt } from './graph-to-prompt'
+export { APISettingsWidgetManager, apiSettingsWidgetManager } from './widget-manager'
+export { APIPanel, getAPIPanel } from './panel'
+export { registerMtbApiExtension } from './extension'

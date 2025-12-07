@@ -1,10 +1,9 @@
 <script lang="ts">
   import InspectorItem from './InspectorItem.svelte'
-  import { slide, fade, fly, draw, scale } from 'svelte/transition'
+  import { fade } from 'svelte/transition'
   import { flip } from 'svelte/animate'
   import { dndzone } from 'svelte-dnd-action'
-  import { dragMe, resizeHandle } from './actions.js'
-  // import { draggable } from '@neodrag/svelte'
+  import { resizeHandle } from './actions.js'
 
   import InspectorPreview from './InspectorPreview.svelte'
   import Tabs from './Tabs.svelte'
@@ -13,55 +12,36 @@
   import { inComfy } from './utils'
   import { onMount } from 'svelte'
 
-
-
-  export let visible = true
-
-  export let inputs = {
-    nameA: {
-      id: 1,
-      name: 'positive',
-      type: 'STRING',
-    },
-    nameB: {
-      id: 2,
-      name: 'architecture',
-      type: 'COMBO',
-      options: ['sd1.5', 'sd2', 'sd3', 'sdxl'],
-    },
-    nameC: {
-      id: 3,
-      name: 'seed',
-      type: 'NUMBER',
-    },
-    nameD: {
-      id: 4,
-      name: 'background',
-      type: 'COLOR',
-    },
+  interface InputItem {
+    id: number
+    name: string
+    type: string
+    options?: string[]
+    [key: string]: unknown
   }
 
-  $: items = Object.keys(inputs).map((k) => {
-    const input = inputs[k]
-    console.log({ inputs })
-    return {
-      ...input,
+  let {
+    visible = true,
+    inputs = {
+      nameA: { id: 1, name: 'positive', type: 'STRING' },
+      nameB: { id: 2, name: 'architecture', type: 'COMBO', options: ['sd1.5', 'sd2', 'sd3', 'sdxl'] },
+      nameC: { id: 3, name: 'seed', type: 'NUMBER' },
+      nameD: { id: 4, name: 'background', type: 'COLOR' },
+    } as Record<string, InputItem>,
+  } = $props()
+
+  const items = $derived(
+    Object.keys(inputs).map((k) => ({
+      ...inputs[k],
       original_name: k,
-    }
-  })
+    }))
+  )
 
   onMount(() => {
     console.log('Mounted API Inspector')
   })
 
   const flipDurationMs = 100
-  let position = { x: 0, y: 0 }
-  function handleDndConsider(e) {
-    items = e.detail.items
-  }
-  function handleDndFinalize(e) {
-    items = e.detail.items
-  }
 </script>
 
 <!-- use:draggable={{ -->
@@ -101,11 +81,11 @@
       <div id="spacer"></div>
       <div id="main_buttons">
         <button
-          on:click={() => {
+          onclick={() => {
             if (!inComfy()) {
               return
             }
-
+            // @ts-expect-error - app is global in ComfyUI
             app.queuePrompt(0, 1)
           }}>Queue</button
         >

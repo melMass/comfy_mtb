@@ -3,15 +3,32 @@
   import InspectorInput from './InspectorInput.svelte'
   import { inComfy } from './utils.js'
 
-  export let item = {
-    name: 'KSampler',
-    type: 'STRING',
-    node_id: 123,
-    id: 4,
+  interface ItemType {
+    name: string
+    type: string
+    node_id?: number
+    id: number
+    widgets?: { value: unknown }[]
+    [key: string]: unknown
   }
-  export let extra_actions = {}
-  let actions = {}
-  let value
+
+  interface Action {
+    label: string
+    callback: () => void
+  }
+
+  let {
+    item = {
+      name: 'KSampler',
+      type: 'STRING',
+      node_id: 123,
+      id: 4,
+    } as ItemType,
+    extra_actions = {} as Record<string, Action>,
+  } = $props()
+
+  let actions = $state<Record<string, Action>>({})
+  let value = $state<unknown>(undefined)
 
   onMount(() => {
     actions = {
@@ -27,7 +44,7 @@
             console.log('NOT IN COMFY')
             return
           }
-          // @ts-ignore
+          // @ts-expect-error - app is global in ComfyUI
           const app = window.app
           const node = app.graph.getNodeById(id)
           app.canvas.centerOnNode(node)
@@ -35,6 +52,7 @@
           app.canvas.selectNode(node)
         },
       },
+      ...extra_actions,
     }
     if (item.name.toLowerCase() === 'seed') {
       actions.randomize = {
@@ -45,10 +63,9 @@
             console.log('NOT IN COMFY')
             return
           }
-          // element.dispatchEvent(new Event('input'))
           onInput(null, value)
-          const app = window.app
-          app.canvas.setDirty(true)
+          // @ts-expect-error - app is global in ComfyUI
+          window.app.canvas.setDirty(true)
         },
       }
     }
@@ -57,18 +74,18 @@
     }
   })
 
-  const onInput = (e, val) => {
+  const onInput = (e: Event | null, val?: unknown) => {
     if (!inComfy()) {
-      console.log(`Not in comfy ${e.target.value}`)
+      console.log(`Not in comfy ${(e?.target as HTMLInputElement)?.value}`)
       return
     }
     if (item.widgets) {
-      console.log(item.widgets)
       for (let i = 0; i < item.widgets.length; i++) {
         const w = item.widgets[i]
-        w.value = val || e.target.value //value // control.value
+        w.value = val ?? (e?.target as HTMLInputElement)?.value
       }
-      app.canvas.setDirty(true)
+      // @ts-expect-error - app is global in ComfyUI
+      window.app.canvas.setDirty(true)
     }
   }
 </script>
@@ -81,7 +98,7 @@
   <div id="buttons">
     {#each Object.keys(actions) as k}
       {@const action = actions[k]}
-      <button on:click={action.callback}>{action.label}</button>
+      <button onclick={action.callback}>{action.label}</button>
     {/each}
   </div>
 </div>
