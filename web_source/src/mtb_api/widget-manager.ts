@@ -60,12 +60,24 @@ export class APISettingsWidgetManager {
   }
 
   /**
-   * Creates the node-level settings section
+   * Creates the node-level settings section with export toggle
    */
-  createNodeSettingsSection(_node: MTBNode, element: HTMLElement): void {
-    const nodeSettings = $el('div', {}, [
-      $el('p', { textContent: 'Settings' }),
-      $el('input', { type: 'checkbox' }),
+  createNodeSettingsSection(node: MTBNode, element: HTMLElement): void {
+    const includeInExport = node.properties.mtb_api?.includeInExport !== false
+
+    const nodeSettings = $el('div.mtb_api_node_settings', {}, [
+      $el('span.mtb_api_node_settings_label', { textContent: 'Include in API export' }),
+      $el('label.mtb_api_toggle', {}, [
+        $el('input', {
+          type: 'checkbox',
+          checked: includeInExport,
+          onchange: (e: Event) => {
+            const checked = (e.target as HTMLInputElement).checked
+            this.applySettings(node, { includeInExport: checked })
+          },
+        }),
+        $el('span.mtb_api_toggle_track'),
+      ]),
     ])
     element.appendChild(nodeSettings)
   }
@@ -263,63 +275,81 @@ export class APISettingsWidgetManager {
 
   /**
    * Draws the API indicator overlay on the node
+   * Clean, minimal design with subtle glow effect
    */
   drawForeground(
     node: MTBNode,
     ctx: CanvasRenderingContext2D,
     _canvas: LGraphCanvas,
   ): void {
-    if (
-      !node.properties.useAPI &&
-      !(node.properties.mtb_api?.isAPIOutput === true)
-    ) {
+    const isOutput = node.properties.mtb_api?.isAPIOutput === true
+    const isInput = node.properties.useAPI
+
+    if (!isInput && !isOutput) {
       return
     }
 
     this.ensureWidgets(node)
 
-    const border = 10
-    const borderH = border / 2
-    const offset = 10
+    const color = isOutput ? OUTPUT_COLOR : API_COLOR
+    const label = isOutput ? 'OUTPUT' : 'API'
+    const padding = 4
+    const borderRadius = 8
+    const titleHeight = LiteGraph.NODE_TITLE_HEIGHT
 
     ctx.save()
-    ctx.beginPath()
 
-    const color = node.properties.mtb_api?.isAPIOutput
-      ? OUTPUT_COLOR
-      : API_COLOR
+    // Subtle outer glow
+    ctx.shadowColor = color
+    ctx.shadowBlur = 12
+    ctx.shadowOffsetX = 0
+    ctx.shadowOffsetY = 0
 
-    // Draw border
-    ctx.fillStyle = color
+    // Draw subtle border
     ctx.strokeStyle = color
-    ctx.lineWidth = border
+    ctx.lineWidth = 2
+    ctx.beginPath()
     ctx.roundRect(
-      -(borderH + offset / 2),
-      -(LiteGraph.NODE_TITLE_HEIGHT + borderH + offset / 2),
-      node.size[0] + border + offset,
-      node.size[1] + border + LiteGraph.NODE_TITLE_HEIGHT + offset,
-      LiteGraph.NODE_COLLAPSED_RADIUS,
-      LiteGraph.NODE_COLLAPSED_RADIUS,
+      -padding,
+      -(titleHeight + padding),
+      node.size[0] + padding * 2,
+      node.size[1] + titleHeight + padding * 2,
+      borderRadius,
     )
     ctx.stroke()
 
-    // Draw label
-    const message = node.properties.mtb_api?.isAPIOutput ? 'API Output' : 'API'
+    // Reset shadow for badge
+    ctx.shadowBlur = 0
 
-    ctx.font = '24px monospace'
-    const textSize = ctx.measureText(message)
+    // Draw compact badge
+    const badgeHeight = 18
+    const badgeY = -(titleHeight + padding + badgeHeight + 4)
+
+    ctx.font = '600 10px -apple-system, BlinkMacSystemFont, sans-serif'
+    const textMetrics = ctx.measureText(label)
+    const badgeWidth = textMetrics.width + 12
+
+    // Badge background
+    ctx.fillStyle = color
     ctx.beginPath()
-    ctx.roundRect(
-      0,
-      -(LiteGraph.NODE_TITLE_HEIGHT + borderH + offset / 2 + 32),
-      textSize.width + 12,
-      32,
-      5,
-    )
+    ctx.roundRect(0, badgeY, badgeWidth, badgeHeight, 4)
     ctx.fill()
 
+    // Badge text
     ctx.fillStyle = '#fff'
-    ctx.fillText(message, 6, -LiteGraph.NODE_TITLE_HEIGHT - 18)
+    ctx.textBaseline = 'middle'
+    ctx.fillText(label, 6, badgeY + badgeHeight / 2)
+
+    // Draw small icon indicator in corner
+    const iconSize = 8
+    const iconX = node.size[0] - iconSize - 4
+    const iconY = -titleHeight + 4
+
+    ctx.fillStyle = color
+    ctx.beginPath()
+    ctx.arc(iconX + iconSize / 2, iconY + iconSize / 2, iconSize / 2, 0, Math.PI * 2)
+    ctx.fill()
+
     ctx.restore()
   }
 }

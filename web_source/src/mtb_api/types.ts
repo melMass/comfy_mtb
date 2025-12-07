@@ -24,6 +24,7 @@ export interface APIInputSettings {
 export interface APINodeSettings {
   isAPIOutput?: boolean
   showDisabled?: boolean
+  includeInExport?: boolean
   inputs?: Record<string, APIInputSettings>
 }
 
