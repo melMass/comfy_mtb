@@ -1,61 +1,96 @@
 /**
  * API Panel Controller
  * Manages the Svelte-based API panel for controlling exposed inputs
+ *
+ * NOTE: This file uses .svelte.ts extension to enable Svelte 5 runes ($state)
  */
 
-import { mount } from 'svelte'
+import { mount, unmount } from 'svelte'
 import * as shared from '@mtb/shared'
 import Inspector from '../lib/Inspector.svelte'
 import type { APIInput, MTBNode } from './types'
 
-/** Svelte component with internal $$set and $$ context */
-interface SvelteComponent {
-  $$set: (props: Record<string, unknown>) => void
-  $$: { ctx: unknown[] }
+interface InputItem {
+  id: number
+  name: string
+  type: string
+  options?: string[]
+  [key: string]: unknown
+}
+
+/**
+ * Reactive props state for the Inspector component
+ * Using $state makes this reactive - changes auto-update the component
+ */
+function createPanelProps() {
+  let props = $state({
+    visible: true,
+    inputs: {} as Record<string, InputItem>,
+  })
+  return props
 }
 
 /**
  * Controls the API panel UI for managing exposed workflow inputs
  */
 export class APIPanel {
-  private panel: SvelteComponent
-  private inputs: Record<string, APIInput> = {}
+  private component: ReturnType<typeof mount> | null = null
+  private props = createPanelProps()
+  private sidebarMode = false
 
   constructor() {
-    this.panel = this.createPanel()
+    // Don't mount automatically - wait for renderInto or show
   }
 
   /**
    * Creates and mounts the Inspector Svelte component
    */
-  private createPanel(): SvelteComponent {
-    const panel = mount(Inspector, {
-      target: document.body,
-      props: { visible: false },
-    }) as unknown as SvelteComponent
-    return panel
+  private createPanel(target: HTMLElement = document.body) {
+    return mount(Inspector, {
+      target,
+      props: this.props,
+    })
+  }
+
+  /**
+   * Renders the panel into a sidebar element
+   */
+  renderInto(el: HTMLElement): void {
+    this.sidebarMode = true
+    this.props.visible = true
+
+    // Destroy existing component if any
+    if (this.component) {
+      unmount(this.component)
+    }
+
+    this.component = this.createPanel(el)
+    this.updateContent()
   }
 
   /**
    * Shows the panel and updates its content
    */
   show(): void {
+    if (!this.component) {
+      this.component = this.createPanel()
+    }
     this.updateContent()
-    this.panel.$$set({ visible: true })
+    this.props.visible = true
   }
 
   /**
    * Hides the panel
    */
   hide(): void {
-    this.panel.$$set({ visible: false })
+    this.props.visible = false
   }
 
   /**
    * Returns whether the panel is currently visible
    */
   isVisible(): boolean {
-    return this.panel.$$.ctx[0] === true
+    return this.props.visible
   }
 
   /**
@@ -96,6 +131,10 @@ export class APIPanel {
                   type: current.type,
                   node_id: node.id,
                   widgets: [],
+                  // Extract current value from widget
+                  value: widget.value,
+                  // For COMBO types, extract options
+                  options: (widget.options as { values?: string[] })?.values,
                 }
               }
               inputs[inputName].widgets.push(widget)
@@ -113,9 +152,10 @@ export class APIPanel {
    * Updates the panel content with current API inputs
    */
   updateContent(): void {
-    this.inputs = this.getAPIInputs()
-    this.panel.$$set({ inputs: this.inputs })
-    console.log('Found API inputs:', this.inputs)
+    const newInputs = this.getAPIInputs()
+    // Update the reactive props - this auto-updates the component
+    this.props.inputs = newInputs
+    console.log('Found API inputs:', newInputs)
   }
 }
 

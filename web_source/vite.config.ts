@@ -45,6 +45,7 @@ const rewriteComfyImports = ({
 const entryPoints = {
   mtb_inspector: path.resolve(__dirname, 'src/mtb_inspector/index.ts'),
   mtb_api: path.resolve(__dirname, 'src/mtb_api/index.ts'),
+  comfy_shared: path.resolve(__dirname, 'src/comfy_shared/index.ts'),
 }
 
 import noBundlePlugin from 'vite-plugin-no-bundle'
@@ -69,7 +70,14 @@ export default defineConfig(({ mode }) => {
         fileName: (format, entryName) => `${entryName}.js`,
       },
       rollupOptions: {
-        external: ['/scripts/app.js', '/scripts/api.js', '/scripts/ui.js', '@mtb/shared'],
+        external: [
+          '/scripts/app.js',
+          '/scripts/api.js',
+          '/scripts/ui.js',
+          '@mtb/shared',
+          '/mtb_async/mtb_markdown.umd.js',
+          '/mtb_async/mtb_markdown_plus.umd.js',
+        ],
         // input: entryPoints,
         output: {
           chunkFileNames: 'chunks/[name]-[hash].js',

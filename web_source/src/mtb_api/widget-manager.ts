@@ -124,17 +124,22 @@ export class APISettingsWidgetManager {
   /**
    * Converts a ComfyUI widget type to an API input type
    */
-  apiTypeFromComfyType(comfyType: string): APIInputType | '' {
+  apiTypeFromComfyType(comfyType: string): APIInputType {
     switch (comfyType) {
       case 'number':
         return 'NUMBER'
+      case 'text':
+      case 'string':
       case 'customtext':
         return 'STRING'
       case 'combo':
         return 'COMBO'
+      case 'toggle':
+      case 'boolean':
+        return 'BOOLEAN'
       default:
-        console.log('UNHANDLED widget type:', comfyType)
-        return ''
+        console.log('UNHANDLED widget type:', comfyType, '- defaulting to STRING')
+        return 'STRING'
     }
   }
 

@@ -19,5 +19,5 @@ export { API_COLOR, OUTPUT_COLOR } from './constants'
 // Re-export core modules
 export { graphToPrompt } from './graph-to-prompt'
 export { APISettingsWidgetManager, apiSettingsWidgetManager } from './widget-manager'
-export { APIPanel, getAPIPanel } from './panel'
+export { APIPanel, getAPIPanel } from './panel.svelte'
 export { registerMtbApiExtension } from './extension'

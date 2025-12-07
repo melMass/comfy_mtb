@@ -6,6 +6,7 @@
 import { app } from '@/scripts/app'
 import * as shared from '@mtb/shared'
 import { apiSettingsWidgetManager } from './widget-manager'
+import { getAPIPanel } from './panel.svelte'
 import type { MTBNode } from './types'
 
 interface ContextMenuItem {
@@ -27,9 +28,33 @@ export function registerMtbApiExtension(): void {
     name: 'mtb.api',
 
     setup() {
-      // Panel setup is commented out for now - will be activated in later phase
-      // const panel = new APIPanel()
-      // panelButton.addEventListener('click', () => panel.toggle())
+      // Keyboard shortcut: Ctrl+Shift+A
+      const panel = getAPIPanel()
+      document.addEventListener('keydown', (e) => {
+        if (e.ctrlKey && e.shiftKey && e.key === 'A') {
+          e.preventDefault()
+          panel.toggle()
+        }
+      })
+    },
+
+    init() {
+      // Register sidebar tab
+      // @ts-expect-error - extensionManager is ComfyUI API
+      app.extensionManager.registerSidebarTab({
+        id: 'mtb-api-panel',
+        icon: 'pi pi-bolt',
+        title: 'API Authoring',
+        tooltip: 'MTB: Configure API inputs and outputs',
+        type: 'custom',
+        render: (el: HTMLElement) => {
+          const panel = getAPIPanel()
+          panel.renderInto(el)
+        },
+        destroy: () => {
+          // Cleanup if needed
+        },
+      })
     },
 
     async beforeRegisterNodeDef(

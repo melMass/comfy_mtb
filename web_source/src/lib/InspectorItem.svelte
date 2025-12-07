@@ -8,7 +8,9 @@
     type: string
     node_id?: number
     id: number
+    value?: unknown
     widgets?: { value: unknown }[]
+    options?: string[]
     [key: string]: unknown
   }
 
@@ -28,7 +30,8 @@
   } = $props()
 
   let actions = $state<Record<string, Action>>({})
-  let value = $state<unknown>(undefined)
+  // Initialize value from item.value (extracted in panel) or fallback to widget
+  let value = $state<unknown>(item.value ?? item.widgets?.[0]?.value ?? '')
 
   onMount(() => {
     actions = {
@@ -68,9 +71,6 @@
           window.app.canvas.setDirty(true)
         },
       }
-    }
-    if (item.widgets) {
-      value = item.widgets[0].value
     }
   })
 

@@ -8,6 +8,7 @@ export const API_INPUT_TYPES = [
   'MODEL',
   'NUMBER',
   'FLOATS',
+  'BOOLEAN',
 ] as const
 
 export type APIInputType = (typeof API_INPUT_TYPES)[number]
