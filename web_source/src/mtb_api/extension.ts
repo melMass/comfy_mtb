@@ -6,7 +6,7 @@
 import { app } from '@/scripts/app'
 import * as shared from '@mtb/shared'
 import { apiSettingsWidgetManager } from './widget-manager'
-import { getAPIPanel } from './panel.svelte'
+import { getAPIPanel, notifyAPIChanged } from './panel.svelte'
 import type { MTBNode } from './types'
 
 interface ContextMenuItem {
@@ -79,6 +79,7 @@ export function registerMtbApiExtension(): void {
             } else {
               node.setProperty('useAPI', true)
             }
+            notifyAPIChanged()
           },
         }
         options.push(markApiItem)
@@ -97,6 +98,7 @@ export function registerMtbApiExtension(): void {
               apiSettingsWidgetManager.applySettings(node, { isAPIOutput: true })
               node.setProperty('useAPI', true)
             }
+            notifyAPIChanged()
           },
         }
         options.push(markOutputItem)

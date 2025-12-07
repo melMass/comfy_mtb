@@ -30,6 +30,14 @@ function createPanelProps() {
   return props
 }
 
+/** Custom event for API changes */
+export const MTB_API_CHANGED_EVENT = 'mtb:api:changed'
+
+/** Dispatch event to notify panel of changes */
+export function notifyAPIChanged(): void {
+  window.dispatchEvent(new CustomEvent(MTB_API_CHANGED_EVENT))
+}
+
 /**
  * Controls the API panel UI for managing exposed workflow inputs
  */
@@ -37,9 +45,26 @@ export class APIPanel {
   private component: ReturnType<typeof mount> | null = null
   private props = createPanelProps()
   private sidebarMode = false
+  private listening = false
 
   constructor() {
     // Don't mount automatically - wait for renderInto or show
+    this.setupChangeListener()
+  }
+
+  /**
+   * Listen for API changes and update panel reactively
+   */
+  private setupChangeListener(): void {
+    if (this.listening) return
+    this.listening = true
+
+    window.addEventListener(MTB_API_CHANGED_EVENT, () => {
+      // Debounce updates slightly
+      requestAnimationFrame(() => {
+        this.updateContent()
+      })
+    })
   }
 
   /**

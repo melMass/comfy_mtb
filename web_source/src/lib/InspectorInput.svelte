@@ -59,17 +59,18 @@
       />
     {/if}
   {:else if item.type === 'BOOLEAN'}
+    {@const isChecked = value === true || value === 'true' || value === 1 || value === '1'}
     <label class="mtb-toggle">
       <input
         type="checkbox"
-        checked={value === true || value === 'true'}
+        checked={isChecked}
         onchange={(e) => {
           value = e.currentTarget.checked
           onInput(e)
         }}
       />
       <span class="mtb-toggle-slider"></span>
-      <span class="mtb-toggle-label">{value ? 'On' : 'Off'}</span>
+      <span class="mtb-toggle-label">{isChecked ? 'On' : 'Off'}</span>
     </label>
   {:else if item.type === 'COLOR'}
     <ColorPicker

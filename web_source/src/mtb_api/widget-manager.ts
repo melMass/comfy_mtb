@@ -8,6 +8,7 @@ import { $el } from '@/scripts/ui'
 import * as shared from '@mtb/shared'
 import { API_COLOR, OUTPUT_COLOR } from './constants'
 import { API_INPUT_TYPES, type APIInputType, type APINodeSettings, type MTBNode } from './types'
+import { notifyAPIChanged } from './panel.svelte'
 import CSS from './api_nodes.css?inline'
 
 declare const LiteGraph: {
@@ -199,6 +200,7 @@ export class APISettingsWidgetManager {
         })
         contentContainer.classList.add('mtb_api_disabled')
       }
+      notifyAPIChanged()
     })
 
     const title = document.createElement('span')
@@ -236,6 +238,7 @@ export class APISettingsWidgetManager {
       this.applySettings(node, {
         inputs: { [widget.name]: { type: typeSelect.value as APIInputType } },
       })
+      notifyAPIChanged()
     })
 
     // Name input
@@ -252,6 +255,7 @@ export class APISettingsWidgetManager {
       this.applySettings(node, {
         inputs: { [widget.name]: { name: nameInput.value } },
       })
+      notifyAPIChanged()
     })
 
     const separator = document.createElement('hr')
