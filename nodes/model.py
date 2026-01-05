@@ -145,7 +145,7 @@ class MTB_ModelPatchSeamless:
         tilingX,
         tilingY,
     ):
-        hacked_model = copy.deepcopy(model)
+        hacked_model = model.clone()
         self.apply_circular(
             hacked_model.model, startStep, stopStep, tilingX, tilingY
         )
