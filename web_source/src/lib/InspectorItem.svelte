@@ -31,7 +31,18 @@
   } = $props()
 
   let actions = $state<Record<string, Action>>({})
-  let value = $state<unknown>(item.value ?? item.widgets?.[0]?.value ?? '')
+
+  // Derive value from widget - updates when widget value changes
+  const getWidgetValue = () => item.widgets?.[0]?.value ?? item.value ?? ''
+  let value = $state<unknown>(getWidgetValue())
+
+  // Sync value from widget when it changes (Node → Panel)
+  $effect(() => {
+    const widgetVal = getWidgetValue()
+    if (widgetVal !== value) {
+      value = widgetVal
+    }
+  })
 
   onMount(() => {
     actions = {
@@ -68,14 +79,18 @@
   })
 
   const onInput = (e: Event | null, val?: unknown) => {
-    if (!inComfy()) {
-      console.log(`Not in comfy ${(e?.target as HTMLInputElement)?.value}`)
-      return
-    }
+    if (!inComfy()) return
     if (item.widgets) {
-      for (let i = 0; i < item.widgets.length; i++) {
-        const w = item.widgets[i]
-        w.value = val ?? (e?.target as HTMLInputElement)?.value
+      for (const w of item.widgets as Array<{
+        value: unknown
+        callback?: (value: unknown) => void
+        options?: { callback?: (value: unknown) => void }
+      }>) {
+        const newVal = val ?? (e?.target as HTMLInputElement)?.value
+        w.value = newVal
+        // Trigger widget callback to notify ComfyUI of the change
+        w.callback?.(newVal)
+        w.options?.callback?.(newVal)
       }
       // @ts-expect-error - app is global in ComfyUI
       window.app.canvas.setDirty(true)

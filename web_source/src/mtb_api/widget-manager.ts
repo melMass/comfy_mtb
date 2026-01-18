@@ -11,6 +11,9 @@ import { API_INPUT_TYPES, type APIInputType, type APINodeSettings, type MTBNode 
 import { notifyAPIChanged } from './panel.svelte'
 import CSS from './api_nodes.css?inline'
 
+/** Symbol to store original callbacks on widgets */
+const ORIGINAL_CALLBACK = Symbol('mtb_original_callback')
+
 declare const LiteGraph: {
   NODE_TITLE_HEIGHT: number
   NODE_COLLAPSED_RADIUS: number
@@ -20,6 +23,51 @@ declare const LiteGraph: {
  * Manages the creation and lifecycle of API settings widgets on nodes
  */
 export class APISettingsWidgetManager {
+  /**
+   * Wraps widget callbacks to notify panel of value changes
+   */
+  private wrapWidgetCallbacks(node: MTBNode): void {
+    if (!node.widgets) return
+
+    for (const widget of node.widgets) {
+      if (widget.name === 'apiSettings') continue
+
+      const w = widget as IWidget & {
+        callback?: (...args: unknown[]) => void
+        [ORIGINAL_CALLBACK]?: (...args: unknown[]) => void
+      }
+
+      // Skip if already wrapped
+      if (w[ORIGINAL_CALLBACK]) continue
+
+      // Store original and wrap
+      w[ORIGINAL_CALLBACK] = w.callback
+      w.callback = (...args: unknown[]) => {
+        w[ORIGINAL_CALLBACK]?.(...args)
+        notifyAPIChanged()
+      }
+    }
+  }
+
+  /**
+   * Restores original widget callbacks
+   */
+  private unwrapWidgetCallbacks(node: MTBNode): void {
+    if (!node.widgets) return
+
+    for (const widget of node.widgets) {
+      const w = widget as IWidget & {
+        callback?: (...args: unknown[]) => void
+        [ORIGINAL_CALLBACK]?: (...args: unknown[]) => void
+      }
+
+      if (w[ORIGINAL_CALLBACK]) {
+        w.callback = w[ORIGINAL_CALLBACK]
+        delete w[ORIGINAL_CALLBACK]
+      }
+    }
+  }
+
   /**
    * Creates the API settings DOM widget for a node
    */
@@ -57,6 +105,9 @@ export class APISettingsWidgetManager {
         hideOnZoom: false,
         getHeight: () => element.children.length * 80,
       })
+
+      // Wrap widget callbacks to sync Node → Panel
+      this.wrapWidgetCallbacks(node)
     }
   }
 
@@ -118,6 +169,9 @@ export class APISettingsWidgetManager {
       ;(apiSettings as IWidget & { onRemoved?: () => void }).onRemoved?.()
       ;(apiSettings as IWidget & { onRemove?: () => void }).onRemove?.()
       node.widgets = node.widgets?.filter((w) => w.name !== 'apiSettings')
+
+      // Restore original widget callbacks
+      this.unwrapWidgetCallbacks(node)
     }
   }
 

@@ -6,7 +6,7 @@
 
   let {
     item = { type: 'NUMBER' },
-    onInput = (e: Event) => console.log(e),
+    onInput = (e: Event, val?: unknown) => console.log(e, val),
     id = undefined,
     value = $bindable(''),
   } = $props()
@@ -59,14 +59,16 @@
       />
     {/if}
   {:else if item.type === 'BOOLEAN'}
-    {@const isChecked = value === true || value === 'true' || value === 1 || value === '1'}
+    {@const isChecked = value === true || value === 'true' || value === 1 || value === '1' || value === 'on'}
     <label class="mtb-toggle">
       <input
         type="checkbox"
         checked={isChecked}
         onchange={(e) => {
-          value = e.currentTarget.checked
-          onInput(e)
+          // ComfyUI toggles use booleans - 'off' string is truthy so doesn't work!
+          const newValue = e.currentTarget.checked
+          value = newValue
+          onInput(e, newValue)
         }}
       />
       <span class="mtb-toggle-slider"></span>
