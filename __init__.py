@@ -144,81 +144,41 @@ Please manually remove it from disk ({web_mtb}) and restart the server."""
 
 
 # - GATHER WIKI PAGES
-def wiki_to_classname(s: str):
-    wiki_name = s.replace("nodes-", "", 1)
-    return "MTB_" + "".join(
-        [part.capitalize() for part in wiki_name.split("-")]
-    )
-
-
-def classname_to_wiki(s: str):
-    classname = s.replace("MTB_", "")
-    parts: list[str] = []
-    start = 0
-    for i in range(1, len(classname)):
-        if classname[i].isupper():
-            parts.append(classname[start:i].lower())
-            start = i
-    parts.append(classname[start:].lower())
-    return "nodes-" + "-".join(parts)
-
+from .docs import assign_descriptions, load_wiki_docs
 
 wiki = here / "wiki"
-node_docs = {}
-if wiki.exists() and wiki.is_dir():
-    node_docs = {
-        wiki_to_classname(x.stem): x.read_text(encoding="utf-8")
-        for x in (wiki / "nodes").glob("*.md")
-    }
+node_docs = load_wiki_docs(wiki)
 
 
 # - REGISTER NODES
 MTB_EXPORT = os.environ.get("MTB_EXPORT")
 
 nodes, failed = load_nodes()
+assign_descriptions(nodes, node_docs, wiki, log, export=bool(MTB_EXPORT))
+
 for node_class in nodes:
     class_name: str = node_class.__name__
-    linked_doc = node_docs.get(class_name)
-
-    if not hasattr(node_class, "DESCRIPTION"):
-        if linked_doc:
-            log.debug(f"Found linked doc for {class_name}, using it")
-            node_class.DESCRIPTION = linked_doc
-        elif node_class.__doc__:
-            log.debug(f"Using __doc__ as description for {class_name}")
-            node_class.DESCRIPTION = node_class.__doc__
-            if MTB_EXPORT:
-                wiki_name = classname_to_wiki(class_name)
-                _ = (wiki / "nodes" / (wiki_name + ".md")).write_text(
-                    node_class.__doc__, encoding="utf-8"
-                )
-
-        else:
-            log.debug(
-                f"None of the methods could retrieve documentation for {class_name}"
-            )
-
     node_label = f"{get_label(class_name)} (mtb)"
     NODE_CLASS_MAPPINGS[node_label] = node_class
     NODE_DISPLAY_NAME_MAPPINGS[class_name] = node_label
     NODE_CLASS_MAPPINGS_DEBUG[node_label] = node_class.__doc__
 
-    # TODO: I removed this, I find it more convenient to write without spaces
-    # but it breaks every of my workflows
-    # TODO (cont): and until I find a way to automate the conversion
-    # I'll leave it like this
+# TODO: I removed this, I find it more convenient to write without spaces
+# but it breaks every of my workflows
+# TODO (cont): and until I find a way to automate the conversion
+# I'll leave it like this
 
-    if os.environ.get("MTB_EXPORT"):
-        with open(here / "node_list.json", "w") as f:
-            _ = f.write(
-                json.dumps(
-                    {
-                        k: NODE_CLASS_MAPPINGS_DEBUG[k]
-                        for k in sorted(NODE_CLASS_MAPPINGS_DEBUG.keys())
-                    },
-                    indent=4,
-                )
+if MTB_EXPORT:
+    with open(here / "node_list.json", "w") as f:
+        _ = f.write(
+            json.dumps(
+                {
+                    k: NODE_CLASS_MAPPINGS_DEBUG[k]
+                    for k in sorted(NODE_CLASS_MAPPINGS_DEBUG.keys())
+                },
+                indent=4,
             )
+        )
 
 log.debug(
     "Loaded the following nodes:\n\t"
