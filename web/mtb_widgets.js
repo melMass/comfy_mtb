@@ -21,7 +21,7 @@ import { infoLogger } from './comfy_shared.js'
 import { NumberInputWidget } from './numberInput.js'
 
 // NOTE: new widget types registered by MTB Widgets
-const newTypes = [/*'BOOL'*/ 'COLOR','MTB_COLOR', 'BBOX']
+const newTypes = [/*'BOOL'*/ 'COLOR', 'MTB_COLOR', 'BBOX']
 
 const deprecated_nodes = {
   //  'Animation Builder':
@@ -120,7 +120,7 @@ export function addVectorWidgetW(
       'number',
       `${name}_${VECTOR_AXIS[i]}`,
       value[VECTOR_AXIS[i]],
-      (val) => {},
+      (val) => { },
     )
 
     inputs.push(input)
@@ -448,7 +448,7 @@ export const MtbWidgets = {
                     try {
                       //solve the equation if possible
                       v = eval(v)
-                    } catch (e) {}
+                    } catch (e) { }
                   }
                   this.value = Number(v)
                   shared.inner_value_change(this, this.value, event)
@@ -1085,16 +1085,14 @@ const mtb_widgets = {
             this.value++
             raw_loop.value = Math.floor(this.value / total_frames.value)
 
-            value_preview.value = `frame: ${
-              raw_iteration.value % total_frames.value
-            } / ${total_frames.value - 1}`
+            value_preview.value = `frame: ${raw_iteration.value % total_frames.value
+              } / ${total_frames.value - 1}`
 
             if (raw_loop.value + 1 > loop_count.value) {
               loop_preview.value = 'Done 😎!'
             } else {
-              loop_preview.value = `current loop: ${raw_loop.value + 1}/${
-                loop_count.value
-              }`
+              loop_preview.value = `current loop: ${raw_loop.value + 1}/${loop_count.value
+                }`
             }
           }
 
