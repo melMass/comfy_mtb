@@ -208,3 +208,68 @@
   font-size: 11px;
   color: rgba(255, 255, 255, 0.7);
 }
+
+/* ============================================
+   Type-Specific Config Section
+   ============================================ */
+.mtb_api_type_config {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed rgba(255, 255, 255, 0.1);
+}
+
+.mtb_api_config_row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+  pointer-events: auto;
+}
+
+.mtb_api_config_row:last-child {
+  margin-bottom: 0;
+}
+
+.mtb_api_config_row label {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.5);
+  text-transform: uppercase;
+}
+
+.mtb_api_config_row input[type="number"],
+.mtb_api_config_row input[type="text"] {
+  width: 60px;
+  height: 24px;
+  padding: 0 6px;
+  font-size: 11px;
+  font-family: inherit;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  color: #fff;
+  outline: none;
+  pointer-events: auto;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.mtb_api_config_row input[type="text"] {
+  flex: 1;
+  min-width: 100px;
+}
+
+.mtb_api_config_row input[type="number"]:focus,
+.mtb_api_config_row input[type="text"]:focus {
+  border-color: var(--mtb-api-color);
+  box-shadow: 0 0 0 2px rgba(79, 110, 247, 0.2);
+}
+
+.mtb_api_config_row input::placeholder {
+  color: rgba(255, 255, 255, 0.3);
+  font-style: italic;
+}
+
+.mtb_api_config_row span {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.5);
+}

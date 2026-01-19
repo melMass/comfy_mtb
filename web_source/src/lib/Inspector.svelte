@@ -8,6 +8,7 @@
   import TabHelp from './TabHelp.svelte'
   import { inComfy } from './utils'
   import { onMount } from 'svelte'
+  import { graphToPrompt } from '../mtb_api/graph-to-prompt'
 
   interface InputItem {
     id: number
@@ -32,6 +33,24 @@
   onMount(() => {
     console.log('Mounted API Inspector')
   })
+
+  async function exportApi() {
+    if (!inComfy()) return
+
+    // @ts-expect-error - app is global in ComfyUI
+    const { output } = await graphToPrompt(app)
+
+    const json = JSON.stringify(output, null, 2)
+    const blob = new Blob([json], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'workflow_api.json'
+    a.click()
+
+    URL.revokeObjectURL(url)
+  }
 </script>
 
 {#if visible}
@@ -74,7 +93,7 @@
         <span class="mtb-btn-icon">&#9654;</span>
         Queue
       </button>
-      <button class="mtb-btn mtb-btn-secondary">Export</button>
+      <button class="mtb-btn mtb-btn-secondary" onclick={exportApi}>Export</button>
     </footer>
 
     <div class="mtb-panel-status">

@@ -7,7 +7,7 @@ import type { IWidget, LGraphCanvas } from '@comfyorg/litegraph'
 import { $el } from '@/scripts/ui'
 import * as shared from '@mtb/shared'
 import { API_COLOR, OUTPUT_COLOR } from './constants'
-import { API_INPUT_TYPES, type APIInputType, type APINodeSettings, type MTBNode } from './types'
+import { API_INPUT_TYPES, type APIInputType, type APIInputSettings, type APINodeSettings, type MTBNode } from './types'
 import { notifyAPIChanged } from './panel.svelte'
 import CSS from './api_nodes.css?inline'
 
@@ -211,6 +211,181 @@ export class APISettingsWidgetManager {
   }
 
   /**
+   * Creates type-specific configuration UI for a widget
+   */
+  private createTypeSpecificConfig(
+    node: MTBNode,
+    widgetName: string,
+    type: APIInputType,
+    container: HTMLElement,
+  ): void {
+    const settings = node.properties.mtb_api?.inputs?.[widgetName] || {}
+
+    // Clear previous config UI
+    const existingConfig = container.querySelector('.mtb_api_type_config')
+    if (existingConfig) existingConfig.remove()
+
+    const configDiv = document.createElement('div')
+    configDiv.classList.add('mtb_api_type_config')
+
+    switch (type) {
+      case 'NUMBER':
+        this.createNumberConfig(node, widgetName, settings, configDiv)
+        break
+      case 'STRING':
+        this.createStringConfig(node, widgetName, settings, configDiv)
+        break
+      case 'AUDIO':
+      case 'VIDEO':
+        this.createMediaConfig(node, widgetName, settings, configDiv)
+        break
+    }
+
+    if (configDiv.children.length > 0) {
+      container.appendChild(configDiv)
+    }
+  }
+
+  /**
+   * Creates NUMBER-specific config (min, max, step)
+   */
+  private createNumberConfig(
+    node: MTBNode,
+    widgetName: string,
+    settings: Partial<APIInputSettings>,
+    container: HTMLElement,
+  ): void {
+    const row = $el('div.mtb_api_config_row', {}, [
+      $el('label', { textContent: 'min:' }),
+      $el('input', {
+        type: 'number',
+        value: settings.min ?? '',
+        placeholder: 'auto',
+        onchange: (e: Event) => {
+          const val = parseFloat((e.target as HTMLInputElement).value)
+          this.applySettings(node, {
+            inputs: { [widgetName]: { min: isNaN(val) ? undefined : val } },
+          })
+          notifyAPIChanged()
+        },
+      }),
+      $el('label', { textContent: 'max:' }),
+      $el('input', {
+        type: 'number',
+        value: settings.max ?? '',
+        placeholder: 'auto',
+        onchange: (e: Event) => {
+          const val = parseFloat((e.target as HTMLInputElement).value)
+          this.applySettings(node, {
+            inputs: { [widgetName]: { max: isNaN(val) ? undefined : val } },
+          })
+          notifyAPIChanged()
+        },
+      }),
+      $el('label', { textContent: 'step:' }),
+      $el('input', {
+        type: 'number',
+        value: settings.step ?? '',
+        placeholder: 'auto',
+        onchange: (e: Event) => {
+          const val = parseFloat((e.target as HTMLInputElement).value)
+          this.applySettings(node, {
+            inputs: { [widgetName]: { step: isNaN(val) ? undefined : val } },
+          })
+          notifyAPIChanged()
+        },
+      }),
+    ])
+    container.appendChild(row)
+  }
+
+  /**
+   * Creates STRING-specific config (multiline)
+   */
+  private createStringConfig(
+    node: MTBNode,
+    widgetName: string,
+    settings: Partial<APIInputSettings>,
+    container: HTMLElement,
+  ): void {
+    const row = $el('div.mtb_api_config_row', {}, [
+      $el('label.mtb_api_checkbox_label', {}, [
+        $el('input', {
+          type: 'checkbox',
+          checked: settings.multiline ?? false,
+          onchange: (e: Event) => {
+            this.applySettings(node, {
+              inputs: { [widgetName]: { multiline: (e.target as HTMLInputElement).checked } },
+            })
+            notifyAPIChanged()
+          },
+        }),
+        $el('span', { textContent: 'Multiline' }),
+      ]),
+    ])
+    container.appendChild(row)
+  }
+
+  /**
+   * Creates AUDIO/VIDEO-specific config (accept, maxDuration, trimEnabled)
+   */
+  private createMediaConfig(
+    node: MTBNode,
+    widgetName: string,
+    settings: Partial<APIInputSettings>,
+    container: HTMLElement,
+  ): void {
+    const acceptRow = $el('div.mtb_api_config_row', {}, [
+      $el('label', { textContent: 'accept:' }),
+      $el('input', {
+        type: 'text',
+        value: settings.accept ?? '',
+        placeholder: 'audio/* or .mp3,.wav',
+        onchange: (e: Event) => {
+          const val = (e.target as HTMLInputElement).value
+          this.applySettings(node, {
+            inputs: { [widgetName]: { accept: val || undefined } },
+          })
+          notifyAPIChanged()
+        },
+      }),
+    ])
+
+    const trimRow = $el('div.mtb_api_config_row', {}, [
+      $el('label', { textContent: 'max duration:' }),
+      $el('input', {
+        type: 'number',
+        value: settings.maxDuration ?? '',
+        placeholder: 'unlimited',
+        onchange: (e: Event) => {
+          const val = parseFloat((e.target as HTMLInputElement).value)
+          this.applySettings(node, {
+            inputs: { [widgetName]: { maxDuration: isNaN(val) ? undefined : val } },
+          })
+          notifyAPIChanged()
+        },
+      }),
+      $el('span', { textContent: 's' }),
+      $el('label.mtb_api_checkbox_label', {}, [
+        $el('input', {
+          type: 'checkbox',
+          checked: settings.trimEnabled ?? true,
+          onchange: (e: Event) => {
+            this.applySettings(node, {
+              inputs: { [widgetName]: { trimEnabled: (e.target as HTMLInputElement).checked } },
+            })
+            notifyAPIChanged()
+          },
+        }),
+        $el('span', { textContent: 'Enable trim' }),
+      ]),
+    ])
+
+    container.appendChild(acceptRow)
+    container.appendChild(trimRow)
+  }
+
+  /**
    * Creates a configuration section for a single widget
    */
   createWidgetSection(node: MTBNode, widget: IWidget): HTMLElement | undefined {
@@ -289,9 +464,12 @@ export class APISettingsWidgetManager {
     }
 
     typeSelect.addEventListener('change', () => {
+      const newType = typeSelect.value as APIInputType
       this.applySettings(node, {
-        inputs: { [widget.name]: { type: typeSelect.value as APIInputType } },
+        inputs: { [widget.name]: { type: newType } },
       })
+      // Regenerate type-specific config
+      this.createTypeSpecificConfig(node, widget.name, newType, contentContainer)
       notifyAPIChanged()
     })
 
@@ -318,6 +496,9 @@ export class APISettingsWidgetManager {
     contentContainer.appendChild(nameInput)
     contentContainer.appendChild(typeLabel)
     contentContainer.appendChild(typeSelect)
+
+    // Add type-specific config for initial type
+    this.createTypeSpecificConfig(node, widget.name, selectedValue, contentContainer)
 
     if (!enabled) {
       contentContainer.classList.add('mtb_api_disabled')

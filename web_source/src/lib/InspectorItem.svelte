@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte'
+  import { onMount, untrack } from 'svelte'
   import InspectorInput from './InspectorInput.svelte'
   import { inComfy } from './utils.js'
 
@@ -37,11 +37,14 @@
   let value = $state<unknown>(getWidgetValue())
 
   // Sync value from widget when it changes (Node → Panel)
+  // Use untrack to prevent reacting to local value changes (avoids reverting user input)
   $effect(() => {
     const widgetVal = getWidgetValue()
-    if (widgetVal !== value) {
-      value = widgetVal
-    }
+    untrack(() => {
+      if (widgetVal !== value) {
+        value = widgetVal
+      }
+    })
   })
 
   onMount(() => {

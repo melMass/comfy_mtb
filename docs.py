@@ -76,8 +76,8 @@ def assign_descriptions(
 
     Priority:
     1. Existing DESCRIPTION attribute (not modified)
-    2. Wiki doc file (HTML stripped)
-    3. __doc__ docstring (HTML stripped)
+    2. Wiki doc file
+    3. __doc__ docstring
     """
     for node_class in nodes:
         class_name = node_class.__name__
@@ -86,10 +86,10 @@ def assign_descriptions(
         if not hasattr(node_class, "DESCRIPTION"):
             if linked_doc:
                 log.debug(f"Found linked doc for {class_name}, using it")
-                node_class.DESCRIPTION = strip_html_tags(linked_doc)
+                node_class.DESCRIPTION = linked_doc
             elif node_class.__doc__:
                 log.debug(f"Using __doc__ as description for {class_name}")
-                node_class.DESCRIPTION = strip_html_tags(node_class.__doc__)
+                node_class.DESCRIPTION = node_class.__doc__
                 if export:
                     wiki_name = classname_to_wiki(class_name)
                     (wiki_path / "nodes" / f"{wiki_name}.md").write_text(

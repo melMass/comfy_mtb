@@ -4,6 +4,8 @@ import type { LGraphNode, IWidget, LGraphCanvas } from '@comfyorg/litegraph'
 export const API_INPUT_TYPES = [
   'STRING',
   'IMAGE',
+  'AUDIO',
+  'VIDEO',
   'COMBO',
   'MODEL',
   'NUMBER',
@@ -18,6 +20,19 @@ export interface APIInputSettings {
   enabled: boolean
   type: APIInputType
   name: string
+
+  // NUMBER config
+  min?: number
+  max?: number
+  step?: number
+
+  // STRING config
+  multiline?: boolean
+
+  // AUDIO/VIDEO config
+  accept?: string         // e.g., ".mp3,.wav" or ".mp4,.webm"
+  maxDuration?: number    // seconds
+  trimEnabled?: boolean
 }
 
 /** API configuration stored in node.properties.mtb_api */
