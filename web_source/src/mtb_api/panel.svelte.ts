@@ -33,9 +33,17 @@ function createPanelProps() {
 /** Custom event for API changes */
 export const MTB_API_CHANGED_EVENT = 'mtb:api:changed'
 
+/** Custom event for order changes from drag-drop */
+export const MTB_API_ORDER_CHANGED_EVENT = 'mtb:api:order-changed'
+
 /** Dispatch event to notify panel of changes */
 export function notifyAPIChanged(): void {
   window.dispatchEvent(new CustomEvent(MTB_API_CHANGED_EVENT))
+}
+
+/** Dispatch event with new order after drag-drop */
+export function notifyOrderChanged(orderedInputs: { node_id: number; original_name: string; order: number }[]): void {
+  window.dispatchEvent(new CustomEvent(MTB_API_ORDER_CHANGED_EVENT, { detail: orderedInputs }))
 }
 
 /**
@@ -65,6 +73,29 @@ export class APIPanel {
         this.updateContent()
       })
     })
+
+    // Listen for order changes from drag-drop
+    window.addEventListener(MTB_API_ORDER_CHANGED_EVENT, ((e: CustomEvent<{ node_id: number; original_name: string; order: number }[]>) => {
+      this.applyInputOrder(e.detail)
+    }) as EventListener)
+  }
+
+  /**
+   * Applies new order to node properties after drag-drop reorder
+   */
+  private applyInputOrder(orderedInputs: { node_id: number; original_name: string; order: number }[]): void {
+    for (const node of shared.getNodes(true) as MTBNode[]) {
+      const nodeInputs = orderedInputs.filter(i => i.node_id === node.id)
+      if (nodeInputs.length === 0) continue
+
+      for (const input of nodeInputs) {
+        if (node.properties.mtb_api?.inputs?.[input.original_name]) {
+          node.properties.mtb_api.inputs[input.original_name].order = input.order
+        }
+      }
+      // Trigger property update
+      node.setProperty('mtb_api', node.properties.mtb_api)
+    }
   }
 
   /**
@@ -133,8 +164,7 @@ export class APIPanel {
    * Collects all API inputs from marked nodes in the graph
    */
   getAPIInputs(): Record<string, APIInput> {
-    const inputs: Record<string, APIInput> = {}
-    let counter = 1
+    const inputsList: (APIInput & { original_name: string })[] = []
 
     for (const node of shared.getNodes(true) as MTBNode[]) {
       const widgets = node.widgets
@@ -148,27 +178,38 @@ export class APIPanel {
               const widget = widgets?.find((w) => w.name === currentName)
               if (!widget) continue
 
-              if (!(inputName in inputs)) {
-                inputs[inputName] = {
-                  ...current,
-                  id: counter,
-                  name: inputName,
-                  type: current.type,
-                  node_id: node.id,
-                  widgets: [],
-                  // Extract current value from widget
-                  value: widget.value,
-                  // For COMBO types, extract options
-                  options: (widget.options as { values?: string[] })?.values,
-                }
-              }
-              inputs[inputName].widgets.push(widget)
-              counter++
+              inputsList.push({
+                ...current,
+                id: 0, // Will be assigned after sorting
+                name: inputName,
+                original_name: currentName,
+                type: current.type,
+                node_id: node.id,
+                widgets: [widget],
+                // Extract current value from widget
+                value: widget.value,
+                // For COMBO types, extract options
+                options: (widget.options as { values?: string[] })?.values,
+              })
             }
           }
         }
       }
     }
+
+    // Sort by order (undefined order goes to end)
+    inputsList.sort((a, b) => {
+      const orderA = a.order ?? Number.MAX_SAFE_INTEGER
+      const orderB = b.order ?? Number.MAX_SAFE_INTEGER
+      return orderA - orderB
+    })
+
+    // Convert to Record and assign sequential IDs
+    const inputs: Record<string, APIInput> = {}
+    inputsList.forEach((input, index) => {
+      input.id = index + 1
+      inputs[input.name] = input
+    })
 
     return inputs
   }

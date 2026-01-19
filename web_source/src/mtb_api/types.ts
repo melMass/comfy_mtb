@@ -20,6 +20,8 @@ export interface APIInputSettings {
   enabled: boolean
   type: APIInputType
   name: string
+  /** Display order (lower = first) */
+  order?: number
 
   // NUMBER config
   min?: number

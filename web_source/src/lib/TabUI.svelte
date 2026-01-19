@@ -2,9 +2,12 @@
   import { dndzone } from 'svelte-dnd-action'
   import InspectorItem from './InspectorItem.svelte'
   import { flip } from 'svelte/animate'
+  import { notifyOrderChanged } from '../mtb_api/panel.svelte'
 
   interface InputItem {
     id: number
+    node_id?: number
+    original_name?: string
     [key: string]: unknown
   }
 
@@ -16,8 +19,16 @@
   function handleDndConsider(e: CustomEvent<{ items: InputItem[] }>) {
     inputs = e.detail.items
   }
+
   function handleDndFinalize(e: CustomEvent<{ items: InputItem[] }>) {
     inputs = e.detail.items
+    // Persist the new order back to the nodes
+    const orderedInputs = inputs.map((item, index) => ({
+      node_id: item.node_id as number,
+      original_name: item.original_name as string,
+      order: index,
+    }))
+    notifyOrderChanged(orderedInputs)
   }
 </script>
 
