@@ -26,7 +26,7 @@
   const items = $derived(
     Object.keys(inputs).map((k) => ({
       ...inputs[k],
-      original_name: k,
+      original_name: inputs[k].original_name ?? k,
     }))
   )
 
