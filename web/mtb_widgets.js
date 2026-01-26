@@ -1229,6 +1229,7 @@ const mtb_widgets = {
       //   break
       // }
       case 'Stack Images (mtb)':
+      case 'Reference Latents (mtb)':
       case 'Concat Images (mtb)': {
         shared.setupDynamicConnections(nodeType, 'image', 'IMAGE')
         break
