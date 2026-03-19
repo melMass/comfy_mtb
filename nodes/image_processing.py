@@ -683,6 +683,7 @@ class MTB_ImageCompare:
 
 
 import requests
+import time
 
 
 class MTB_LoadImageFromUrl:
@@ -698,6 +699,14 @@ class MTB_LoadImageFromUrl:
                         "default": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a7/Example.jpg/800px-Example.jpg"
                     },
                 ),
+                "retry_count": (
+                    "INT",
+                    {"default": 3, "min": 1, "max": 20, "step": 1},
+                ),
+                "retry_interval": (
+                    "FLOAT",
+                    {"default": 1.0, "min": 0.0, "max": 60.0, "step": 0.1},
+                ),
             }
         }
 
@@ -705,11 +714,27 @@ class MTB_LoadImageFromUrl:
     FUNCTION = "load"
     CATEGORY = "mtb/IO"
 
-    def load(self, url):
-        # get the image from the url
-        image = Image.open(requests.get(url, stream=True).raw)
-        image = ImageOps.exif_transpose(image)
-        return (pil2tensor(image),)
+    def load(self, url, retry_count, retry_interval):
+        # get the image from the url with retry + exponential backoff
+        last_error = None
+        for attempt in range(retry_count):
+            try:
+                response = requests.get(url, stream=True)
+                response.raise_for_status()
+                image = Image.open(response.raw)
+                image = ImageOps.exif_transpose(image)
+                return (pil2tensor(image),)
+            except Exception as e:
+                last_error = e
+                if attempt == retry_count - 1:
+                    raise
+                wait_seconds = retry_interval * (2**attempt)
+                if wait_seconds > 0:
+                    time.sleep(wait_seconds)
+
+        if last_error is not None:
+            raise last_error
+        raise RuntimeError("Failed to load image from URL without captured exception")
 
 
 class MTB_Blur:
