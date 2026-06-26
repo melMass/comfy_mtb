@@ -27,7 +27,7 @@ class MTB_LoadVitMatteModel:
     def execute(self, *, kind: str, autodownload: bool):
         dest = models_dir / "vitmatte"
         dest.mkdir(exist_ok=True)
-        name = "dist" if kind == "Distinctions-646" else "com"
+        name = "dis" if kind == "Distinctions-646" else "com"
 
         file = hf_hub_download(
             repo_id="melmass/pytorch-scripts",
