@@ -55,7 +55,7 @@ def mklog(name: str, level: int = base_log_level):
 
 
 # - The main app logger
-log = mklog(__package__, base_log_level)
+log = mklog("comfy-mtb", base_log_level)
 
 
 def log_user(arg: str):

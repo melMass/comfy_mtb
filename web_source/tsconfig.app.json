@@ -1,0 +1,38 @@
+// tsconfig.json
+{
+  "compilerOptions": {
+    "target": "es2020", // Or "esnext" for modern JS features
+    "module": "esnext", // Or "commonjs" if you're using a bundler that transpiles
+    "moduleResolution": "bundler",
+    "lib": ["dom", "es2020"], // Include DOM types for browser environment
+    "jsx": "react-jsx", // If you're using React/JSX
+    "strict": true, // Enable all strict type-checking options
+    "esModuleInterop": true, // Allows default imports from modules with no default export
+    "skipLibCheck": true, // Skip type checking of all declaration files (*.d.ts)
+    "forceConsistentCasingInFileNames": true, // Ensure consistent file casing
+
+    // --- Crucial for ComfyUI imports ---
+    "baseUrl": "./src", // Base directory for resolving non-relative module names
+    "paths": {
+      // Map the ComfyUI alias to a dummy location or just declare it
+      // This tells TS that anything starting with '@/scripts/' should be looked for relative to baseUrl
+      // However, for external modules like ComfyUI's, we'll primarily rely on `declare module`
+      "@/scripts/*": ["src/types/shims/*"] // This path doesn't need to exist, it's just a placeholder for TS resolution
+    },
+    "typeRoots": [
+      "./node_modules/@types", // Default location for npm @types packages
+      "./node_modules/@comfyorg",
+      "./src/types" // Your custom types directory
+    ],
+    "outDir": "./dist", // Where your compiled JS files will go
+    "rootDir": "./src" // Your source code directory
+  },
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "src/**/*.svelte",
+    "src/types/**/*.d.ts", // Include your custom declaration files
+          "./node_modules/@comfyorg/**/*.d.ts"
+  ],
+  "exclude": ["node_modules", "dist"]
+}

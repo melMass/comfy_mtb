@@ -15,8 +15,13 @@ import {
   renderSidebar,
 } from './mtb_ui.js'
 
-const offset = 0
+// pagination state
+let pageOffset = 0
+let isLoadingPage = false
+let hasMorePages = true
+let pageSizeCache = undefined
 
+let observer = null
 // These are "global" variables mostly meant to sync user settings.
 let currentWidth = 200
 let saltUrls =
@@ -130,6 +135,13 @@ const getImgsFromUrls = (urls, target, options = { prepend: false }) => {
     const a = makeElement(elem)
     a.src = url
     a.width = currentWidth
+    if (elem === 'img') {
+      a.loading = 'lazy'
+      a.decoding = 'async'
+    } else {
+      // video
+      a.preload = 'metadata'
+    }
     if (currentMode === 'input') {
       a.onclick = (_e) => {
         if (subfolder !== '') {
@@ -158,25 +170,66 @@ const getImgsFromUrls = (urls, target, options = { prepend: false }) => {
         }
       }
     } else if (currentMode === 'output') {
-      a.onclick = (_e) => {
-        // window.MTB?.notify?.("Output import isn't supported yet...", 5000)
-        if (subfolder !== '') {
-          app.extensionManager.toast.add({
-            severity: 'warn',
-            summary: 'Subfolder not supported',
-            detail: "The LoadImage node doesn't support subfolders",
-            life: 5000,
-          })
-          return
-        }
+      a.onclick = async (_e) => {
+        const params = new URLSearchParams()
+        params.set('filename', key)
+        params.set('type', 'output')
+        if (subfolder) params.set('subfolder', subfolder)
+        params.set('workflow', 'true')
+        const url = `/mtb/view?${params.toString()}`
+        try {
+          const res = await api.fetchApi(url)
+          if (!res?.ok) throw new Error(`Request failed (${res?.status})`)
+          const data = await res.json()
+          const workflow = data?.workflow || data?.prompt
+          if (!workflow) {
+            app.extensionManager.toast.add({
+              severity: 'warn',
+              summary: 'No workflow in image',
+              detail: 'This file does not contain embedded workflow metadata.',
+              life: 5000,
+            })
+            return
+          }
 
-        app.extensionManager.toast.add({
-          severity: 'warn',
-          summary: 'Outputs not supported',
-          detail:
-            'For now only inputs can be clicked to load the image on the active LoadImage node.',
-          life: 5000,
-        })
+          // Try to import via File first; fallback to blob URL
+          const jsonText = JSON.stringify(workflow, null, 2)
+          const blob = new Blob([jsonText], { type: 'application/json' })
+          const suggestedName = `${(key || 'workflow').replace(/\.[^.]+$/, '')}-workflow.json`
+          let loaded = false
+          try {
+            const file = new File([blob], suggestedName, {
+              type: 'application/json',
+            })
+            await app.handleFile(file)
+            loaded = true
+          } catch (_err) {
+            const blobUrl = URL.createObjectURL(blob)
+            try {
+              await app.handleFile(blobUrl)
+              loaded = true
+            } finally {
+              URL.revokeObjectURL(blobUrl)
+            }
+          }
+
+          if (loaded) {
+            app.extensionManager.toast.add({
+              severity: 'success',
+              summary: 'Workflow loaded',
+              detail: 'Imported workflow from image metadata.',
+              life: 3000,
+            })
+          }
+        } catch (err) {
+          console.error('Failed to load workflow from output image:', err)
+          app.extensionManager.toast.add({
+            severity: 'error',
+            summary: 'Import failed',
+            detail: String(err?.message || err),
+            life: 6000,
+          })
+        }
       }
     } else {
       a.autoplay = true
@@ -214,9 +267,14 @@ const getModes = async () => {
   const inputs = await shared.runAction('getUserImageFolders')
   return inputs
 }
-const getUrls = async (subfolder) => {
-  const count = (await api.getSetting('mtb.io-sidebar.count')) || 1000
-  console.log('Sidebar count', count)
+const getUrls = async (subfolder, countOverride, offsetOverride) => {
+  const count =
+    typeof countOverride === 'number'
+      ? countOverride
+      : (await api.getSetting('mtb.io-sidebar.count')) || 1000
+  const offset = typeof offsetOverride === 'number' ? offsetOverride : pageOffset
+  pageSizeCache = count
+  // console.debug('Sidebar count', count, 'offset', offset)
   if (currentMode === 'video') {
     const output = await shared.runAction(
       'getUserVideos',
@@ -239,6 +297,89 @@ const getUrls = async (subfolder) => {
     saltUrls,
   )
   return output || {}
+}
+
+/**
+ * Initialize pagination (loader, end-of-results message, sentinel, and IntersectionObserver)
+ * for the provided grid container. Safely disconnects any previous observer.
+ * @param {HTMLElement} imgGrid
+ */
+function initPagination(imgGrid) {
+  // disconnect any existing observer to avoid duplicates
+  if (observer) {
+    try {
+      observer.disconnect()
+    } catch { }
+    observer = null
+  }
+  
+  // create footer UI elements
+  const loader = makeElement('div', {}, imgGrid)
+  Object.assign(loader.style, {
+    display: 'none',
+    width: '100%',
+    padding: '8px 0',
+    textAlign: 'center',
+    color: 'var(--mtb-text, #ccc)',
+    fontSize: '12px',
+  })
+  loader.textContent = 'Loading…'
+  
+  const endMsg = makeElement('div', {}, imgGrid)
+  Object.assign(endMsg.style, {
+    display: 'none',
+    width: '100%',
+    padding: '8px 0',
+    textAlign: 'center',
+    color: 'var(--mtb-text, #888)',
+    fontSize: '12px',
+  })
+  endMsg.textContent = 'No more items'
+  
+  const sentinel = makeElement('div', {}, imgGrid)
+  sentinel.style.height = '1px'
+  sentinel.style.width = '100%'
+  sentinel.style.marginTop = '1px'
+  
+  const loadNextPage = async () => {
+    if (isLoadingPage || !hasMorePages) return
+    isLoadingPage = true
+    loader.style.display = 'block'
+    try {
+      const nextUrls = await getUrls(subfolder, undefined, pageOffset)
+      const keys = Object.keys(nextUrls || {})
+      if (!keys.length) {
+        hasMorePages = false
+        if (observer) observer.disconnect()
+        loader.style.display = 'none'
+        endMsg.style.display = 'block'
+        return
+      }
+      getImgsFromUrls(nextUrls, imgGrid)
+      if (pageSizeCache != null) pageOffset += pageSizeCache
+      // keep footer elements and sentinel at the bottom
+      imgGrid.appendChild(loader)
+      imgGrid.appendChild(endMsg)
+      imgGrid.appendChild(sentinel)
+    } catch (e) {
+      console.error('Failed to load next page:', e)
+      hasMorePages = false
+      if (observer) observer.disconnect()
+      loader.style.display = 'none'
+      endMsg.style.display = 'block'
+    } finally {
+      isLoadingPage = false
+      if (hasMorePages) loader.style.display = 'none'
+    }
+  }
+  
+  observer = new IntersectionObserver((entries) => {
+    for (const entry of entries) {
+      if (entry.isIntersecting) loadNextPage()
+    }
+  })
+  observer.observe(sentinel)
+
 }
 
 //NOTE: do not load if using the old ui
@@ -427,7 +568,12 @@ if (window?.__COMFYUI_FRONTEND_VERSION__) {
           const allModes = await getModes()
           const input_modes = allModes.input.map((m) => `input - ${m}`)
           const output_modes = allModes.output.map((m) => `output - ${m}`)
-          const urls = await getUrls()
+          //- reset pagination state for fresh render
+          pageOffset = 0
+          isLoadingPage = false
+          hasMorePages = true
+          const urls = await getUrls(undefined, undefined, 0)
+          if (pageSizeCache != null) pageOffset += pageSizeCache
           let imgs = {}
 
           const cont = makeElement('div.mtb_sidebar')
@@ -456,10 +602,17 @@ if (window?.__COMFYUI_FRONTEND_VERSION__) {
             subfolder = newSub
             if (changed) {
               imgGrid.innerHTML = ''
-              const urls = await getUrls(subfolder)
+              //- reset pagination on mode change
+              pageOffset = 0
+              isLoadingPage = false
+              hasMorePages = true
+              const urls = await getUrls(subfolder, undefined, 0)
+              if (pageSizeCache != null) pageOffset += pageSizeCache
               if (urls) {
                 imgs = getImgsFromUrls(urls, imgGrid)
               }
+              // re-init pagination after content reset
+              initPagination(imgGrid)
             }
           })
 
@@ -475,10 +628,17 @@ if (window?.__COMFYUI_FRONTEND_VERSION__) {
             currentSort = newSort
             if (changed) {
               imgGrid.innerHTML = ''
-              const urls = await getUrls(subfolder)
+              //- reset pagination on sort change
+              pageOffset = 0
+              isLoadingPage = false
+              hasMorePages = true
+              const urls = await getUrls(subfolder, undefined, 0)
+              if (pageSizeCache != null) pageOffset += pageSizeCache
               if (urls) {
                 imgs = getImgsFromUrls(urls, imgGrid)
               }
+              // re-init pagination after content reset
+              initPagination(imgGrid)
             }
           })
 
@@ -487,12 +647,23 @@ if (window?.__COMFYUI_FRONTEND_VERSION__) {
           imgTools.appendChild(sizeSlider)
 
           imgs = getImgsFromUrls(urls, imgGrid)
+          // Setup infinite pagination for the initial render
+          initPagination(imgGrid)
 
+          let pendingWidth = null
+          let rafToken = null
           sizeSlider.addEventListener('input', (e) => {
-            currentWidth = e.target.value
-            for (const img of imgs) {
-              img.style.width = `${e.target.value}px`
-            }
+            pendingWidth = e.target.value
+            if (rafToken) return
+            rafToken = requestAnimationFrame(() => {
+              rafToken = null
+              if (pendingWidth == null) return
+              currentWidth = pendingWidth
+              pendingWidth = null
+              for (const img of imgs) {
+                img.style.width = `${currentWidth}px`
+              }
+            })
           })
           handle = renderSidebar(el, cont, [selector, imgGrid, imgTools])
           app.api.addEventListener('status', async () => {
@@ -506,6 +677,8 @@ if (window?.__COMFYUI_FRONTEND_VERSION__) {
             handle = undefined
             app.api.removeEventListener('status')
           }
+          // Attempt to disconnect any stray observers to avoid retained callbacks
+          if (observer) observer.disconnect()
         },
       })
     },

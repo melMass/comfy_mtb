@@ -7,6 +7,13 @@ from PIL import Image, ImageDraw, ImageFont
 from ..log import log
 from ..utils import comfy_dir, font_path, pil2tensor
 
+# try:
+#     from cairosvg import svg2png
+#     HAS_CAIRO = True
+# except ImportError:
+#     HAS_CAIRO = False
+
+
 # class MtbExamples:
 #     """MTB Example Images"""
 
@@ -299,7 +306,7 @@ by default it fallsback to a default font.
 
     def text_to_image(
         self,
-        text: str,
+        text: str | list[str],
         font,
         wrap,
         trim,
@@ -341,7 +348,7 @@ by default it fallsback to a default font.
             color = (255, 255, 255, 255)
             background = (0, 0, 0, 255)
 
-        def render_text(text_to_render, alpha=None):
+        def render_text(text_to_render: str, alpha=None) -> Image.Image:
             if trim:
                 text_to_render = text_to_render.strip()
             if wrap:
@@ -426,9 +433,16 @@ by default it fallsback to a default font.
             frame_tensors = [pil2tensor(frame) for frame in frames]
             return (torch.cat(frame_tensors, dim=0),)
         else:
-            text_img = render_text(text)
-            result = Image.alpha_composite(base_img, text_img)
-            return (pil2tensor(result),)
+            results = []
+            if not isinstance(text, list):
+                text = [text]
+
+            for t in text:
+                text_img = render_text(t)
+                result = Image.alpha_composite(base_img, text_img)
+                results.append(result)
+
+            return (pil2tensor(results),)
 
 
 __nodes__ = [

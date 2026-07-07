@@ -6,7 +6,7 @@ import urllib.request
 from math import pi
 from typing import Any
 
-import comfy.model_management as model_management
+import comfy.model_management as mm
 import comfy.utils
 import numpy as np
 import torch
@@ -16,8 +16,10 @@ from PIL import Image
 from ..log import log
 from ..utils import (
     EASINGS,
+    LazyProxyTensor,
     apply_easing,
     get_server_info,
+    get_torch_tensor_info,
     numpy_NFOV,
     pil2tensor,
     tensor2np,
@@ -127,6 +129,9 @@ class MTB_ApplyTextTemplate:
             "required": {
                 "template": ("STRING", {"default": "", "multiline": True}),
             },
+            "optional":{
+                "strip": ("BOOLEAN", {"default": True}),
+            },
         }
 
     RETURN_TYPES = ("STRING",)
@@ -134,12 +139,70 @@ class MTB_ApplyTextTemplate:
     CATEGORY = "mtb/utils"
     FUNCTION = "execute"
 
-    def execute(self, *, template: str, **kwargs):
-        res = f"{template}"
-        for k, v in kwargs.items():
-            res = res.replace(f"{{{k}}}", f"{v}")
+    def execute(self, *, strip:bool,template: str, **kwargs) -> tuple[str | list[str]]:
+        keys = list(kwargs.keys())
+        values = list(kwargs.values())
 
-        return (res,)
+        has_list = any(isinstance(v, list) for v in values)
+        target_length = -1
+
+        if has_list:
+            first_list = next(x for x in values if isinstance(x, list))
+
+            # all_list = all(isinstance(x, list) for x in kwargs.values())
+            # if not all_list:
+            #     raise ValueError(
+            #         "Text template supports either str or list[str] but not a mix of the two (yet?)"
+            #     )
+            target_length = len(first_list)
+            same_length = all(
+                len(v) == target_length for v in values if isinstance(v, list)
+            )
+            if not same_length:
+                raise ValueError(
+                    "Text template received multiple list[str] but their size is varying, they should match..."
+                )
+
+        if has_list:
+            results = []
+
+            # do a padded loop, not the most efficient but easy
+            # to handle for now
+            for it in range(target_length):
+                res = f"{template}"
+                for k, v in kwargs.items():
+                    if isinstance(v, list):
+                        res = self.apply_res(res, k, v[it])
+                    else:
+                        res = self.apply_res(res, k, v)
+                if strip:
+                    results.append(res.strip())
+                else:
+                    results.append(res)
+
+            return (results,)
+
+        else:
+            res = f"{template}"
+            for k, v in kwargs.items():
+                res = self.apply_res(res, k, v)
+
+            if strip:
+                return (res.strip(),)
+            else:
+                return (res,)
+
+    def apply_res(self, res, key, value):
+        if isinstance(value, float):
+            value = f"{value:.3f}"
+        elif isinstance(value, torch.Tensor):
+            value = get_torch_tensor_info(value)
+        else:
+            log.debug(
+                f"Falling back to default string conversion for {key} of type {type(value).__name__}"
+            )
+
+        return res.replace(f"{{{key}}}", f"{value}")
 
 
 class MTB_MatchDimensions:
@@ -197,7 +260,10 @@ class MTB_MatchDimensions:
 
 
 class MTB_FloatToFloats:
-    """Conversion utility for compatibility with other extensions (AD, IPA, Fitz are using FLOAT to represent list of floats.)"""
+    """Conversion utility for compatibility with other extensions.
+
+    AD, IPA, Fitz, KJ are using FLOAT to represent list of floats.
+    """
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -215,6 +281,26 @@ class MTB_FloatToFloats:
     def convert(self, float: float):
         return (float,)
 
+class MTB_FloatsToFloatList:
+    """Turn a FLOATS type into a list of floats (for loops)."""
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "floats": ("FLOATS", { "forceInput": True }),
+            }
+        }
+
+    RETURN_TYPES = ("FLOAT",)
+    RETURN_NAMES = ("float",)
+    OUTPUT_IS_LIST = (True,)
+
+    CATEGORY = "mtb/utils"
+    FUNCTION = "convert"
+
+    def convert(self, floats: list[float]):
+        return (floats,)
 
 class MTB_FloatsToInts:
     """Conversion utility for compatibility with frame interpolation."""
@@ -343,7 +429,7 @@ class MTB_AutoPanEquilateral:
 
             frames.append(frame)
 
-            model_management.throw_exception_if_processing_interrupted()
+            mm.throw_exception_if_processing_interrupted()
             pbar.update(1)
 
         return (pil2tensor(frames),)
@@ -916,6 +1002,61 @@ class MTB_BooleanNot:
         return (not bool_in,)
 
 
+class MTB_ProxyTensor:
+    """Wraps an input tensor into a LazyProxyTensor.
+
+    builds upon an idea by @AustinMroz
+    """
+
+    NODE_NAME = "ProxyTensor"
+    NODE_DISPLAY_NAME = "Proxy Tensor"
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            "required": {
+                "tensor": ("IMAGE",),
+                "target_dtype": (
+                    ["float32", "float16", "bfloat16"],
+                    {"default": "float32"},
+                ),
+                "target_device": (
+                    ["keep", "cpu", "gpu"],
+                    {
+                        "default": "keep",
+                        "tooltip": "CAUTION: This isn't compatible with most nodes for now",
+                    },
+                ),
+            }
+        }
+
+    RETURN_TYPES = ("IMAGE",)
+    RETURN_NAMES = ("proxy_tensor",)
+    FUNCTION = "execute"
+    CATEGORY = "mtb/utils"
+
+    def execute(
+        self,
+        tensor: torch.Tensor,
+        target_dtype: str = "float32",
+        target_device: str = "keep",
+    ):
+        torch_dtype: torch.dtype = getattr(torch, target_dtype)
+
+        if target_device == "gpu":
+            torch_device = mm.get_torch_device()
+        elif target_device == "cpu":
+            torch_device = torch.device("cpu")
+        else:
+            torch_device = tensor.device
+
+        proxy = LazyProxyTensor(tensor, torch_dtype, torch_device)
+
+        log.info(f"Created Proxy Tensor: \n{proxy}")
+
+        return (proxy,)
+
+
 __nodes__ = [
     MTB_StringReplace,
     MTB_FitNumber,
@@ -929,8 +1070,10 @@ __nodes__ = [
     MTB_AutoPanEquilateral,
     MTB_FloatsToFloat,
     MTB_FloatToFloats,
+    MTB_FloatsToFloatList,
     MTB_FloatsToInts,
     MTB_TensorOps,
     MTB_BooleanNot,
     MTB_GetItem,
+    MTB_ProxyTensor,
 ]

@@ -200,7 +200,7 @@ class MTB_ImageBatchToSublist:
     RETURN_TYPES = ("IMAGE", "MASK", "INT")
     RETURN_NAMES = ("image_list", "mask_list", "item_count")
 
-    OUTPUT_IS_LIST = (True, True)
+    OUTPUT_IS_LIST = (True, True, False)
     FUNCTION = "split_batch"
     CATEGORY = "batch_processing"
 
@@ -215,41 +215,26 @@ class MTB_ImageBatchToSublist:
                 "You must either pass mask or image, none received"
             )
 
-        image_count = 0
-        if image is not None:
-            image_count = image.size(0)
-
-        mask_count = 0
-        if mask is not None:
-            mask_count = mask.size(0)
+        image_count = image.size(0) if image is not None else 0
+        mask_count = mask.size(0) if mask is not None else 0
 
         if image_count > 0 and mask_count > 0 and mask_count != image_count:
             raise ValueError(
-                f"When providing image and mask, batch size must match (got {mask.size(0)} mask and {image.size(0)} images)"
+                f"When providing image and mask, batch size must match (got {mask_count} mask and {image_count} images)"
             )
 
         batch_size = max(image_count, mask_count)
+        if batch_size == 0:
+            return ([], [], [0])
 
-        num_full_batches = batch_size // sub_batch_size
         im_batches = []
         mask_batches = []
 
-        for i in range(num_full_batches):
-            start_idx = i * sub_batch_size
-            end_idx = start_idx + sub_batch_size
-            if image_count > 0:
-                im_batches.append(image[start_idx:end_idx, ...])
-
-            if mask_count > 0:
-                mask_batches.append(mask[start_idx:end_idx, ...])
-
-        if batch_size % sub_batch_size != 0:
-            remaining_start = num_full_batches * sub_batch_size
-            if image_count > 0:
-                im_batches.append(image[remaining_start:, ...])
-
-            if mask_count > 0:
-                mask_batches.append(mask[remaining_start:, ...])
+        for i in range(0, batch_size, sub_batch_size):
+            if image is not None:
+                im_batches.append(image[i : i + sub_batch_size])
+            if mask is not None:
+                mask_batches.append(mask[i : i + sub_batch_size])
 
         return (im_batches, mask_batches, len(im_batches))
 
