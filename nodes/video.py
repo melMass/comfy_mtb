@@ -36,8 +36,8 @@ class MTB_LoadImageSequence:
                 "invert_alpha": (
                     "BOOLEAN",
                     {
-                        "default": False,
-                        "tooltip": "Output 1 - alpha as the mask, like ComfyUI's Load Image (transparent areas are masked, for inpainting). Off outputs alpha as-is, for mattes and roto.",
+                        "default": True,
+                        "tooltip": "On outputs 1 - alpha as the mask, like ComfyUI's Load Image (transparent areas are masked, for inpainting). Turn off to output alpha as-is, for mattes and roto.",
                     },
                 ),
             },
@@ -58,7 +58,7 @@ class MTB_LoadImageSequence:
         "total_frames",
     )
 
-    def load_image(self, path=None, current_frame=0, range="", invert_alpha=False):
+    def load_image(self, path=None, current_frame=0, range="", invert_alpha=True):
         load_all = current_frame == -1
         total_frames = 1
 
@@ -132,7 +132,7 @@ class MTB_LoadImageSequence:
         return selected_frames
 
     @staticmethod
-    def IS_CHANGED(path="", current_frame=0, range="", invert_alpha=False):
+    def IS_CHANGED(path="", current_frame=0, range="", invert_alpha=True):
         print(f"Checking if changed: {path}, {current_frame}")
         if range or current_frame == -1:
             resolved_paths = resolve_all_frames(path)
@@ -166,7 +166,7 @@ class MTB_LoadImageSequence:
 import glob
 
 
-def img_from_path(path, invert_alpha=False):
+def img_from_path(path, invert_alpha=True):
     img = Image.open(path)
     img = ImageOps.exif_transpose(img)
     image = img.convert("RGB")
