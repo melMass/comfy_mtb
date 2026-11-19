@@ -33,6 +33,13 @@ class MTB_LoadImageSequence:
             },
             "optional": {
                 "range": ("STRING", {"default": ""}),
+                "invert_alpha": (
+                    "BOOLEAN",
+                    {
+                        "default": False,
+                        "tooltip": "Output 1 - alpha as the mask, like ComfyUI's Load Image (transparent areas are masked, for inpainting). Off outputs alpha as-is, for mattes and roto.",
+                    },
+                ),
             },
         }
 
@@ -51,13 +58,13 @@ class MTB_LoadImageSequence:
         "total_frames",
     )
 
-    def load_image(self, path=None, current_frame=0, range=""):
+    def load_image(self, path=None, current_frame=0, range="", invert_alpha=False):
         load_all = current_frame == -1
         total_frames = 1
 
         if range:
             frames = self.get_frames_from_range(path, range)
-            imgs, masks = zip(*(img_from_path(frame) for frame in frames))
+            imgs, masks = zip(*(img_from_path(frame, invert_alpha) for frame in frames))
             out_img = torch.cat(imgs, dim=0)
             out_mask = torch.cat(masks, dim=0)
             total_frames = len(imgs)
@@ -71,7 +78,7 @@ class MTB_LoadImageSequence:
             imgs = []
             masks = []
 
-            imgs, masks = zip(*(img_from_path(frame) for frame in frames))
+            imgs, masks = zip(*(img_from_path(frame, invert_alpha) for frame in frames))
 
             out_img = torch.cat(imgs, dim=0)
             out_mask = torch.cat(masks, dim=0)
@@ -82,7 +89,7 @@ class MTB_LoadImageSequence:
         log.debug(f"Loading image: {path}, {current_frame}")
         resolved_path = resolve_path(path, current_frame)
         image_path = folder_paths.get_annotated_filepath(resolved_path)
-        image, mask = img_from_path(image_path)
+        image, mask = img_from_path(image_path, invert_alpha)
         return (image, mask, current_frame, total_frames)
 
     def get_frames_from_range(self, path, range_str):
@@ -125,7 +132,7 @@ class MTB_LoadImageSequence:
         return selected_frames
 
     @staticmethod
-    def IS_CHANGED(path="", current_frame=0, range=""):
+    def IS_CHANGED(path="", current_frame=0, range="", invert_alpha=False):
         print(f"Checking if changed: {path}, {current_frame}")
         if range or current_frame == -1:
             resolved_paths = resolve_all_frames(path)
@@ -159,7 +166,7 @@ class MTB_LoadImageSequence:
 import glob
 
 
-def img_from_path(path):
+def img_from_path(path, invert_alpha=False):
     img = Image.open(path)
     img = ImageOps.exif_transpose(img)
     image = img.convert("RGB")
@@ -167,9 +174,12 @@ def img_from_path(path):
     image = torch.from_numpy(image)[None,]
     if "A" in img.getbands():
         mask = np.array(img.getchannel("A")).astype(np.float32) / 255.0
-        mask = 1.0 - torch.from_numpy(mask)
+        mask = torch.from_numpy(mask)[None,]
+        if invert_alpha:
+            mask = 1.0 - mask
     else:
-        mask = torch.zeros((64, 64), dtype=torch.float32, device="cpu")
+        # no alpha means fully opaque
+        mask = torch.full((1, 64, 64), 0.0 if invert_alpha else 1.0, dtype=torch.float32)
     return (
         image,
         mask,
