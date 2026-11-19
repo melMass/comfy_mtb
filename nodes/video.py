@@ -179,7 +179,7 @@ def img_from_path(path, invert_alpha=True):
             mask = 1.0 - mask
     else:
         # no alpha means fully opaque
-        mask = torch.full((1, 64, 64), 0.0 if invert_alpha else 1.0, dtype=torch.float32)
+        mask = torch.full(image.shape[:3], 0.0 if invert_alpha else 1.0, dtype=torch.float32)
     return (
         image,
         mask,
