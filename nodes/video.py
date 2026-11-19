@@ -94,35 +94,29 @@ class MTB_LoadImageSequence:
             )
 
         frames = resolve_all_frames(path)
-        total_frames = len(frames)
-
-        if start < 0 or end >= total_frames:
-            raise ValueError(
-                f"Range {range_str} is out of bounds. Total frames available: {total_frames}"
-            )
 
         if "#" in path:
-            frame_regex = re.escape(path).replace(r"\#", r"(\d+)")
-            frame_number_regex = re.compile(frame_regex)
-
-            matching_frames = []
-            for frame in frames:
-                match = frame_number_regex.search(frame)
-
-                if match:
-                    frame_number = int(match.group(1))
-                    if start <= frame_number <= end:
-                        matching_frames.append(frame)
-
-            return matching_frames
-        else:
-            log.warning(
-                f"Wildcard pattern or directory will use indexes instead of frame numbers for : {path}"
+            # match on the file name: glob may join the folder with a backslash
+            name_regex = re.compile(
+                re.sub(r"(\\#)+", r"(\\d+)", re.escape(os.path.basename(path)))
             )
+            selected_frames = []
+            for frame in frames:
+                match = name_regex.fullmatch(os.path.basename(frame))
+                if match and start <= int(match.group(1)) <= end:
+                    selected_frames.append(frame)
+            if not selected_frames:
+                raise ValueError(f"No frames numbered {range_str} found for {path}")
+            return selected_frames
 
-            selected_frames = frames[start : end + 1]
-
-        return selected_frames
+        log.warning(
+            f"Wildcard pattern or directory will use indexes instead of frame numbers for : {path}"
+        )
+        if start < 0 or end >= len(frames):
+            raise ValueError(
+                f"Range {range_str} is out of bounds. Total frames available: {len(frames)}"
+            )
+        return frames[start : end + 1]
 
     @staticmethod
     def IS_CHANGED(path="", current_frame=0, range=""):
