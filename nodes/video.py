@@ -52,6 +52,7 @@ class MTB_LoadImageSequence:
     )
 
     def load_image(self, path=None, current_frame=0, range=""):
+        path = sequence_path(path)
         load_all = current_frame == -1
         total_frames = 1
 
@@ -81,7 +82,7 @@ class MTB_LoadImageSequence:
 
         log.debug(f"Loading image: {path}, {current_frame}")
         resolved_path = resolve_path(path, current_frame)
-        image_path = folder_paths.get_annotated_filepath(resolved_path)
+        image_path = image_filepath(resolved_path)
         image, mask = img_from_path(image_path)
         return (image, mask, current_frame, total_frames)
 
@@ -126,11 +127,11 @@ class MTB_LoadImageSequence:
 
     @staticmethod
     def IS_CHANGED(path="", current_frame=0, range=""):
-        print(f"Checking if changed: {path}, {current_frame}")
+        path = sequence_path(path)
         if range or current_frame == -1:
             resolved_paths = resolve_all_frames(path)
             timestamps = [
-                os.path.getmtime(folder_paths.get_annotated_filepath(p))
+                os.path.getmtime(image_filepath(p))
                 for p in resolved_paths
             ]
             combined_hash = hashlib.sha256(
@@ -138,7 +139,7 @@ class MTB_LoadImageSequence:
             )
             return combined_hash.hexdigest()
         resolved_path = resolve_path(path, current_frame)
-        image_path = folder_paths.get_annotated_filepath(resolved_path)
+        image_path = image_filepath(resolved_path)
         if os.path.exists(image_path):
             m = hashlib.sha256()
             with open(image_path, "rb") as f:
@@ -221,6 +222,36 @@ def resolve_all_frames(path: str):
 
     frames.sort()  # Sort frames alphabetically
     return frames
+
+
+SEQUENCE_FOLDER = "image_sequences"
+
+
+def sequence_path(path):
+    """Strip the quotes Windows "Copy as path" adds, and only allow absolute
+    paths inside folders registered as image_sequences in extra_model_paths.yaml.
+    """
+    path = path.strip().strip("\"'")
+    if not os.path.isabs(path):
+        return path
+    roots = folder_paths.folder_names_and_paths.get(SEQUENCE_FOLDER, ([], set()))[0]
+    if any(folder_paths.is_within_directory(root, path) for root in roots):
+        return path
+    allowed = ", ".join(roots) if roots else "none"
+    raise ValueError(
+        f"Absolute path {path!r} is not in an allowed folder (allowed: {allowed}). "
+        "ComfyUI only loads files from its input folder unless told otherwise. "
+        f"To allow a folder, add it under '{SEQUENCE_FOLDER}' in ComfyUI's "
+        "extra_model_paths.yaml and restart, e.g.\n"
+        f"mtb:\n  {SEQUENCE_FOLDER}: |\n    W:/shows"
+    )
+
+
+def image_filepath(path):
+    # sequence_path has already checked absolute paths against the allowed folders
+    if os.path.isabs(path):
+        return path
+    return folder_paths.get_annotated_filepath(path)
 
 
 def resolve_path(path, frame):
